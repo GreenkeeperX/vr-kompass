@@ -41,7 +41,8 @@ Weitere Ausnahmen in der Sammlung, übernommen aus „Spiele“ im eShopKompass 
 27.10.2026): Die Wertung ist ein Farbton von Rot über Gelb nach Grün (`.gsc`, `--sh` aus 50 bis
 95 %), Genres stehen als Blasen im Farbton ihrer Verwandtschaft (`.chip.gg`, `G_HUE`; violett
 bleibt frei). Mein Stand: Backlog ○ pink (`--pink`, ab 0.10.2), angefangen ▷ blau, durchgespielt ✓ grün, Favorit ★
-gold und fett (Kontur `-webkit-text-stroke`, die Größe bleibt), ignoriert ✕ rot (Tooltip „Nie wieder
+gold und fett (Kontur `-webkit-text-stroke`, die Größe bleibt; ○ ▷ ✓ ab 0.10.3 mit 1 px ebenso kräftig; beim Überfahren
+liegt der Rahmen des Knopfs oben, `.seg button:hover`), ignoriert ✕ rot (Tooltip „Nie wieder
 vorschlagen“; Gegenstück zu Favorit, nie in Mischungen und Vorschlägen, nur mit dem Filter „ignoriert“);
 nur als Zeichen, nie als Fläche. Die Marke „VR“ hinter dem Namen ist türkis gefüllt
 (`.b.vrb`). Der gewählte System-Reiter: Linie in der Familienfarbe, Schrift in `--ink`
@@ -277,8 +278,9 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - Spieler aus der Recherche (ab 0.10.1): violett (`gMaxPl0`, `plParts`), Tooltip „Aus der Recherche“.
 - Meta aktiv (ab 0.10.1): neue Meta-Bewertungen je 30 Tage, grau „+n/Mon.“ in der Spalte Aktiv des Reiters VR, wenn
   Steam keine Spielerzahl hat, und Zeile „Meta aktiv“ in den Fakten (`growTip`); nur ein Hinweis.
-- Crossplay (ab 0.10.0): „⇄“ grau hinter der Zahl in der Spalte max. Spieler (`xpMark`), violett, wenn nur eine Quelle
-  es sagt oder PCGamingWiki widerspricht; Zeile „Crossplay (Quelle)“ in den Einzelheiten (`xpLabel`, `plRows`, VR in
+- Crossplay (ab 0.10.0; ab 0.10.3 Marke „Crossplay“ am Namen statt „⇄“ an der Spielerzahl, Entscheidung 02.11.2026):
+  `xpMark` grau, violett, wenn nur eine Quelle es sagt oder PCGamingWiki widerspricht; in der Sammlung, der VR-Wunschliste,
+  bei PC-Wünschen und in Jetzt Alle; Zeile „Crossplay (Quelle)“ in den Einzelheiten (`xpLabel`, `plRows`, VR in
   `factsHtml`) mit den Plattformen, etwa „Crossplay (Steam)“ oder „Crossplay (PCGW/Steam)“. Die Steam-Kategorie nennt
   keine Plattformen (Tooltip). „Crossplay Quest/PC“ aus der Recherche steht bei den Meinungen (ab 0.10.2 so benannt,
   auch „kein Crossplay Quest/PC“). Nicht verwechseln mit Crossbuy (Kauf bei Meta gilt für Quest und PC).
@@ -286,6 +288,15 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   widersprechen sich“, nur Meldungen ohne Knöpfe, oben die Zahl der bestätigten Käufe je Laden.
 - Pakete (ab 0.10.2, `bundles` am Wunsch): Zeile „Paket“ in den Einzelheiten VR, „statt“ mit der Summe grün, wenn das
   Paket günstiger ist; Marke „im Paket günstiger“ (`.b.go`) am Namen. Tooltip `bundleTip`.
+- PC-Einzelheiten (ab 0.10.3, Entscheidung 02.11.2026): „Jetzt“ und „Tief“ zeigen Händler und Keyshop nur, wenn der
+  teurere höchstens 10 % über dem günstigeren liegt (`pcPair`, `PC_ALT`; der Tooltip nennt den anderen), „Läden“ nur die
+  Läden bis 10 % über dem günstigsten Preis jetzt. „Üblich“ (mit Preis, „−40 % = 17,99 €“) und „Steam-Angebote“ nur,
+  wenn ein Steam-Angebot in üblicher Höhe unter dem günstigsten Preis jetzt und höchstens 5 % über dem Tief läge
+  (`muster.worth_pc`); bei VR bleiben sie, weil sie Meta gegen Steam abwägen.
+- VR-Einzelheiten in Jetzt und Wunschliste (ab 0.10.3, `vrDetail`): im Raster der Tabelle links die Angaben (`.vdf`),
+  ab der Spalte Meta bzw. Preis bis vor Wertung die Karten der Läden mit dem Preisverlauf (`.vdp`), rechts Genres und
+  Kurzbeschreibung (`.vdd`), darunter Tiefstpreise und Links. PC-Einzelheiten: Beschreibung ab der Spalte „Wo“.
+  Marken und Genres hinter „+n weitere“ stehen in den Einzelheiten (`fitAll`, `.gmarks`, `.ggen`).
 - Steam-Angebote (ab 0.10.2, `rhythm`): Zeile in den Einzelheiten VR und PC, „zuletzt vor n Wochen (bisher etwa alle
   m Wo.)“ oder „läuft gerade“ (`rhythmText`, `rhythmTip`), keine Vorhersage.
 - Lenkrad (0.8.3): Marke „Lenkrad“ (`.b`), wenn das Spiel in einer Liste der Rennspiele steht (SimHub,
@@ -394,3 +405,13 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - VR-Titel am PC ohne Playnite-Eintrag (`pcvr:`) tragen die Marke „Lenkrad“ wie die übrigen.
 - Ab 0.8.9 sind sie Spiele der Sammlung mit Spalten aus Steam und IGDB; die Herkunft nennt „dein VR-Titel im Tool
   (…), Playnite kennt ihn nicht; Steam-Details“.
+- Herkunft in der Fußzeile der Einzelheiten (ab 0.10.3, Entscheidung 02.11.2026): nur „n Quellen“, welche und wie im
+  Tooltip; Playnite und Steam zählen einzeln.
+
+## Preisverlauf (Fenster)
+
+- Ab 0.10.3: ✕ oben rechts in einer Kopfzeile, die beim Scrollen stehen bleibt (`.vlx`, `dialog.vl header` sticky);
+  Esc oder ein Klick neben das Fenster schließen es auch.
+- Spalte „typisch“: Median der Tiefstwerte je Angebot, bei gg.deals (Händler und Keyshops) der Preis, der in den
+  letzten 90 Tagen am längsten galt (klein „90 Tage“). „zuletzt“ grün (`.g-buy`), wenn das letzte Angebot höchstens
+  5 % über dem Tief aller Läden oder unter dem typischen gg.deals-Preis lag.

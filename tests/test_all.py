@@ -881,6 +881,29 @@ class TestLibrary(unittest.TestCase):
         self.assertEqual(muster.rhythm(pts, "2025-11-02", 20.0), {"n": 3, "last": "2025-07-01", "on": False, "gap": 61})
         self.assertIsNone(muster.rhythm([["2025-01-01", 20.0]], "2025-11-02", 20.0))
 
+    def test_0103_pc_worth_and_recent(self):
+        """0.10.3: Üblich am PC nur, wenn ein Steam-Angebot den günstigsten Preis jetzt unterböte und nah am Tief läge;
+        „typisch“ bei gg.deals aus den letzten 90 Tagen."""
+        from app import muster, verlauf
+        u = {"pct": 50}
+        self.assertTrue(muster.worth_pc(u, 20.0, {"retail": 15.0, "keyshops": 12.0, "low": 9.8}))
+        self.assertEqual(u["price"], 10.0)
+        self.assertFalse(muster.worth_pc({"pct": 50}, 20.0, {"keyshops": 9.0, "low": 8.0}))      # Keyshop schon günstiger
+        self.assertFalse(muster.worth_pc({"pct": 50}, 20.0, {"keyshops": 15.0, "low": 6.0}))     # Tief weit entfernt
+        self.assertFalse(muster.worth_pc({"pct": 50}, None, {"keyshops": 15.0, "low": 6.0}))
+        pts = [["2025-01-01", 15.0], ["2025-09-01", 12.0], ["2025-10-20", 11.0]]
+        s = verlauf.series("gg.deals", pts, "2025-11-02", None, "gg")
+        self.assertEqual((s["typical"], s["typical_how"]), (12.0, "recent"))      # 49 Tage 12 €, 14 Tage 11 €
+        self.assertEqual(verlauf.series("Steam", pts, "2025-11-02", 15.0, "steam")["typical_how"], "sales")
+
+    def test_ui_0103(self):
+        """0.10.3: VR-Einzelheiten im Raster, ✕ und Klick daneben im Preisverlauf, Crossplay als Marke."""
+        js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "app.js"), encoding="utf-8").read()
+        for name in ("function vrDetail", 'class="vlx"', "function pcPair", ">Crossplay</span>", 'querySelector(".gmarks")',
+                     "nSrc === 1"):
+            self.assertIn(name, js)
+        self.assertNotIn("⇄", js)
+
     def test_grade_and_now(self):
         """Preisgüte wie im eShopKompass; Jetzt zeigt nur Angebote mit „kaufen“ oder „gut“."""
         g = library.grade
