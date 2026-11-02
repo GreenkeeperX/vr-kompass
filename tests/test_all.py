@@ -940,6 +940,15 @@ class TestLibrary(unittest.TestCase):
         self.assertIn("@media (hover:hover)", css)
         self.assertIn(".gxu", css)
 
+    def test_ui_0108(self):
+        """0.10.8: Zeile bleibt beim Aufklappen stehen, PC-Genres unter Genre, Sortieren-Auswahl und Spalte."""
+        base = os.path.join(os.path.dirname(__file__), "..", "app", "static")
+        js = open(os.path.join(base, "js", "app.js"), encoding="utf-8").read()
+        css = open(os.path.join(base, "style.css"), encoding="utf-8").read()
+        for name in ("function keepRow", "function sortSel", "nach Spalte", "pcDetail(r, 6, 9)", "--gg:${gg - gc + 1}"):
+            self.assertIn(name, js)
+        self.assertEqual(css.count("--hov:"), 3)
+
     def test_grade_and_now(self):
         """Preisgüte wie im eShopKompass; Jetzt zeigt nur Angebote mit „kaufen“ oder „gut“."""
         g = library.grade
@@ -3568,8 +3577,8 @@ class TestUi(unittest.TestCase):
         self.assertIn('a === "vlall"', js)
         self.assertIn("function fitMarks()", js)
         self.assertIn('addEventListener("resize", () => fitAll());', js)
-        self.assertIn("V.vwOpen = null; render();", js)
-        self.assertIn("V.pwOpen = null; render();", js)
+        self.assertIn("V.vwOpen = null; keepRow(el, render);", js)
+        self.assertIn("V.pwOpen = null; keepRow(el, render);", js)
         self.assertIn(".gdm{grid-column:var(--gc,2)/-1;", css)
         self.assertNotIn("--dcols:${dcols}", js)
 
