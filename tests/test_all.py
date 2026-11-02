@@ -3076,6 +3076,52 @@ class TestAccounts(unittest.TestCase):
         self.assertEqual(collection.sync_steam(col, empty()), (0, 0))
         self.assertEqual(collection.sync_steam(col, d), (0, 1))
 
+    def test_gg_collection(self):
+        """gg.deals-Sammlung über das Lesezeichen (0.9.9): Launcher aus der Karte, ohne den Namen des Spiels; in die
+        Sammlung PC kommt nur, was keine andere Quelle unter demselben Namen führt, und es bleibt beim Playnite-Import."""
+        self.assertEqual(imports.gg_launchers("Steamy Night Tram | svg-icon-epic | Owned on Epic", "Steamy Night Tram"), ["Epic"])
+        self.assertEqual(imports.gg_launchers("x | icon_gog | Battle.net"), ["GOG", "Battle.net"])
+        self.assertEqual(imports.gg_launchers("Owned"), [])
+        old_dir, store.DATA_DIR = store.DATA_DIR, tempfile.mkdtemp()
+        try:
+            store.save_json(collection.FILE, {"games": {"steam:3000001": {"name": "Harbor Heist", "system": "PC", "store": "Steam", "id": "3000001"}}})
+            payload = json.dumps({"kind": "gg-sammlung", "hv": 9, "items": [
+                {"kind": "game", "slug": "harbor-heist", "name": "Harbor Heist", "ctx": "Harbor Heist | svg-icon-steam"},
+                {"kind": "game", "slug": "rally-moth", "name": "Rally Moth", "ctx": "Rally Moth | Owned on GOG"},
+                {"kind": "game", "slug": "steamy-night-tram", "name": "Steamy Night Tram", "ctx": "Steamy Night Tram | svg-icon-epic"},
+                {"kind": "game", "slug": "orbit-golf", "name": "Orbit Golf", "ctx": "Orbit Golf"},
+                {"kind": "dlc", "slug": "orbit-golf-moon", "name": "Orbit Golf: Moon", "ctx": ""}]})
+            self.assertEqual(imports.detect(payload), "meta")
+            d = empty()
+            res = imports.import_meta(d, payload, dry=True)
+            self.assertEqual(res["ggc"], {"n": 4, "fresh": 3, "known": 1, "stores": {"Steam": 1, "GOG": 1, "Epic": 1, "?": 1}})
+            self.assertNotIn("ggcoll", d["imports"])
+            self.assertNotIn("gg:rally-moth", store.load_json(collection.FILE, collection.EMPTY)["games"])
+            res = imports.import_meta(d, payload, dry=False)
+            self.assertEqual((res["ggc"]["added"], res["ggc"]["gone"]), (3, 0))
+            col = store.load_json(collection.FILE, collection.EMPTY)
+            self.assertNotIn("gg:harbor-heist", col["games"])
+            g = col["games"]["gg:steamy-night-tram"]
+            self.assertEqual((g["store"], g["src"]), ("Epic", "ggcoll"))
+            rows = {r["key"]: r for r in collection.view(col, d)["games"]}
+            self.assertEqual(rows["gg:rally-moth"]["srcs"][0], "gg.deals-Sammlung")
+            self.assertEqual(rows["gg:rally-moth"]["url"], "https://gg.deals/game/rally-moth/")
+            self.assertEqual(rows["gg:orbit-golf"]["store"], "")
+            # Playnite-Export ohne diese Spiele: sie bleiben; kennt Playnite eins, fällt der gg-Eintrag weg
+            collection.replace(col, {"gog:1": {"name": "Rally Moth", "system": "PC", "store": "GOG", "id": "1"}})
+            self.assertIn("gg:orbit-golf", col["games"])
+            self.assertNotIn("gg:rally-moth", {r["key"] for r in collection.view(col, d)["games"]})
+            # Harbor Heist steht nicht mehr im Export: jetzt kommt es aus der gg.deals-Sammlung
+            self.assertEqual(collection.sync_gg(col, d), (1, 1))
+            self.assertEqual(col["games"]["gg:harbor-heist"]["store"], "Steam")
+            # Ohne gelesene Sammlung bleibt alles
+            self.assertEqual(collection.sync_gg(col, empty()), (0, 0))
+            self.assertIn("gg:orbit-golf", col["games"])
+            with self.assertRaises(ValueError):
+                imports.import_meta(d, json.dumps({"kind": "gg-sammlung", "items": []}), dry=True)
+        finally:
+            store.DATA_DIR = old_dir
+
     def test_parsers(self):
         self.assertEqual(accounts.steam_id_input("https://steamcommunity.com/profiles/76561190000000001/"), ("id", "76561190000000001"))
         self.assertEqual(accounts.steam_id_input("https://steamcommunity.com/id/beispiel/"), ("vanity", "beispiel"))
@@ -3250,6 +3296,15 @@ class TestUi(unittest.TestCase):
         self.assertIn('row("Koop", k.coop', js)
         for part in ('function pcTable(rows, t = "pcw")', 'function vrTable(rows, t = "vrw")', 'sortRows("all", items, ALL_KEYS)'):
             self.assertIn(part, js)
+
+    def test_ui_099(self):
+        """0.9.9: das Lesezeichen liest auch die gg.deals-Sammlung, mit Launcher je Karte; die Vorschau zählt je Launcher."""
+        js = self.read("js/app.js")
+        self.assertIn("const META_HV = 9;", js)
+        self.assertIn('kind:coll?"gg-sammlung":"gg-wunschliste"', js)
+        self.assertIn('https://gg.deals/collection/', js)
+        self.assertIn('ggcoll: "gg.deals-Sammlung"', js)
+        self.assertIn("p.ggc", js)
 
     def test_ui_098(self):
         """0.9.8: Ladenfarben, alle Läden im Preisverlauf an/ab, Marken und Genres kürzen auf allen Reitern,

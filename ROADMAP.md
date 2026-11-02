@@ -115,13 +115,16 @@ Menü am Ende der Filterzeile; „hinzugefügt am“; Jetzt mit PC über VR. 0.8
 Rezensionszahl. 0.8.22: VR-Wünsche als Tabelle wie die PC-Wünsche, die Karte als Einzelheiten; Jetzt
 mit zwei gleich gebauten Tabellen. 0.8.23: eine Spaltenreihenfolge für alle Tabellen, „max. Spieler“ statt Mehrspieler,
 „Aktiv“ auch für PC-Spiele, Wertung der eigenen Fassung im Reiter VR. 0.8.24: PC-Wünsche ohne Steam-ID: mehr Suchen, Grundform des
-Namens, Ähnliches zum Bestätigen in „Zu erledigen“; Geheimtipp dunkler. 0.8.25: Preissturz auch für VR-Wünsche. 0.8.26: Trend zählt halb in „wo kaufen“. 0.8.27: Jetzt „Alle“ als eine gemischte Tabelle. 0.9.0: Läden einzeln über IsThereAnyDeal, Jetzt PC nach Laden. 0.9.1: Preisverlauf je Titel. 0.9.2: „Meinung fehlt“ mit Auftrag für die Recherche. 0.9.3: Spielzeit und „zuletzt gespielt“ aus dem Steam-Konto, Mischung „Liegt brach“. Grundsatz (Entscheidung 22.10.2026): so wenig
+Namens, Ähnliches zum Bestätigen in „Zu erledigen“; Geheimtipp dunkler. 0.8.25: Preissturz auch für VR-Wünsche. 0.8.26: Trend zählt halb in „wo kaufen“. 0.8.27: Jetzt „Alle“ als eine gemischte Tabelle. 0.9.0: Läden einzeln über IsThereAnyDeal, Jetzt PC nach Laden. 0.9.1: Preisverlauf je Titel. 0.9.2: „Meinung fehlt“ mit Auftrag für die Recherche. 0.9.3: Spielzeit und „zuletzt gespielt“ aus dem Steam-Konto, Mischung „Liegt brach“. 0.9.7: Spiele aus dem Steam-Konto in der Sammlung. 0.9.8: Kürzen zu „+n weitere“, Ladenfarben. 0.9.9: gg.deals-Sammlung per Lesezeichen. Grundsatz (Entscheidung 22.10.2026): so wenig
 Handarbeit wie möglich; was sich abrufen und von einer zweiten Quelle bestätigen lässt, geht vor
 Bestätigen und Einlesen von Hand. Als Nächstes:
 
 - Meldungen aufs Handy: nicht gewünscht (Entscheidung 28.10.2026)
 
-- Spielzeit auch für Spiele außerhalb von Steam (zusätzliche Playnite-Spalten)
+- Spielzeit auch für Spiele außerhalb von Steam: Export aus Playnite mit dem Plugin für HowLongToBeat, dann
+  einlesen (wartet auf einen Zugang zu Playnite, Stand 02.11.2026)
+- Spieleraktivität für Meta-Titel: Meta nennt keine Spielerzahlen; Ersatz wäre, wie schnell die Zahl der
+  Meta-Bewertungen wächst (aus dem eigenen Verlauf)
 - weitere Marken je Spiel neben Mein Stand („nie wieder vorschlagen“), Sharenite als Nachschub
 - Besitz mit zweiter Quelle bestätigen (Steam-Konto und Sharenite, Meta-Käufe und VRDB) und
   Widersprüche melden statt sie nachzufragen
@@ -155,7 +158,6 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
   den großen Steam-Sales, der Wochentag zählt kaum): Hinweis „Warten lohnt“, wenn der Rabatt unter dem für das Alter
   üblichen liegt; Monat des nächsten großen Sales aus den Häufungen im eigenen Verlauf; Rhythmus je Spiel und Laden
 - PC-Wünsche ohne Steam-ID: Preise über die Titelsuche von IsThereAnyDeal (GOG-, Epic- und andere Spiele)
-- gg.deals-Sammlung per Lesezeichen wie die Wunschliste, als zweite Quelle neben Playnite für Spiele außerhalb von Steam
 - Pflege je Laden vergleichen: Steam-Update-Datum gegen den Tag, an dem die Meta-Version zuletzt wechselte
   (`meta_ver.since`), als weiterer Grund im Urteil „wo kaufen“
 

@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.9.8:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.9.9:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -19,6 +19,10 @@ die Einzelheiten stehen im Raster der Zeile (links die Angaben, ab der Spalte Ge
 Stand, Beschreibung, Gespielt), Steam-Wertungen dort immer in Prozent, Marken nicht doppelt; immer nur ein Eintrag
 offen; im Preisverlauf alle Läden auf einmal an- oder abwählen; Ladenfarben für Steam, Microsoft, Humble,
 Fanatical, Green Man Gaming und Keyshop.
+Neu in 0.9.9: Das Lesezeichen „Seite lesen“ liest auch deine Sammlung bei gg.deals, samt Launcher je Spiel (Steam,
+GOG, Epic, Ubisoft, EA, Battle.net, Xbox, Amazon, itch, Humble, Rockstar). Spiele, die weder Playnite noch das
+Steam-Konto noch deine VR-Titel am PC unter demselben Namen führen, stehen damit in der Sammlung PC (Herkunft
+„gg.deals-Sammlung“). Das Lesezeichen neu anlegen (Fassung 9).
 
 ## Starten
 
@@ -94,6 +98,9 @@ lesen“ im eShopKompass:
    der Rest steht mit Zahl und Namen im Ergebnis. Unbekannte Namen daraus sucht der Abgleich bei
    Steam nach, 40 je Lauf. Ab 0.8.8 merkt es sich die Zahl, die gg.deals über der Liste nennt („We found …
    results“); stehen dort mehr Einträge, als Links zu Spielseiten da waren, sagt die Vorschau, wie viele fehlen.
+   Ab 0.9.9 ebenso auf deiner Sammlung bei gg.deals (`gg.deals/collection/`): je Spiel zusätzlich das Umfeld der
+   Karte (Text, Titel und Symbole), daraus erkennt das Tool den Launcher; der Name des Spiels zählt dabei nicht mit.
+   In die Sammlung PC kommt nur, was keine andere Quelle unter demselben Namen führt.
 3. Im Kasten oben rechts „Im VR-Navigator übernehmen“: Das Tool öffnet sich und übernimmt Käufe
    oder Wunschliste ohne weitere Rückfrage. Seitentext und Links stehen dabei nur in der Adresse
    hinter #, gehen also an keinen Server außer deinem eigenen Browser-Tab; das Tool entfernt sie

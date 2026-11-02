@@ -1937,29 +1937,34 @@ function opinionHtml(r){
 /* Lesezeichen „Seite lesen“ (wie „Käufe lesen“ im eShopKompass): läuft in deinem Browser, wo du
    angemeldet bist und Prüfseiten wie die von Cloudflare schon bestanden hast.
    - Meta: Bestellseite, Transaktionen von Meta Pay oder Wunschliste; scrollt, bis alles geladen ist.
-   - gg.deals: deine Wunschliste; weitere Seiten holt es mit kurzer Pause nach.
+   - gg.deals: deine Wunschliste oder ab 0.9.9 deine Sammlung (mit dem Launcher je Spiel); weitere Seiten holt es
+     mit kurzer Pause nach.
    Dann öffnet es dieses Tool mit den Daten im Adressteil hinter # (geht nicht übers Netz an einen
    Server). Das Tool übernimmt sie. Ausweg: „Als Datei sichern“. */
-const META_HV = 8;
+const META_HV = 9;
 function metaHelper(tool){ return `(async()=>{
 const gg=/(^|\\.)gg\\.deals$/.test(location.hostname);
-if(!gg&&!/(^|\\.)meta\\.com$/.test(location.hostname)){alert("Bitte zuerst eine dieser Seiten öffnen, dann das Lesezeichen anklicken: angemeldet deine Meta-Bestellungen (meta.com/my/orders), die Transaktionen von Meta Pay, deine Wunschliste im Meta Store oder deine Wunschliste bei gg.deals.");return}
-if(gg&&!/wishlist/.test(location.pathname)){alert("Bitte deine Wunschliste bei gg.deals öffnen (angemeldet oder über den Teilen-Link), dann das Lesezeichen anklicken.");return}
+if(!gg&&!/(^|\\.)meta\\.com$/.test(location.hostname)){alert("Bitte zuerst eine dieser Seiten öffnen, dann das Lesezeichen anklicken: angemeldet deine Meta-Bestellungen (meta.com/my/orders), die Transaktionen von Meta Pay, deine Wunschliste im Meta Store, deine Wunschliste oder deine Sammlung bei gg.deals.");return}
+const coll=gg&&/collection/.test(location.pathname);
+if(gg&&!coll&&!/wishlist/.test(location.pathname)){alert("Bitte deine Wunschliste oder deine Sammlung bei gg.deals öffnen (angemeldet oder über den Teilen-Link), dann das Lesezeichen anklicken.");return}
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(420px,90vw);background:#fff;color:#111;border:2px solid #24383b;border-radius:8px;padding:12px;font:14px sans-serif";box.textContent="VR-Navigator: lade alles …";document.body.appendChild(box);
 const look=(b,main)=>{b.style.cssText="margin:0 8px 6px 0;padding:6px 12px;border-radius:6px;font:600 13px sans-serif;cursor:pointer;"+(main?"background:#24383b;color:#fff;border:1px solid #24383b":"background:#f3f4f1;color:#1b2224;border:1px solid #9aa3a1");return b};
 const wait=t=>new Promise(r=>setTimeout(r,t));
 let txt,msg,file;
 if(gg){
-const read=d=>[...d.querySelectorAll("a[href]")].map(a=>{const m=(a.getAttribute("href")||"").match(/\\/(game|pack|dlc|bundle)\\/([a-z0-9-]+)\\/?(?:[?#].*)?$/);return m&&{kind:m[1],slug:m[2],name:(a.innerText||a.title||"").trim().replace(/\\s+/g," ").slice(0,200)}}).filter(Boolean);
+const gl=a=>(a.getAttribute("href")||"").match(/\\/(game|pack|dlc|bundle)\\/([a-z0-9-]+)\\/?(?:[?#].*)?$/);
+const card=a=>{let e=a;const s=gl(a)[2];while(e.parentElement&&e.parentElement!==d.body){const p=e.parentElement;if([...p.querySelectorAll("a[href]")].some(x=>{const m=gl(x);return m&&m[2]!==s}))break;e=p}return e};
+const ctx=e=>[e.innerText||"",...[...e.querySelectorAll("[title],[alt],[aria-label],[data-original-title],svg,i,use")].map(x=>[x.getAttribute("title"),x.getAttribute("alt"),x.getAttribute("aria-label"),x.getAttribute("data-original-title"),x.getAttribute("href")||x.getAttribute("xlink:href"),x.getAttribute("class")].filter(Boolean).join(" "))].join(" | ").replace(/\\s+/g," ").slice(0,600);
+var d;const read=dd=>{d=dd;return [...dd.querySelectorAll("a[href]")].map(a=>{const m=gl(a);if(!m)return null;const it={kind:m[1],slug:m[2],name:(a.innerText||a.title||"").trim().replace(/\\s+/g," ").slice(0,200)};if(coll)it.ctx=ctx(card(a));return it}).filter(Boolean)};
 let items=read(document);const base=location.href.split(/[?#]/)[0];
 const last=Math.min(30,Math.max(1,...[...document.querySelectorAll("a[href*='page=']")].filter(a=>a.href.split("?")[0]===base).map(a=>+((a.href.match(/[?&]page=(\\d+)/)||[])[1]||1))));
 const pages=[];for(let p=2;p<=last;p++){const u=new URL(location.href);u.searchParams.set("page",p);pages.push(u.href)}
 for(let i=0;i<pages.length;i++){box.textContent="VR-Navigator: lese Seite "+(i+2)+" von "+(pages.length+1)+" …";await wait(1200);try{const r=await fetch(pages[i],{credentials:"include"});items=items.concat(read(new DOMParser().parseFromString(await r.text(),"text/html")))}catch(e){}}
-const by={};items.forEach(x=>{const k=x.kind+":"+x.slug;if(!by[k]||(!by[k].name&&x.name))by[k]=x});items=Object.values(by);
+const by={};items.forEach(x=>{const k=x.kind+":"+x.slug;if(!by[k])by[k]=x;else{if(!by[k].name&&x.name)by[k].name=x.name;if(x.ctx&&(by[k].ctx||"").length<x.ctx.length)by[k].ctx=x.ctx}});items=Object.values(by);
 const games=items.filter(x=>x.kind==="game").length;
 const found=(document.body.innerText.match(/we found\\s+([\\d.,]+)\\s+results?/i)||[])[1];
-txt=JSON.stringify({kind:"gg-wunschliste",hv:${META_HV},at:new Date().toISOString(),page:location.pathname,pages:pages.length+1,shown:found?+found.replace(/[.,]/g,""):null,items});
-msg="gg.deals-Wunschliste gelesen: "+games+" Spiele"+(items.length>games?" und "+(items.length-games)+" Pakete oder DLC":"")+" auf "+(pages.length+1)+" Seiten. Der VR-Navigator übernimmt die Spiele.";file="gg-wunschliste.json";
+txt=JSON.stringify({kind:coll?"gg-sammlung":"gg-wunschliste",hv:${META_HV},at:new Date().toISOString(),page:location.pathname,pages:pages.length+1,shown:found?+found.replace(/[.,]/g,""):null,items});
+msg="gg.deals-"+(coll?"Sammlung":"Wunschliste")+" gelesen: "+games+" Spiele"+(items.length>games?" und "+(items.length-games)+" Pakete oder DLC":"")+" auf "+(pages.length+1)+" Seiten. Der VR-Navigator übernimmt die Spiele"+(coll?" in die Sammlung PC.":".");file=coll?"gg-sammlung.json":"gg-wunschliste.json";
 }else{
 const wish=/wish/i.test(location.pathname)||/wunschliste|wishlist/i.test(document.title);
 const boxes=()=>[document.scrollingElement||document.documentElement,...[...document.querySelectorAll("div,main,section,ul")].filter(e=>e.scrollHeight>e.clientHeight+50&&/(auto|scroll)/.test(getComputedStyle(e).overflowY))];
@@ -1977,18 +1982,19 @@ box.append(p,go,f,b);
 })();`; }
 const metaBm = () => "javascript:" + encodeURIComponent(metaHelper(location.origin));
 
-const KINDS = {sheet: "Vergleichstabelle", playnite: "Playnite-Export", meta: "Meta-Käufe", metawish: "Meta-Wunschliste", ggwish: "gg.deals-Wunschliste"};
+const KINDS = {sheet: "Vergleichstabelle", playnite: "Playnite-Export", meta: "Meta-Käufe", metawish: "Meta-Wunschliste", ggwish: "gg.deals-Wunschliste", ggcoll: "gg.deals-Sammlung"};
 /* Meta-Lesezeichen: Käufe und Wunschliste, beides ohne Datei */
 function metaCard(){
-  const p = V.prev.meta, lm = S.imports.meta, lw = S.imports.metawish, lg = S.imports.ggwish;
-  const info = [lm && `Meta-Käufe ${day(lm.at)}`, lw && `Meta-Wunschliste ${day(lw.at)}`, lg && `gg.deals ${day(lg.at)}`].filter(Boolean).join(", ") || "noch nie";
+  const p = V.prev.meta, lm = S.imports.meta, lw = S.imports.metawish, lg = S.imports.ggwish, lc = S.imports.ggcoll;
+  const info = [lm && `Meta-Käufe ${day(lm.at)}`, lw && `Meta-Wunschliste ${day(lw.at)}`, lg && `gg.deals ${day(lg.at)}`, lc && `gg.deals-Sammlung ${day(lc.at)}`].filter(Boolean).join(", ") || "noch nie";
   // Wie die Browser-Helfer im eShopKompass (0.7.1): Knopf zum Ziehen, „Code kopieren“, Anleitung zum Aufklappen,
   // dann je Seite eine Zeile mit Link und Stand (violett: älter als eine Woche oder nie gelesen)
   const st = x => !x ? `<span class="warnc">noch nie</span>` : `<span class="${(Date.now() - new Date(x.at)) / 864e5 > 7 ? "warnc" : "ok"}">${esc(day(x.at))}</span>`;
   const a = (href, t) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${t}</a>`;
   const rows = [[a("https://www.meta.com/my/orders/?order_type=digital_products&amp;timeFilter=ALL_TIME", "Meta-Bestellungen") + " oder " + a("https://accountscenter.meta.com/meta_pay_wallet/?tab=transactions", "Meta-Pay-Transaktionen"), st(lm), "Käufe"],
     [metaWishLink().replace("deine Wunschliste im Meta Store", "Meta-Wunschliste"), st(lw), "VR-Wünsche"],
-    [a("https://gg.deals/wishlist/", "gg.deals-Wunschliste"), st(lg), "PC-Wünsche; der Server sieht dort nur die Prüfseite"]];
+    [a("https://gg.deals/wishlist/", "gg.deals-Wunschliste"), st(lg), "PC-Wünsche; der Server sieht dort nur die Prüfseite"],
+    [a("https://gg.deals/collection/", "gg.deals-Sammlung"), st(lc), "Spiele aller Launcher für die Sammlung PC"]];
   return sub("imp-meta", "Lesezeichen: Meta und gg.deals", info, `
     <span class="bm-w"><a class="bm" href="${esc(metaBm())}" data-act="nobm" title="In die Lesezeichenleiste ziehen">⠿ <b>Seite lesen</b></a>
       <button data-act="bmcopy" title="Für ein von Hand angelegtes Lesezeichen, auch am Handy">Code kopieren</button></span>
@@ -2115,6 +2121,14 @@ function previewHtml(p){
   const found = pc ? (p.n ? ` VR-Titel: ${p.n}, davon ${p.new} neu.` : " VR-Titel: keine darin.") : `${p.n} erkannt, davon ${p.new} neu.`;
   // gg.deals (0.8.7): erst die ganze PC-Wunschliste, dann wie viele davon VR-Titel im Tool sind
   const gg = p.pc_n != null ? ` ${num(p.pc_n)} Einträge für die PC-Wunschliste (${[`${num(p.pc_n - (p.pc_kinds?.pack || 0) - (p.pc_kinds?.dlc || 0))} Spiele`, p.pc_kinds?.pack && `${num(p.pc_kinds.pack)} Pakete`, p.pc_kinds?.dlc && `${num(p.pc_kinds.dlc)} DLC`].filter(Boolean).join(", ")}), davon ${num(p.n - (p.unknown?.length || 0))} VR-Titel im Tool.` : "";
+  // gg.deals-Sammlung (0.9.9): wie viele Spiele, wie viele davon neu für die Sammlung PC, je Launcher
+  const gc = p.ggc, gcs = gc ? Object.entries(gc.stores || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k === "?" ? "ohne Launcher" : esc(k)} ${num(v)}`).join(", ") : "";
+  if(gc){
+    const head = `${num(gc.n)} Spiele (${gcs}). ${gc.fresh ? `${num(gc.fresh)} davon kennt die Sammlung PC noch nicht` : "Alle stehen schon in der Sammlung PC"}${gc.gone ? `, ${num(gc.gone)} nicht mehr in der gg.deals-Sammlung` : ""}.`;
+    const li = e => `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.known ? " · schon in der Sammlung" : ` · ${e.store ? esc(e.store) : "Launcher unbekannt"}`}</li>`;
+    return p.done ? `<p class="ok">gg.deals-Sammlung übernommen: ${head}</p><details class="prev"><summary class="hint">Was gelesen wurde</summary><ul>${p.entries.slice(0, 600).map(li).join("")}</ul></details>`
+      : `<div class="prev"><b>gg.deals-Sammlung:</b> ${head} Noch nichts gespeichert. <span class="hint">${esc(p.note || "")}</span><ul>${p.entries.slice(0, 300).map(li).join("")}</ul></div>`;
+  }
   const mark = e => p.pc_n != null ? (e.known ? " · VR-Titel" : " · PC") : e.known ? " · war schon da" : " · neu";
   if(p.done) return `<p class="ok">${p.what ? esc(p.what) + " übernommen" : "Übernommen"}${pc || gg ? "." : ":"}${pc ? `${col}${found}` : gg || ` ${p.n} erkannt, ${p.new} neu angelegt.`}</p>` + wishMoves(p) + (p.entries?.length ? `<details class="prev"><summary class="hint">Was übernommen wurde</summary><ul>${p.entries.slice(0, 600).map(e =>
     `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.price != null ? ` ${eur(e.price)}` : ""}${mark(e)}</li>`).join("")}</ul></details>` : "");
@@ -2220,7 +2234,7 @@ async function metaHandOver(){
     const res = await api("/api/import", {kind: "meta", text: META_IN, dry: false});
     S = res.state || S;
     V.prev.meta = Object.assign({done: true}, res, {state: null});
-    toast(res.n ? `${res.what || "Meta-Käufe"}: ${res.n} gelesen, ${res.new} neu` : "Nichts erkannt. Bitte die Seite neu laden und noch einmal versuchen");
+    toast(res.n ? `${res.what || "Meta-Käufe"}: ${res.n} gelesen, ${res.ggc ? res.ggc.added ?? res.new : res.new} neu` : "Nichts erkannt. Bitte die Seite neu laden und noch einmal versuchen");
   }catch(e){ V.prev.meta = {error: e.message}; }
   render();
   $("imp-meta")?.scrollIntoView({block: "start"});

@@ -395,6 +395,8 @@ def parse_meta(payload):
 def import_meta(data, payload, dry=True):
     if _payload_kind(payload) == "gg-wunschliste":
         return import_ggpage(data, payload, dry)
+    if _payload_kind(payload) == "gg-sammlung":
+        return import_ggcoll(data, payload, dry)
     if meta_is_wishlist(payload):
         return import_meta_wishlist(data, payload, dry)
     entries = parse_meta(payload)
@@ -539,6 +541,68 @@ def import_ggpage(data, payload, dry=True):
                         "Link zu einer Spielseite (etwa Einträge, die gg.deals nicht mehr führt).")
     res["gg"] = {"raw": st["raw"], "games": len(items), "dups": st["dups"], "other": {k: len(v) for k, v in st["other"].items()},
                  "kinds": res["pc_kinds"], "shown": st["shown"], "read": read}
+    return res
+
+
+# ------------------------------------------------------------------ gg.deals-Sammlung per Lesezeichen (0.9.9)
+
+# Launcher, wie gg.deals sie an den Karten der Sammlung nennt (Text, title, alt oder Klassen der Symbole);
+# Reihenfolge = Vorrang, wenn eine Karte mehrere nennt
+GG_LAUNCHERS = [("Steam", r"\bsteam\b"), ("GOG", r"\bgog(?:\.com|[ -]?galaxy)?\b"), ("Epic", r"\bepic(?:[ -]?games)?(?:[ -]?store)?\b"),
+                ("Ubisoft", r"\bubisoft(?:[ -]?connect)?\b|\buplay\b"), ("EA", r"\bea[ -]?app\b|\borigin\b|\bea[ -]?play\b"),
+                ("Battle.net", r"\bbattle[ .-]?net\b|\bblizzard\b"), ("Xbox", r"\bxbox\b|\bmicrosoft[ -]?store\b"),
+                ("Amazon", r"\bamazon(?:[ -]?games)?\b|\bprime[ -]?gaming\b"), ("itch", r"\bitch(?:\.io)?\b"),
+                ("Humble", r"\bhumble\b"), ("Rockstar", r"\brockstar\b"), ("Meta", r"\boculus\b|\bmeta[ -]?(?:quest|store)\b")]
+_GG_LAUNCHERS = [(n, re.compile(p, re.I)) for n, p in GG_LAUNCHERS]
+
+
+def gg_launchers(ctx, name=""):
+    """Launcher aus dem Umfeld einer Karte. Der Name des Spiels fällt vorher heraus (sonst wäre „Steam“ in
+    einem Titel ein Launcher)."""
+    t = " ".join(str(ctx or "").split())
+    if name:
+        t = re.sub(re.escape(" ".join(str(name).split())), " ", t, flags=re.I)
+    t = t.replace("_", " ")
+    return [n for n, rx in _GG_LAUNCHERS if rx.search(t)]
+
+
+def import_ggcoll(data, payload, dry=True):
+    """Deine Sammlung bei gg.deals: ersetzt, was sie zuletzt sagte (data["gg_coll"]). In die Sammlung PC kommen die
+    Spiele, die weder Playnite noch das Steam-Konto unter demselben Namen führen (collection.sync_gg)."""
+    from . import store
+    obj = json.loads(str(payload).strip())
+    st = {}
+    items = [it for it in parse_ggpage(payload, st) if not it.get("kind")]
+    if not items:
+        raise ValueError("Keine Spiele in der gg.deals-Sammlung erkannt. Bitte die Seite neu laden und noch einmal versuchen")
+    ctx = {}
+    for it in (obj.get("items") if isinstance(obj.get("items"), list) else [])[:6000]:
+        if isinstance(it, dict) and str(it.get("kind") or "game") == "game" and it.get("slug"):
+            ctx[str(it["slug"])] = ctx.get(str(it["slug"]), "") + " | " + str(it.get("ctx") or "")[:600]
+    for it in items:
+        it["stores"] = gg_launchers(ctx.get(it["slug"], ""), it["name"])
+    col = store.load_json(collection.FILE, collection.EMPTY)
+    other = {titles.norm(g.get("name") or "") for g in (col.get("games") or {}).values()
+             if g.get("src") != collection.GGCOLL and (g.get("system") or "PC") == "PC" and g.get("src") not in ("retro", collection.ESHOP)}
+    entries = [{"name": it["name"], "known": titles.norm(it["name"]) in other, "store": ", ".join(it["stores"])} for it in items]
+    new_n = sum(1 for e in entries if not e["known"])
+    res = _summary(data, entries, dry, new_n)
+    counts = {}
+    for it in items:
+        for x in it["stores"][:1] or ["?"]:
+            counts[x] = counts.get(x, 0) + 1
+    res["ggc"] = {"n": len(items), "fresh": new_n, "known": len(items) - new_n, "stores": counts}
+    if not dry:
+        data["gg_coll"] = {"at": titles.now_iso(), "items": [{"slug": it["slug"], "name": it["name"], "stores": it["stores"]} for it in items]}
+        added, gone = collection.sync_gg(col, data)
+        store.save_json(collection.FILE, col)
+        data["imports"]["ggcoll"] = {"at": titles.now_iso(), "n": len(items), "new": added, "gone": gone, "via": "Lesezeichen"}
+        res["ggc"].update(added=added, gone=gone)
+    res["what"] = "gg.deals-Sammlung"
+    res["note"] = ("Spiele, die Playnite, das Steam-Konto oder deine VR-Titel am PC schon führen, bleiben dort; "
+                   "die übrigen kommen mit ihrem Launcher in die Sammlung PC.")
+    if counts.get("?"):
+        res["note"] += f" Bei {counts['?']} Spielen nannte die Seite keinen Launcher."
     return res
 
 
@@ -720,7 +784,7 @@ def detect(text):
             obj = json.loads(t)
         except ValueError:
             raise ValueError("Die Datei sieht nach JSON aus, ist aber keins")
-        if isinstance(obj, dict) and (str(obj.get("kind") or "").startswith("meta") or obj.get("kind") == "gg-wunschliste"):
+        if isinstance(obj, dict) and (str(obj.get("kind") or "").startswith("meta") or obj.get("kind") in ("gg-wunschliste", "gg-sammlung")):
             return "meta"
         if isinstance(obj, dict) and obj.get("app") == OPINION_MARK:
             return "opinions"

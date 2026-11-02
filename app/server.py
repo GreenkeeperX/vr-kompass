@@ -107,6 +107,7 @@ def import_collection(data, text, dry):
     new = collection.replace(col, games)
     collection.sync_pcvr(col, data)          # 0.8.9: kennt Playnite einen VR-Titel jetzt, fällt sein Eintrag weg
     collection.sync_steam(col, data)         # 0.9.7: ebenso Spiele aus dem Steam-Konto
+    collection.sync_gg(col, data)            # 0.9.9: und aus der gg.deals-Sammlung
     store.save_json(collection.FILE, col)
     data["imports"]["collection"] = {"at": col["at"], "n": len(col["games"]), "new": new}
     return {"n": len(games), "new": new, "console": console, "systems": systems, "kept": kept}

@@ -288,7 +288,7 @@ def replace(col, games, src="playnite"):
     systems = {g.get("system") or "PC" for g in games.values()}
     # Spiele aus der Retro-Liste, dem eShopKompass und VR-Titel am PC (0.8.9) gehören nicht zum Playnite-Export und
     # bleiben immer stehen
-    games = dict({k: g for k, g in old.items() if ((g.get("system") or "PC") not in systems or g.get("src") in ("retro", ESHOP, PCVR, STEAMACCT))
+    games = dict({k: g for k, g in old.items() if ((g.get("system") or "PC") not in systems or g.get("src") in ("retro", ESHOP, PCVR, STEAMACCT, GGCOLL))
                   and k not in games}, **games)
     new = 0
     for k, g in games.items():
@@ -310,6 +310,7 @@ ESHOP = "eshop"
 ESHOP_MAX = 5000
 PCVR = "pcvr"           # 0.8.9: deine VR-Titel am PC, die Playnite nicht kennt
 STEAMACCT = "steamacct"  # 0.9.7: Spiele aus deinem Steam-Konto, die Playnite nicht kennt
+GGCOLL = "ggcoll"        # 0.9.9: Spiele aus deiner gg.deals-Sammlung (Lesezeichen), die sonst keine Quelle kennt
 
 
 def _pl(v):
@@ -383,6 +384,8 @@ def replace_eshop(col, games):
 def link(k, g):
     if g.get("store") == "Steam" and str(g.get("id") or "").isdigit():
         return f"https://store.steampowered.com/app/{g['id']}/"
+    if g.get("src") == GGCOLL and re.fullmatch(r"[a-z0-9-]{1,150}", str(g.get("id") or "")):
+        return f"https://gg.deals/game/{g['id']}/"
     if g.get("store") == "GOG":
         return "https://www.gog.com/de/games?query=" + re.sub(r"\s+", "%20", re.sub(r"[^\w\s-]", "", g["name"]))
     return ""
@@ -602,6 +605,44 @@ def sync_steam(col, data):
     return new, len(gone)
 
 
+def sync_gg(col, data):
+    """Spiele aus deiner gg.deals-Sammlung (data["gg_coll"], Lesezeichen „Seite lesen“, 0.9.9) unter „gg:<Slug>“, wenn
+    weder Playnite noch das Steam-Konto noch die VR-Titel am PC sie unter demselben Namen führen. gg.deals führt
+    Spiele aus Steam, GOG, Epic und weiteren Launchern zusammen; der Launcher kommt aus der Karte auf der Seite.
+    Steht ein Spiel nicht mehr in der Sammlung oder kennt es inzwischen eine andere Quelle, fällt es weg.
+    Ohne gelesene Sammlung bleibt alles, wie es ist. Gibt (neu, entfallen) zurück."""
+    games = col.setdefault("games", {})
+    gc = data.get("gg_coll") or {}
+    if not isinstance(gc.get("items"), list):
+        return 0, 0
+    other = {titles.norm(g.get("name") or "") for g in games.values()
+             if g.get("src") != GGCOLL and (g.get("system") or "PC") == "PC" and g.get("src") not in ("retro", ESHOP)}
+    want = {}
+    for it in gc["items"]:
+        n = titles.norm(it.get("name") or "")
+        if not n or n in other or not re.fullmatch(r"[a-z0-9-]{1,150}", str(it.get("slug") or "")):
+            continue
+        stores = [x for x in it.get("stores") or [] if isinstance(x, str)]
+        want["gg:" + it["slug"]] = {"name": str(it["name"])[:200], "store": stores[0] if stores else "", "stores": stores[:6],
+                                    "id": it["slug"], "src": GGCOLL, "mp": [], "players": 0, "genres": [], "released": "",
+                                    "added": "", "dev": "", "pub": ""}
+    gone = [k for k, g in games.items() if g.get("src") == GGCOLL and k not in want]
+    for k in gone:
+        del games[k]
+    new = 0
+    for k, g in want.items():
+        o = games.get(k)
+        if o is None:
+            new += 1
+        elif o.get("src") != GGCOLL:
+            continue
+        else:
+            g = dict(o, **{f: g[f] for f in ("name", "store", "stores", "id", "src")})   # Abgerufenes bleibt
+        games[k] = g
+    col["n"] = len(games)
+    return new, len(gone)
+
+
 def _pc_vr(rows, data, wmatch=None):
     """VR am PC (0.8.7): Steam-Spiele der Sammlung, die das Tool als VR kennt (VR-Titel oder VR-Prüfung im Store),
     tragen „VR“; nennt nur der Name VR, ist das ein Hinweis (vr_guess). Dazu kommen deine VR-Titel am PC, die
@@ -765,6 +806,9 @@ def view(col, data=None):
         r["srcs"] = ["Playnite"] + (["Steam"] if r["src"] == "steam" else []) if not r.get("retro") else ["Retro-Liste"]
         if g.get("src") == STEAMACCT:
             r["srcs"][0] = "Steam-Konto"
+        if g.get("src") == GGCOLL:
+            r["srcs"][0] = "gg.deals-Sammlung"
+            r["stores"] = g.get("stores") or []
         if g.get("src") == PCVR:
             r["srcs"][0] = "VR-Titel im Tool"
             r.update(vr=True, vr_src="VR-Titel im Tool")
@@ -801,6 +845,9 @@ def view(col, data=None):
     # wenn es dasselbe Spiel im selben System mit Launcher gibt
     named = {(r["system"], titles.norm(r["name"])) for r in rows if r["store"]}
     rows = [r for r in rows if r["store"] or not r["key"].startswith("name:") or (r["system"], titles.norm(r["name"])) not in named]
+    # gg.deals-Sammlung (0.9.9): nur, was keine andere Quelle unter demselben Namen führt
+    pcn = {titles.norm(r["name"]) for r in rows if r["system"] == "PC" and not r["key"].startswith("gg:")}
+    rows = [r for r in rows if not r["key"].startswith("gg:") or titles.norm(r["name"]) not in pcn]
     # Switch und Switch 2 in einem Reiter „Switch 2“ (0.7.5, Entscheidung 27.10.2026: alle Switch-Spiele laufen
     # auf der Switch 2); sw1 merkt, dass es ein Switch-1-Spiel ist (Filter „System“)
     for r in rows:
