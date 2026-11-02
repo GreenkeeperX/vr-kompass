@@ -5,7 +5,8 @@ Abstand zwischen zwei Angeboten (gap) und das letzte Angebot.
 Ein Verlauf ist eine Liste [[Tag, Preis]], je Eintrag der Preis ab diesem Tag (nur Änderungen). Ein Angebot ist
 jede Strecke mindestens SALE_TOL unter dem Normalpreis; Normalpreis ist der Preis, der im Zeitraum am längsten galt
 (oder der Normalpreis, den der Laden jetzt nennt). Typischer Angebotspreis: der Median der Tiefstwerte je Angebot,
-ab zwei Angeboten; war das letzte tiefer, gilt dieses. Ohne Netz, nichts wird gespeichert.
+ab zwei Angeboten; war das letzte tiefer, gilt dieses. Bei gg.deals (Händler und Keyshops) ab 0.10.3 der Preis, der in
+den letzten 90 Tagen am längsten galt. Ohne Netz, nichts wird gespeichert.
 """
 import statistics
 from datetime import date, timedelta
@@ -71,11 +72,39 @@ def series(name, points, today, regular=None, kind=""):
     starts = [date.fromisoformat(x["start"]) for x in sales]
     gaps = sorted((b - a).days for a, b in zip(starts, starts[1:]))
     gap = round(statistics.median(gaps)) if len(gaps) >= 2 else None
+    # gg.deals (0.10.3): Händler und Keyshops kennen kaum Angebote; „typisch“ ist dort der Preis, der in den letzten
+    # RECENT_DAYS Tagen am längsten galt (Median nach Tagen)
+    typical_how = "sales"
+    if kind == "gg":
+        typical, typical_how = recent_median(spans, today), "recent"
     low = min(p for _, p in win)
-    return {"name": name, "kind": kind, "points": [list(r) for r in win], "regular": regular, "now": win[-1][1],
+    return {"typical_how": typical_how, "name": name, "kind": kind, "points": [list(r) for r in win], "regular": regular, "now": win[-1][1],
             "low": low, "low_at": max(d for d, p in win if p == low), "since": win[0][0], "full": bool(before),
             "sales": sales[-12:], "sale_count": len(sales), "typical_days": done[len(done) // 2] if done else None,
             "on_sale_pct": round(100 * sum(s["days"] for s in sales) / total), "typical": typical, "gap": gap}
+
+
+RECENT_DAYS = 90
+
+
+def recent_median(spans, today, days=RECENT_DAYS):
+    """Median der Preise der letzten days Tage, gewichtet nach Tagen; spans: [(Tag, Preis, Tage)]."""
+    cut = date.fromisoformat(today) - timedelta(days=days - 1)
+    held = []
+    for d, p, n in spans:
+        start, end = date.fromisoformat(d), date.fromisoformat(d) + timedelta(days=n)
+        k = (end - max(start, cut)).days
+        if k > 0:
+            held.append((p, k))
+    if not held:
+        return None
+    held.sort()
+    half, acc = sum(k for _, k in held) / 2, 0
+    for p, k in held:
+        acc += k
+        if acc >= half:
+            return p
+    return held[-1][0]
 
 
 def _pack(name, out, today):

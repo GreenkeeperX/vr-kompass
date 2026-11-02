@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.2:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.3:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -32,6 +32,16 @@ der übliche Rabatt immer, wenn genug Angebote da sind. Keine Vorhersage, nur di
 Crossplay (Partien über Plattformen hinweg) aus PCGamingWiki mit den Plattformen und aus der Steam-Kategorie
 „Plattformübergreifender Mehrspielermodus“: Zeichen ⇄ in der Spalte max. Spieler, Zeile „Crossplay“ in den
 Einzelheiten; Crossplay zwischen Quest und PC aus der Recherche bleibt in den Meinungen.
+Neu in 0.10.3: Einzelheiten der PC-Wünsche zeigen Händler, Keyshop und Läden nur, wenn sie höchstens 10 % über dem
+günstigsten Preis jetzt liegen; „Üblich“ und „Steam-Angebote“ nur, wenn ein Steam-Angebot in üblicher Höhe den
+günstigsten Preis jetzt unterböte und höchstens 5 % über dem Tief läge (dann mit dem Preis, den es hätte). Bei
+VR-Titeln bleibt beides, weil es Meta gegen Steam abwägt. VR-Einzelheiten in Jetzt und Wunschliste: links die
+Angaben, ab der Spalte Meta die Karten der Läden, rechts die Kurzbeschreibung (Steam oder IGDB); bei PC-Wünschen
+beginnt die Beschreibung unter „Wo“. Marken und Genres, die in der Zeile unter „+n weitere“ verschwinden, stehen in
+den Einzelheiten. Crossplay ist eine Marke am Namen statt eines Zeichens an der Spielerzahl. ○ ▷ ✓ so kräftig wie
+★ und ✕, Rahmen beim Überfahren vollständig. Herkunft in der Sammlung als „n Quellen“ (welche im Tooltip). Im
+Preisverlauf: „typisch“ bei gg.deals der Preis, der in den letzten 90 Tagen am längsten galt; „zuletzt“ grün bei
+einem guten Preis; schließen mit ✕ oben rechts (bleibt beim Scrollen stehen), Esc oder Klick daneben.
 Neu in 0.10.2: Mein Stand kennt „ignorieren“ (rotes ✕, Gegenstück zu Favorit): Ein ignoriertes Spiel kommt in keiner
 Mischung und in „Überrasch mich“ mehr vor, in der Liste bleibt es (Filter „ignoriert“). Backlog ○ ist pink, der Stern
 fett. Besitz mit zweiter Quelle: das Steam-Konto gegen Sharenite und die gg.deals-Sammlung, die Meta-Käufe gegen

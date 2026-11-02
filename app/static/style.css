@@ -211,6 +211,12 @@ label.kind{display:flex;gap:6px;align-items:center;max-width:100%}label.kind sel
 .item.wi{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
 .item.wi>.side:empty{display:none}
 .gd.vwd{padding:6px 0 10px}
+/* 0.10.3: VR-Einzelheiten im Raster der Tabelle: Angaben links, Karten ab der Spalte Meta, Beschreibung rechts */
+.vdf{grid-column:1/var(--gc);min-width:0;padding-left:14px;display:flex;flex-direction:column;gap:6px}
+.vdf>*{flex-basis:auto}
+.vdp{grid-column:var(--gc)/var(--gc2);min-width:0;border:0;background:transparent;padding:0;display:flex;flex-direction:column;gap:4px}
+.gdm.vdd{grid-column:var(--gc2)/-1}
+.vdm{grid-column:1/-1;border:0;background:transparent;padding:0 0 0 14px}
 .item.wi.vw{border:0;background:transparent;padding:0}
 .vwl .vd.wb{font-size:11px;white-space:nowrap}
 .vwl .b.deal{font-size:10px;padding:0 4px}
@@ -268,7 +274,10 @@ details.menu input[type=search]{width:100%}
 .seg{display:flex}
 .seg button{flex:1;border-radius:0;padding:3px 8px;font-size:13px}
 .seg button:first-child{border-radius:6px 0 0 6px}
-.seg button:last-child{border-radius:0 6px 6px 0;margin-left:-1px}
+.seg button:not(:first-child){margin-left:-1px}
+.seg button:last-child{border-radius:0 6px 6px 0}
+/* 0.10.3: der Rahmen beim Überfahren liegt oben, sonst verdeckt der rechte Nachbar seine rechte Kante */
+.seg button:hover,.seg button:focus-visible{position:relative;z-index:1}
 .seg button:only-child{border-radius:6px;margin-left:0}
 .seg button.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 .chips.act{margin:-4px 0 10px;align-items:center}
@@ -324,7 +333,8 @@ details.op .ux{color:var(--warn)}
 .gtags>[hidden]{display:none}
 .chip.gmore{background:none;padding:0 2px}
 .gdm .ggen{display:flex;flex-wrap:wrap;gap:4px}
-.gdm .ggen:empty{display:none}
+.gdm .ggen:empty,.gmarks:empty{display:none}
+.gmarks{display:flex;flex-wrap:wrap;gap:4px}
 .gr .t>[hidden]{display:none!important}
 .gr .t .b.tmore{background:none;border:0;color:var(--muted);padding:0 2px}
 .gxc,.gxc *{color:var(--warn)}
@@ -341,7 +351,7 @@ details.op .ux{color:var(--warn)}
 .gme .gst.done,.gme .gfav,.gme .gign{font-size:15px}
 .gme .gst.backlog,.gme .gst.started{position:relative;top:-1px}
 .gmark .gst,.gmark .gfav,.gmark .gign{display:inline-block;width:1em;text-align:center;line-height:1}
-.gst{-webkit-text-stroke:.5px currentColor}
+.gst{-webkit-text-stroke:1px currentColor}     /* 0.10.3: so kräftig wie ★ und ✕ */
 .gst.backlog{color:var(--pink)}
 .gst.started{color:var(--deal)}
 .gst.done{color:var(--go)}
@@ -365,6 +375,9 @@ details.op .ux{color:var(--warn)}
 .gd .gmark button.on{background:color-mix(in srgb,var(--ink) 16%,var(--card));color:var(--ink);border-color:var(--line)}
 .gdesc{margin:8px 0 0;max-width:68ch;font-size:13px;line-height:1.5;color:var(--ink);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
 .gdesc.full{display:block}
+/* 0.10.3: Überschrift näher an ihren Inhalt als an das, was davor steht (Mein Stand, Gespielt) */
+.gdm>.fl{margin-top:6px}
+.gdm>.fl+*{margin-top:-3px}
 .gno{color:var(--stop)}
 .gnote{margin:4px 0 8px}
 .gnote>summary{cursor:pointer;display:list-item;list-style-position:inside;margin:0;font-size:13px;color:var(--muted)}
@@ -402,8 +415,8 @@ details.menu .opts .chip{font-size:12px}
   .gr>span[data-l]:not(.c-gen)::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
   .gr .c-gen{flex:1 0 100%}
   .gd{grid-template-columns:minmax(0,1fr)}
-  .gdf,.gdv,.gdm{grid-column:1}
-  .gdf,.gdv,.gd .gds{padding-left:4px}
+  .gdf,.gdv,.gdm,.vdf,.vdp,.gdm.vdd,.vdm{grid-column:1}
+  .gdf,.gdv,.gd .gds,.vdf,.vdm{padding-left:4px}
 }
 /* Titel kopieren und Liste herunterladen (0.8.7) */
 .gh-t .gcopy{margin-left:6px;text-decoration:none;font-size:13px;color:var(--muted)}
@@ -430,7 +443,8 @@ a.pl:hover{text-decoration:underline}
 .gr .valt{font-size:11px;margin-left:3px;white-space:nowrap}
 /* Preisverlauf (0.9.1), wie im eShopKompass */
 dialog.vl{width:min(920px,calc(100vw - 32px));max-height:calc(100vh - 40px);padding:16px 18px}
-dialog.vl header{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+dialog.vl header{display:flex;align-items:center;gap:10px;margin:-16px -18px 4px;padding:12px 18px 8px;position:sticky;top:-16px;background:var(--card);z-index:2}
+dialog.vl .vlx{flex:none;width:32px;height:32px;padding:0;border-radius:50%;font-size:16px;line-height:1}
 dialog.vl h2{margin:0;font-size:18px;flex:1;min-width:0;overflow-wrap:anywhere}
 .vl svg{width:100%;height:auto;display:block;margin:8px 0}
 .vl svg text{fill:var(--muted);font-size:11px}
@@ -466,4 +480,3 @@ span.wo{cursor:default}
 @media (min-width:761px){.gr .tr{position:absolute;margin-left:2px}}
 /* 0.9.4: der Name geht vor den Marken dahinter; erst ab drei Vierteln der Spalte wird er gekürzt, die Marken zuerst */
 @media (min-width:761px){.gr .t>.g-n.link,.gr .t>a.g-n{flex:0 0 auto;max-width:75%}}
-.xpm{color:var(--muted);font-size:12px;cursor:help}

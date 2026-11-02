@@ -152,6 +152,23 @@ def rhythm(pts, today, regular=None):
     return {"n": len(s["sales"]), "last": last["start"], "on": not last["end"], "gap": s["gap"]}
 
 
+PC_NEAR = 0.05       # „Tief-Nähe“ am PC: so viel über dem Tief aus Händlern und Keyshops
+
+
+def worth_pc(u, regular, r):
+    """Für einen PC-Wunsch: Ein Steam-Angebot in der üblichen Höhe läge unter dem günstigsten Preis jetzt und höchstens
+    PC_NEAR über dem Tief (Händler und Keyshops). Trägt den Preis dann als u["price"] ein."""
+    if not regular:
+        return False
+    price = round(regular * (1 - u["pct"] / 100), 2)
+    now = min((x for x in (r.get("retail"), r.get("keyshops")) if x is not None), default=None)
+    low = r.get("low")
+    if (now is not None and price >= now) or (low is not None and price > low * (1 + PC_NEAR) + 0.005):
+        return False
+    u["price"] = price
+    return True
+
+
 def annotate(view, pcview, data, pw_items, st, hist=None):
     """Hängt „usual“ an VR-Wünsche (view["wishlist"]) und PC-Wünsche (pcview["rows"]), die einen Steam-Preis haben, ab
     0.10.2 dazu „rhythm“ (Steam-Angebote des Spiels selbst)."""
@@ -174,11 +191,13 @@ def annotate(view, pcview, data, pw_items, st, hist=None):
             continue
         e = pw_items.get(r["key"]) or {}
         top = next((s for s in (e.get("itad") or {}).get("shops") or [] if s.get("s") == "Steam"), None)
-        rh = rhythm((e.get("sh") or {}).get("Steam"), today, (top or {}).get("r"))
-        if rh:
-            r["rhythm"] = rh
         if not top or top.get("p") is None:
             continue
         u = usual(st, steam_date((e.get("steam") or {}).get("date")), top.get("c") or 0)
-        if u:
+        # 0.10.3 (Entscheidung 02.11.2026): am PC zählt ein Steam-Angebot nur, wenn es den günstigsten Preis jetzt
+        # (meist ein Keyshop) unterbietet und ans Tief heranreicht; sonst kauft man ohnehin anderswo
+        if u and worth_pc(u, top.get("r"), r):
             r["usual"] = u
+            rh = rhythm((e.get("sh") or {}).get("Steam"), today, top.get("r"))
+            if rh:
+                r["rhythm"] = rh
