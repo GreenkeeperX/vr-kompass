@@ -107,7 +107,10 @@ Ergebnis der VR-Prüfung: `data["steam_apps"]` (`{App-ID: {name, vr, at}}`), ver
 gg.deals-Namen: `data["gg_tried"]`. Wunschlisten setzen je Titel `wish_src` (`{Quelle: Zeit}`,
 Quellen `meta`, `steam`, `gg`, `hand`); von Hand genommene Quellen stehen in `wish_off`.
 Gekaufte Spiele aus Steam tragen `owned.pc.src = "steam"`, aus Sharenite `"sharenite"` mit dem
-Laden als `label`.
+Laden als `label`. Ab 0.10.2 steht, was Sharenite zuletzt listete, in `data["sharenite_seen"]`
+(`{at, names: {Grundform: Laden}}`); `besitz.check` vergleicht damit, mit dem Steam-Konto (`steam_play`), den
+Meta-Käufen und der gg.deals-Sammlung (`gg_coll`), ohne Netz. VRDB merkt sich ab 0.10.2 je Titel auch die erste Sicht
+der Meta-Version (`meta_ver.seen`).
 
 ## Zuordnung (nach den Konten, vor den Preisen)
 

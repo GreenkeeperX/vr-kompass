@@ -246,6 +246,9 @@ def apply_sharenite(data, games, stamp=None):
     Tool schon kennt. Liefert (bekannt, neu als Namen)."""
     stamp = stamp or titles.now_iso()
     known, new = 0, []
+    # Was Sharenite zuletzt listet, je Grundform mit Laden: zweite Quelle für den Besitz (besitz.py, 0.10.2)
+    data["sharenite_seen"] = {"at": stamp, "names": {titles.norm(g["name"]): (g.get("source") or "")[:40]
+                                                     for g in games[:8000] if not g.get("console")}}
     for g in games:
         k = titles.find(data, "", "", g["name"])
         if g.get("console"):

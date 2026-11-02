@@ -115,7 +115,7 @@ Menü am Ende der Filterzeile; „hinzugefügt am“; Jetzt mit PC über VR. 0.8
 Rezensionszahl. 0.8.22: VR-Wünsche als Tabelle wie die PC-Wünsche, die Karte als Einzelheiten; Jetzt
 mit zwei gleich gebauten Tabellen. 0.8.23: eine Spaltenreihenfolge für alle Tabellen, „max. Spieler“ statt Mehrspieler,
 „Aktiv“ auch für PC-Spiele, Wertung der eigenen Fassung im Reiter VR. 0.8.24: PC-Wünsche ohne Steam-ID: mehr Suchen, Grundform des
-Namens, Ähnliches zum Bestätigen in „Zu erledigen“; Geheimtipp dunkler. 0.8.25: Preissturz auch für VR-Wünsche. 0.8.26: Trend zählt halb in „wo kaufen“. 0.8.27: Jetzt „Alle“ als eine gemischte Tabelle. 0.9.0: Läden einzeln über IsThereAnyDeal, Jetzt PC nach Laden. 0.9.1: Preisverlauf je Titel. 0.9.2: „Meinung fehlt“ mit Auftrag für die Recherche. 0.9.3: Spielzeit und „zuletzt gespielt“ aus dem Steam-Konto, Mischung „Liegt brach“. 0.9.7: Spiele aus dem Steam-Konto in der Sammlung. 0.9.8: Kürzen zu „+n weitere“, Ladenfarben. 0.9.9: gg.deals-Sammlung per Lesezeichen. 0.10.0: Preismuster aus dem eigenen Verlauf („üblich −x %“, Rhythmus), Crossplay. 0.10.1: ITAD-Titelsuche, Aktiv zuerst für Mehrspieler, Spieler aus der Recherche, Wachstum der Meta-Bewertungen. Grundsatz (Entscheidung 22.10.2026): so wenig
+Namens, Ähnliches zum Bestätigen in „Zu erledigen“; Geheimtipp dunkler. 0.8.25: Preissturz auch für VR-Wünsche. 0.8.26: Trend zählt halb in „wo kaufen“. 0.8.27: Jetzt „Alle“ als eine gemischte Tabelle. 0.9.0: Läden einzeln über IsThereAnyDeal, Jetzt PC nach Laden. 0.9.1: Preisverlauf je Titel. 0.9.2: „Meinung fehlt“ mit Auftrag für die Recherche. 0.9.3: Spielzeit und „zuletzt gespielt“ aus dem Steam-Konto, Mischung „Liegt brach“. 0.9.7: Spiele aus dem Steam-Konto in der Sammlung. 0.9.8: Kürzen zu „+n weitere“, Ladenfarben. 0.9.9: gg.deals-Sammlung per Lesezeichen. 0.10.0: Preismuster aus dem eigenen Verlauf („üblich −x %“, Rhythmus), Crossplay. 0.10.1: ITAD-Titelsuche, Aktiv zuerst für Mehrspieler, Spieler aus der Recherche, Wachstum der Meta-Bewertungen. 0.10.2: „ignorieren“ in Mein Stand, Besitz mit zweiter Quelle, Pflege je Laden ohne Meta-Datum, Pakete gegen Einzelpreise, Steam-Angebote je Wunsch, Crossplay nach Quelle benannt, violett statt „≈“ überall (Entscheidung 02.11.2026); gestrichen: Export der Meta-Bibliothek für Playnite (die Käufe stehen schon im Tool) und Meldungen bei neuem Tief. Grundsatz (Entscheidung 22.10.2026): so wenig
 Handarbeit wie möglich; was sich abrufen und von einer zweiten Quelle bestätigen lässt, geht vor
 Bestätigen und Einlesen von Hand. Als Nächstes:
 
@@ -123,9 +123,6 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
 
 - Spielzeit auch für Spiele außerhalb von Steam: Export aus Playnite mit dem Plugin für HowLongToBeat, dann
   einlesen (wartet auf einen Zugang zu Playnite, Stand 02.11.2026)
-- weitere Marken je Spiel neben Mein Stand („nie wieder vorschlagen“), Sharenite als Nachschub
-- Besitz mit zweiter Quelle bestätigen (Steam-Konto und Sharenite, Meta-Käufe und VRDB) und
-  Widersprüche melden statt sie nachzufragen
 
 - Gesamtbild (Entscheidung 27.10.2026): Das Tool wird zum Navigator über die ganze
   Spielesammlung. „Jetzt“ wird die Startseite für alle Wünsche, mit einem Filter VR; der genaue
@@ -136,7 +133,7 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
   Ersatzquelle sichtbar; welche Spalten ein Reiter zeigt, wird je Reiter entschieden. Playnite
   nur im Nachrang, keine Playnite-Plugin-Daten. Nach den Proben (0.7.0) entscheiden: Spielzeit
   wie im eShopKompass, Kurzbeschreibung je Spiel in den Einzelheiten, „VR per Mod“ (PCGamingWiki,
-  UEVR-Profile). „≈“ auch in der VR-Wunschliste ablösen und Unklarheiten möglichst selbst auflösen
+  UEVR-Profile). Unklarheiten möglichst selbst auflösen
 - PC-Wunschliste: gg.deals bleibt führend (Wunschliste und Sammlung dort), das Tool liest sie
   wie der eShopKompass DekuDeals (Entscheidung 27.10.2026). Eigene Ansicht als Unterreiter
   der Wunschliste, automatisch gelesen, mit Wertung, Spielern und Bestpreisen. Dazu
@@ -152,10 +149,6 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
 - Freie Abrufe für die PC-Sammlung: Sind alle VR-Titel aktuell, holt der Abgleich mit dem Rest
   seines Kontingents Spielerzahlen für die Sammlung (zuerst gut bewertete Mehrspieler-Spiele) und
   hält sie dann ebenso aktuell
-- Pflege je Laden vergleichen: Steam-Update-Datum gegen den Tag, an dem die Meta-Version zuletzt wechselte
-  (`meta_ver.since`), als weiterer Grund im Urteil „wo kaufen“
-
-- Bundles und Cross-Buy-Pakete im Preisvergleich
-- Benachrichtigung bei neuem Tief eines Wunschtitels
-- Export der Meta-Bibliothek als CSV für Playnite
+- Pakete selbst finden: welche Meta-Bundles einen Wunsch enthalten, nennt bisher keine abrufbare Quelle; das Tool
+  vergleicht nur Pakete, deren Inhalt es kennt (0.10.2)
 - weitere Anbieter über gg.deals

@@ -821,6 +821,66 @@ class TestLibrary(unittest.TestCase):
         b = library.where_buy(library.row(k, t, at=at, hist={}, data=d))
         self.assertIn({"shop": "meta", "text": "Steam-Wertung fällt (30 % in den letzten 30 Tagen, sonst 80 %)", "w": 0.5, "guess": False}, b["why"])
 
+    def test_0102_owner_bundle_care(self):
+        """0.10.2: Besitz mit zweiter Quelle, Pakete gegen Einzelpreise, Meta-Version lange unverändert."""
+        from app import besitz
+        d = empty()
+        now = "2026-10-20T10:00:00+00:00"
+        at = datetime(2026, 10, 20, 12, tzinfo=timezone.utc)
+        ka, _ = titles.upsert(d, "Comet Chase", steam_appid="3000030")
+        kb, _ = titles.upsert(d, "Orbit Golf", steam_appid="3000040")
+        kc, _ = titles.upsert(d, "Lantern Keep", meta_id="1234567890123401")
+        for k in (ka, kb):
+            d["titles"][k]["steam_sure"] = True
+        d["titles"][kc]["owned"] = {"meta": {"src": "meta"}}
+        d["steam_play"] = {"3000030": [10, "", "Comet Chase"]}
+        accounts.apply_sharenite(d, [{"name": "Comet Chase", "source": "Steam", "vr": True},
+                                     {"name": "Orbit Golf", "source": "Steam", "vr": True}], now)
+        d["gg_coll"] = {"at": now, "items": [{"slug": "lantern-keep", "name": "Lantern Keep", "stores": ["Meta"]},
+                                             {"slug": "sky-garden", "name": "Sky Garden", "stores": ["Meta"]}]}
+        titles.upsert(d, "Sky Garden")
+        d["imports"]["meta"] = {"at": now}
+        r = besitz.check(d)
+        self.assertEqual((r["steam"], r["meta"]), ({"both": 1, "one": 0}, {"both": 1, "one": 0}))
+        self.assertEqual([(x["name"], x["kind"]) for x in r["doubt"]], [("Sky Garden", "meta"), ("Orbit Golf", "steam")])
+        self.assertIn("im Steam-Konto nicht", r["doubt"][1]["why"])
+        # ohne gelesene Meta-Käufe kein Widerspruch bei Meta
+        del d["imports"]["meta"]
+        self.assertEqual([x["kind"] for x in besitz.check(d)["doubt"]], ["steam"])
+        # Paket: zwei Wünsche zusammen 30 €, das Paket 20 €
+        d2 = empty()
+        keys = []
+        for name, price in (("Night Tram", 12.0), ("Star Ride", 18.0), ("Rally Moth", 5.0)):
+            k, _ = titles.upsert(d2, name, meta_id=str(1234567890123500 + len(keys)))
+            d2["titles"][k].update(live={"meta": {"price": price, "base": price, "at": now}})
+            keys.append(k)
+        for k in keys[:2]:
+            d2["titles"][k].update(wish=True)
+        pk, _ = titles.upsert(d2, "Harbor Heist Bundle", meta_id="1234567890123599")
+        d2["titles"][pk].update(contains=keys, live={"meta": {"price": 20.0, "base": 20.0, "at": now}})
+        v = library.view(d2, at=at, hist={})
+        w = {x["name"]: x for x in v["wishlist"]}
+        b = w["Night Tram"]["bundles"][0]
+        self.assertEqual((b["price"], b["wish_sum"], b["sum"], b["wish_save"], b["save"], b["open"]), (20.0, 30.0, 35.0, 10.0, 15.0, 3))
+        self.assertNotIn("bundles", w.get("Rally Moth", {}))
+        d2["titles"][keys[1]]["owned"] = {"meta": {"src": "meta"}}      # nur noch ein Wunsch offen: kein Vergleich
+        self.assertNotIn("bundles", {x["name"]: x for x in library.view(d2, at=at, hist={})["wishlist"]}["Night Tram"])
+        # Pflege je Laden: Meta-Version seit über einem Jahr unverändert, Steam danach gepflegt: halb für Steam
+        k, _ = titles.upsert(d, "Laser Tennis", steam_appid="3000050", meta_id="1234567890123402")
+        t = d["titles"][k]
+        t.update(wish=True, live={"meta": {"price": 20.0, "base": 20.0, "at": now}, "steam": {"price": 20.0, "base": 20.0, "at": now}},
+                 news={"date": "2026-10-01", "title": "Update"}, meta_ver={"v": "1.2", "since": "", "seen": "2025-08-01"})
+        bw = library.where_buy(library.row(k, t, at=at, hist={}, data=d))
+        self.assertIn({"shop": "steam", "text": "Meta-Version seit 2025-08 unverändert, Steam später gepflegt", "w": 0.5, "guess": True}, bw["why"])
+        t["meta_ver"]["seen"] = "2026-03-01"
+        self.assertEqual(library.where_buy(library.row(k, t, at=at, hist={}, data=d))["why"], [])
+        # Steam-Angebote eines Spiels: zuletzt, Abstand ab drei Angeboten
+        from app import muster
+        pts = [["2025-01-01", 20.0], ["2025-03-01", 10.0], ["2025-03-10", 20.0], ["2025-05-01", 10.0], ["2025-05-10", 20.0],
+               ["2025-07-01", 10.0], ["2025-07-10", 20.0]]
+        self.assertEqual(muster.rhythm(pts, "2025-11-02", 20.0), {"n": 3, "last": "2025-07-01", "on": False, "gap": 61})
+        self.assertIsNone(muster.rhythm([["2025-01-01", 20.0]], "2025-11-02", 20.0))
+
     def test_grade_and_now(self):
         """Preisgüte wie im eShopKompass; Jetzt zeigt nur Angebote mit „kaufen“ oder „gut“."""
         g = library.grade
@@ -1074,6 +1134,11 @@ class TestServer(unittest.TestCase):
         self.assertEqual(json.loads(self.call("/api/state")[1])["marks"]["steam:3000001"], {"s": "started", "fav": True})
         backup = json.loads(self.call("/api/export")[1])
         self.assertEqual(backup["data"]["marks"]["steam:3000001"]["s"], "started")
+        # Ignorieren (0.10.2) nimmt den Favoriten zurück und umgekehrt
+        self.call("/api/mark", {"key": "steam:3000001", "k": "ign", "v": True})
+        self.assertEqual(json.loads(self.call("/api/state")[1])["marks"]["steam:3000001"], {"s": "started", "ign": True})
+        self.call("/api/mark", {"key": "steam:3000001", "k": "fav", "v": True})
+        self.assertEqual(json.loads(self.call("/api/state")[1])["marks"]["steam:3000001"], {"s": "started", "fav": True})
         self.call("/api/mark", {"key": "steam:3000001", "k": "s", "v": None})
         self.call("/api/mark", {"key": "steam:3000001", "k": "fav", "v": False})
         self.assertNotIn("steam:3000001", json.loads(self.call("/api/state")[1])["marks"])
@@ -1581,7 +1646,7 @@ class TestSync(unittest.TestCase):
         self.assertEqual(todo["Comet Chase"]["kind"], "steam")
         self.assertTrue(todo["Moon Rover Bundle"]["why"].startswith("Bundle:"))
         log = "\n".join(sync.status()["log"])
-        self.assertIn("Zuordnung, Steam-IDs „≈“: 2 ungeprüft, 2 Apps im Store gefragt; bestätigt (1): Orbit Golf", log)
+        self.assertIn("Zuordnung, ungeprüfte Steam-IDs: 2, 2 Apps im Store gefragt; bestätigt (1): Orbit Golf", log)
         self.assertIn("gefunden (1): Star Ride, davon 1 mit einem vorhandenen Eintrag zusammengeführt", log)
         self.assertIn("3 Fälle unter „Zu erledigen“", log)
         # Zweiter Lauf: Fehlschläge warten, gefragte Apps kommen aus dem Speicher
@@ -1971,7 +2036,8 @@ class TestSync(unittest.TestCase):
                                        "GetNewsForApp": news})
         sync.run(only={"vrdb", "players"})
         t = store.load_data()["titles"]
-        self.assertEqual((t[a]["vrdb"]["crossbuy"], t[a]["vrdb"]["pos"], t[a]["vrdb"]["n"], t[a]["meta_ver"]), (True, 81, 1234, {"v": "1.4.0_123", "since": ""}))
+        self.assertEqual((t[a]["vrdb"]["crossbuy"], t[a]["vrdb"]["pos"], t[a]["vrdb"]["n"], {k: v for k, v in t[a]["meta_ver"].items() if k != "seen"}), (True, 81, 1234, {"v": "1.4.0_123", "since": ""}))
+        self.assertTrue(t[a]["meta_ver"]["seen"])                # 0.10.2: erste Sicht, die Version ist mindestens so alt
         self.assertTrue(t[b]["vrdb"]["miss"])                    # Seite fehlt: erst in 14 Tagen wieder
         self.assertNotIn("vrdb", t[c])                           # weder Wunsch noch Besitz
         self.assertTrue(any("vrdb.app/game/harbor-heist/1234567890123457" in u for u in net.calls))
@@ -1988,7 +2054,7 @@ class TestSync(unittest.TestCase):
                             "GetNumberOfCurrentPlayers": '{"response": {"player_count": 7, "result": 1}}'})
         sync.run(only={"vrdb", "players"})
         t = store.load_data()["titles"]
-        self.assertEqual(t[a]["meta_ver"], {"v": "1.5.0_130", "since": sync.now().strftime("%Y-%m-%d")})
+        self.assertEqual(t[a]["meta_ver"], {"v": "1.5.0_130", "since": sync.now().strftime("%Y-%m-%d"), "seen": sync.now().strftime("%Y-%m-%d")})
         self.assertEqual((t[a]["play"]["now"], t[a]["play"]["peak"], t[a]["vrdb"]["crossbuy"]), (7, 42, False))
         # 404: Steam hat für die App keine Spielerzahl; zählt still, ohne Fehler, gilt als gefragt
         d = store.load_data()
@@ -3419,7 +3485,7 @@ class TestUi(unittest.TestCase):
     def test_ui_100(self):
         """0.10.0: Marke „üblich −x %“, Kasten „Was dein Preisverlauf zeigt“, Rhythmus im Preisverlauf, Crossplay."""
         js, css = self.read("js/app.js"), self.read("style.css")
-        for name in ("usualMark(r.usual)", "function musterHtml", "gapText(s.gap)", "xpMark(g.xp)", 'row("Crossplay"', 'fact("Üblich"'):
+        for name in ("usualMark(r.usual)", "function musterHtml", "gapText(s.gap)", "xpMark(g.xp)", 'row(g.xp ? xpLabel(g.xp)', 'fact("Üblich"'):
             self.assertIn(name, js)
         self.assertIn(".b.usq{", css)
         self.assertIn("Keine Vorhersage", js)

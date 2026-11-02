@@ -244,7 +244,7 @@ def measured(t):
     if n.get("date"):
         out["update"] = {"date": n["date"], "title": n.get("title") or "", "care": trend.care(n["date"])}
     if mv.get("v"):
-        out["meta_ver"] = {"v": mv["v"], "since": mv.get("since") or ""}
+        out["meta_ver"] = {"v": mv["v"], "since": mv.get("since") or "", "seen": mv.get("seen") or ""}
     if v.get("modes"):
         out["modes"] = v["modes"]
     return out
@@ -336,6 +336,13 @@ def where_buy(r):
     d = _days(up, mv) if up and mv else None
     if d is not None and abs(d) >= WB_STALE_DAYS:
         add("steam" if d > 0 else "meta", "Steam-Fassung jünger gepflegt" if d > 0 else "Meta-Fassung jünger gepflegt")
+    elif up and not mv:
+        # 0.10.2: Meta nennt kein Update-Datum. Ist die Meta-Version seit der ersten Sicht unverändert, ist sie mindestens
+        # so alt; liegt das Steam-Update WB_STALE_DAYS danach, ist Steam jünger gepflegt. Abgeleitet, zählt halb
+        seen = (m.get("meta_ver") or {}).get("seen")
+        d = _days(up, seen) if seen else None
+        if d is not None and d >= WB_STALE_DAYS:
+            add("steam", f"Meta-Version seit {seen[:7]} unverändert, Steam später gepflegt", 1, True)
     op = r["opinion"] or {}
     if op.get("fassung") == "quest":
         add("meta", "Recherche: Quest-Fassung besser", 1, True)
@@ -370,6 +377,35 @@ def _sale(r):
                (r["live"].get("steam") or {}).get("discount") or 0)
 
 
+BUNDLE_MIN_WISH = 2                    # so viele deiner Wünsche muss ein Paket enthalten
+
+
+def bundle_deals(data, rows):
+    """Meta-Pakete gegen Einzelpreise (0.10.2): Ein Titel mit Inhalt (contains, etwa ein Bundle oder Crossbuy-Paket)
+    und Meta-Preis, der mindestens BUNDLE_MIN_WISH deiner offenen Wünsche enthält. Verglichen wird der Paketpreis mit
+    der Summe der Meta-Preise der Spiele darin, die du noch nicht hast. Liefert {Wunsch-Schlüssel: [Paket]}."""
+    by = {r["key"]: r for r in rows}
+    out = {}
+    for k, t in data["titles"].items():
+        inner = [x for x in t.get("contains") or [] if x in by and x != k]
+        pb = ((by.get(k) or {}).get("live") or {}).get("meta", {}).get("price")
+        if len(inner) < 2 or pb is None or by[k]["where"] in ("meta", "beide"):
+            continue
+        open_ = [by[x] for x in inner if by[x]["where"] not in ("meta", "beide")]
+        wished = [r for r in open_ if r["wish"]]
+        if len(wished) < BUNDLE_MIN_WISH:
+            continue
+        priced = [r for r in open_ if (r["live"].get("meta") or {}).get("price") is not None]
+        total = round(sum(r["live"]["meta"]["price"] for r in priced), 2)
+        wsum = round(sum(r["live"]["meta"]["price"] for r in wished if r in priced), 2)
+        deal = {"key": k, "name": t["name"], "price": pb, "sum": total, "wish_sum": wsum, "n": len(inner),
+                "open": len(open_), "unpriced": len(open_) - len(priced), "wished": [r["name"] for r in wished],
+                "save": round(total - pb, 2), "wish_save": round(wsum - pb, 2)}
+        for r in wished:
+            out.setdefault(r["key"], []).append(deal)
+    return out
+
+
 def view(data, at=None, hist=None, settings=None):
     rows = sorted((row(k, t, at, hist, data) for k, t in data["titles"].items()), key=lambda r: titles.norm(r["name"]))
     # Sim-Racing (0.8.5): auch die VR-Titel, denn Rennsimulationen spielt man oft in VR
@@ -385,6 +421,10 @@ def view(data, at=None, hist=None, settings=None):
     wish = [r for r in rows if r["wish"]]
     for r in wish:
         r["buy"] = where_buy(r)
+    for key, deals in bundle_deals(data, rows).items():
+        r = next((x for x in wish if x["key"] == key), None)
+        if r is not None and not r["where"]:
+            r["bundles"] = sorted(deals, key=lambda d: -d["wish_save"])
     read = lists.lists_read(data, settings)
     for r in wish:
         t = data["titles"][r["key"]]

@@ -142,13 +142,28 @@ def usual(st, rel, now_pct, today=None):
     return out
 
 
-def annotate(view, pcview, data, pw_items, st):
-    """Hängt „usual“ an VR-Wünsche (view["wishlist"]) und PC-Wünsche (pcview["rows"]), die einen Steam-Preis haben."""
+def rhythm(pts, today, regular=None):
+    """Steam-Angebote eines Spiels aus dem eigenen Verlauf (0.10.2): {"n", "last" (Beginn des letzten), "on" (läuft noch),
+    "gap" (übliche Tage zwischen zwei Angeboten, ab drei Angeboten)} oder None ohne Angebot. Keine Vorhersage."""
+    s = verlauf.series("Steam", pts, today, regular, "steam") if pts else None
+    if not s or not s["sales"]:
+        return None
+    last = s["sales"][-1]
+    return {"n": len(s["sales"]), "last": last["start"], "on": not last["end"], "gap": s["gap"]}
+
+
+def annotate(view, pcview, data, pw_items, st, hist=None):
+    """Hängt „usual“ an VR-Wünsche (view["wishlist"]) und PC-Wünsche (pcview["rows"]), die einen Steam-Preis haben, ab
+    0.10.2 dazu „rhythm“ (Steam-Angebote des Spiels selbst)."""
+    today = st.get("today") or date.today().isoformat()
     for r in view.get("wishlist") or []:
         if r.get("where"):
             continue
         t = data["titles"].get(r["key"]) or {}
         live = (t.get("live") or {}).get("steam") or {}
+        rh = rhythm(((hist or {}).get("steam") or {}).get(str(t.get("steam_appid") or "")), today, live.get("base"))
+        if rh:
+            r["rhythm"] = rh
         if live.get("price") is None:
             continue
         u = usual(st, steam_date((t.get("sdet") or {}).get("date")), live.get("discount") or 0)
@@ -159,6 +174,9 @@ def annotate(view, pcview, data, pw_items, st):
             continue
         e = pw_items.get(r["key"]) or {}
         top = next((s for s in (e.get("itad") or {}).get("shops") or [] if s.get("s") == "Steam"), None)
+        rh = rhythm((e.get("sh") or {}).get("Steam"), today, (top or {}).get("r"))
+        if rh:
+            r["rhythm"] = rh
         if not top or top.get("p") is None:
             continue
         u = usual(st, steam_date((e.get("steam") or {}).get("date")), top.get("c") or 0)

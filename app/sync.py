@@ -1279,8 +1279,11 @@ def _vrdb(log):
             v = r.get("version") or ""
             mv = t.get("meta_ver") or {}
             if v and v != mv.get("v"):
-                # erste Sicht: Tag unbekannt; danach der Tag, an dem die neue Version auftauchte
-                t["meta_ver"] = {"v": v, "since": today if mv.get("v") else ""}
+                # erste Sicht: Tag unbekannt; danach der Tag, an dem die neue Version auftauchte. seen (0.10.2): erste
+                # Sicht dieser Version, die Version ist also mindestens so alt
+                t["meta_ver"] = {"v": v, "since": today if mv.get("v") else "", "seen": today}
+            elif v and not mv.get("seen"):
+                mv["seen"] = mv.get("since") or today      # Daten von vor 0.10.2: ab heute mitzählen
         store.save_data(data)
     left = len(todo) - len(got)
     found = sum(1 for r in got.values() if not r.get("miss"))
@@ -2305,7 +2308,7 @@ def _assign(log, budget, rest):
     if wish_back:
         log(f"Wunschliste: wieder gewünscht, steht unter „Gekauft, noch auf der Wunschliste“ ({len(wish_back)}): {_few(wish_back)}")
     if unsure:
-        log(f"Zuordnung, Steam-IDs „≈“: {len(unsure)} ungeprüft, {checked} Apps im Store gefragt"
+        log(f"Zuordnung, ungeprüfte Steam-IDs: {len(unsure)}, {checked} Apps im Store gefragt"
             + (f"; bestätigt ({len(sure)}): {_few(sure)}" if sure else "")
             + (f"; passt nicht ({len(doubt)}): {_few(doubt, 6)}" if doubt else ""))
     if searches or waiting:
