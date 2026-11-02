@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.8:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.9:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -47,6 +47,9 @@ Neu in 0.10.8: Beim Aufklappen bleibt die angeklickte Zeile an ihrer Stelle, auc
 Genres der PC-Einzelheiten (Wunschliste, Jetzt) stehen unter der Spalte Genre. Die Zeile unter der Maus wird im
 Darkmode dunkler statt heller. Nach einem Klick auf einen Spaltenkopf steht in „Sortieren“ „nach Spalte“; eine andere
 Wahl dort sortiert wieder danach (Jetzt und Wunschliste wie in der Sammlung).
+Neu in 0.10.9: Statt „nach Spalte“ steht die sortierte Spalte selbst in „Sortieren“, mit Richtung („Preis ▲“), in
+allen Tabellen. Das Lesezeichen liest bis zu 200 Seiten der gg.deals-Sammlung oder -Wunschliste (vorher 30) und gibt
+nur die Launcher weiter; bitte das Lesezeichen neu anlegen (Fassung 10).
 Neu in 0.10.5: Meta im Meta-Blau, Steam im dunkleren Blau des Steam-Logos (vorher war Steam im dunklen Modus
 heller als Meta).
 Neu in 0.10.4: ein teurerer Weg (Händler statt Keyshop, ein anderer Laden) steht in den Einzelheiten der PC-Wünsche nur
@@ -149,13 +152,16 @@ lesen“ im eShopKompass:
 2. Angemeldet die Transaktionen von Meta Pay, die Bestellseite für digitale Produkte oder deine
    Wunschliste im Meta Store öffnen und das Lesezeichen anklicken. Es scrollt selbst (auch in
    Listen mit eigenem Rollbalken), bis alles geladen ist. Auf deiner Wunschliste bei gg.deals
-   liest es alle Seiten bis zur höchsten Seitenzahl der Seitenleiste (höchstens 30, mit kurzer
-   Pause dazwischen). Es nimmt auch Pakete, Bundles und DLC mit; übernommen werden nur Spiele,
+   liest es alle Seiten bis zur höchsten Seitenzahl der Seitenleiste (ab 0.10.9 höchstens 200, vorher 30;
+   mit kurzer Pause dazwischen; lehnt gg.deals mit 403 oder 429 ab, hört es auf und sagt es). Mehr Einträge je Seite
+   bei gg.deals (96 statt 48) heißt weniger Seiten. Es nimmt auch Pakete, Bundles und DLC mit; übernommen werden nur Spiele,
    der Rest steht mit Zahl und Namen im Ergebnis. Unbekannte Namen daraus sucht der Abgleich bei
    Steam nach, 40 je Lauf. Ab 0.8.8 merkt es sich die Zahl, die gg.deals über der Liste nennt („We found …
    results“); stehen dort mehr Einträge, als Links zu Spielseiten da waren, sagt die Vorschau, wie viele fehlen.
    Ab 0.9.9 ebenso auf deiner Sammlung bei gg.deals (`gg.deals/collection/`): je Spiel zusätzlich das Umfeld der
    Karte (Text, Titel und Symbole), daraus erkennt das Tool den Launcher; der Name des Spiels zählt dabei nicht mit.
+   Ab 0.10.9 (Lesezeichen Fassung 10) gibt es davon nur die Namen der Launcher weiter, damit auch große Sammlungen
+   in die Adresse passen.
    In die Sammlung PC kommt nur, was keine andere Quelle unter demselben Namen führt.
 3. Im Kasten oben rechts „Im VR-Navigator übernehmen“: Das Tool öffnet sich und übernimmt Käufe
    oder Wunschliste ohne weitere Rückfrage. Seitentext und Links stehen dabei nur in der Adresse

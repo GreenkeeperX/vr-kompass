@@ -307,9 +307,19 @@ const menuAttr = k => `data-menu="${k}"${V.menu === k ? " open" : ""}`;
 /* Sortieren als Auswahl und Klick auf einen Spaltenkopf (0.10.8, wie in der Sammlung): sortiert eine Spalte, steht in
    der Auswahl „nach Spalte“; eine andere Wahl hebt die Spaltensortierung der Tabelle auf */
 const sortTable = k => k === "wish" ? "vrw" : k === "pc" ? "pcw" : V.nowKind === "pc" ? "pcw" : V.nowKind === "vr" ? "vrw" : "all";
+/* 0.10.9 (Entscheidung 02.11.2026): statt „nach Spalte“ steht die Spalte selbst in der Auswahl, mit Richtung
+   („Preis ▲“); gibt es dieselbe Wahl schon, ist sie gewählt */
+const COL_LABEL = {title: "Name", pl: "max. Spieler", price: "Preis", meta: "Meta", steam: "Steam", low: "überm Tief", art: "Art", wo: "Wo",
+  sc: "Wertung", rev: "Rezensionen", genre: "Genre", hours: "Spielzeit", play: "Aktiv", year: "Jahr", upd: "Update"};
+function sortOpts(sorts, cur, col, label){
+  if(!col) return sorts.map(([v, l]) => `<option value="${v}"${cur === v ? " selected" : ""}>${l}</option>`).join("");
+  const lab = label || col.k, arr = col.dir > 0 ? "▲" : "▼", same = sorts.find(([, l]) => l === lab);
+  return (same ? "" : `<option value="" selected>${esc(lab)} ${arr}</option>`) +
+    sorts.map(([v, l]) => `<option value="${v}"${same && same[0] === v ? " selected" : ""}>${l}${same && same[0] === v ? " " + arr : ""}</option>`).join("");
+}
 function sortSel(key, sorts, cur){
-  const col = !!V.sorts[sortTable(key)];
-  return `<label class="kind">Sortieren <select data-sort="${key}">${col ? `<option value="" selected>nach Spalte</option>` : ""}${sorts.map(([v, l]) => `<option value="${v}"${!col && cur === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const col = V.sorts[sortTable(key)];
+  return `<label class="kind">Sortieren <select data-sort="${key}">${sortOpts(sorts, cur, col, col && COL_LABEL[col.k])}</select></label>`;
 }
 function listBar(o){
   const sel = sortSel(o.sortKey, o.sorts, o.sort);
@@ -1780,7 +1790,7 @@ function findView(){
   if(V.gAll && !canAll){ V.gAll = false; V.gShut.clear(); }
   const foldall = `<span class="foldall" title="${canAll ? rows.length === 1 ? "Das eine Spiel der Liste aufklappen" : `Alle ${num(rows.length)} Spiele der Liste aufklappen` : `Alle aufklappen geht bei höchstens ${G_ALL} Spielen, hier sind es ${num(rows.length)}. Wähl ein System, filtere oder suche`}"><button class="link" data-act="gall" data-v="1"${canAll ? "" : " disabled"}>alle aufklappen</button> · <button class="link" data-act="gall" data-v=""${V.gAll || V.gOpen ? "" : " disabled"}>alle zuklappen</button></span>`;
   const bar = `<div class="bar"><span class="sbox"><input type="search" id="dq" placeholder="${vr ? "Name oder Notiz suchen" : "Name, Entwickler oder Genre suchen"}" aria-label="In der Sammlung suchen" value="${esc(d.q)}" data-in="dq">${d.q ? `<button class="sx" data-act="dqclear" title="Suche leeren (Esc)" aria-label="Suche leeren">×</button>` : ""}</span>
-    <label class="kind">Sortieren <select data-dset="sort">${colSort ? `<option value="" selected>nach Spalte</option>` : ""}${opt(D_SORTS.filter(([k]) => !vr || !["gem", "known", "year"].includes(k)), colSort ? "" : d.sort)}</select></label>
+    <label class="kind">Sortieren <select data-dset="sort">${sortOpts(D_SORTS.filter(([k]) => !vr || !["gem", "known", "year"].includes(k)), d.sort, V.sorts.find, V.sorts.find && (V.sorts.find.k === "title" ? "Name" : [...COLS, ...K_COLS].find(c => c.k === V.sorts.find.k)?.l))}</select></label>
     ${d.sort === "random" && !colSort ? `<button data-act="dshuffle">Neu mischen</button>` : ""}${foldall}
     <button class="link gdl" data-act="gdl" title="Die Liste mit den gezeigten Spalten als Datei (CSV); aufgeklappte Spiele mit ihren Einzelheiten">herunterladen</button></div>`;
   const gcols = `minmax(180px,1.5fr) ${cols.map(c => c.w).join(" ")}`;
@@ -2161,7 +2171,7 @@ function opinionHtml(r){
      mit kurzer Pause nach.
    Dann öffnet es dieses Tool mit den Daten im Adressteil hinter # (geht nicht übers Netz an einen
    Server). Das Tool übernimmt sie. Ausweg: „Als Datei sichern“. */
-const META_HV = 9;
+const META_HV = 10;
 function metaHelper(tool){ return `(async()=>{
 const gg=/(^|\\.)gg\\.deals$/.test(location.hostname);
 if(!gg&&!/(^|\\.)meta\\.com$/.test(location.hostname)){alert("Bitte zuerst eine dieser Seiten öffnen, dann das Lesezeichen anklicken: angemeldet deine Meta-Bestellungen (meta.com/my/orders), die Transaktionen von Meta Pay, deine Wunschliste im Meta Store, deine Wunschliste oder deine Sammlung bei gg.deals.");return}
@@ -2175,16 +2185,18 @@ if(gg){
 const gl=a=>(a.getAttribute("href")||"").match(/\\/(game|pack|dlc|bundle)\\/([a-z0-9-]+)\\/?(?:[?#].*)?$/);
 const card=a=>{let e=a;const s=gl(a)[2];while(e.parentElement&&e.parentElement!==d.body){const p=e.parentElement;if([...p.querySelectorAll("a[href]")].some(x=>{const m=gl(x);return m&&m[2]!==s}))break;e=p}return e};
 const ctx=e=>[e.innerText||"",...[...e.querySelectorAll("[title],[alt],[aria-label],[data-original-title],svg,i,use")].map(x=>[x.getAttribute("title"),x.getAttribute("alt"),x.getAttribute("aria-label"),x.getAttribute("data-original-title"),x.getAttribute("href")||x.getAttribute("xlink:href"),x.getAttribute("class")].filter(Boolean).join(" "))].join(" | ").replace(/\\s+/g," ").slice(0,600);
-var d;const read=dd=>{d=dd;return [...dd.querySelectorAll("a[href]")].map(a=>{const m=gl(a);if(!m)return null;const it={kind:m[1],slug:m[2],name:(a.innerText||a.title||"").trim().replace(/\\s+/g," ").slice(0,200)};if(coll)it.ctx=ctx(card(a));return it}).filter(Boolean)};
+const LX=/\\b(?:steam|gog(?:\\.com|[ -]?galaxy)?|epic(?:[ -]?games)?(?:[ -]?store)?|ubisoft(?:[ -]?connect)?|uplay|ea[ -]?app|origin|ea[ -]?play|battle[ .-]?net|blizzard|xbox|microsoft[ -]?store|amazon(?:[ -]?games)?|prime[ -]?gaming|itch(?:\\.io)?|humble|rockstar|oculus|meta[ -]?(?:quest|store))\\b/gi;
+const slim=(t,n)=>{t=t.replace(/_/g," ").toLowerCase();if(n)t=t.split(n.toLowerCase()).join(" ");return [...new Set(t.match(LX)||[])].join(" | ")};
+var d;const read=dd=>{d=dd;return [...dd.querySelectorAll("a[href]")].map(a=>{const m=gl(a);if(!m)return null;const it={kind:m[1],slug:m[2],name:(a.innerText||a.title||"").trim().replace(/\\s+/g," ").slice(0,200)};if(coll)it.ctx=slim(ctx(card(a)),it.name);return it}).filter(Boolean)};
 let items=read(document);const base=location.href.split(/[?#]/)[0];
-const last=Math.min(30,Math.max(1,...[...document.querySelectorAll("a[href*='page=']")].filter(a=>a.href.split("?")[0]===base).map(a=>+((a.href.match(/[?&]page=(\\d+)/)||[])[1]||1))));
+const last=Math.min(200,Math.max(1,...[...document.querySelectorAll("a[href*='page=']")].filter(a=>a.href.split("?")[0]===base).map(a=>+((a.href.match(/[?&]page=(\\d+)/)||[])[1]||1))));
 const pages=[];for(let p=2;p<=last;p++){const u=new URL(location.href);u.searchParams.set("page",p);pages.push(u.href)}
-for(let i=0;i<pages.length;i++){box.textContent="VR-Navigator: lese Seite "+(i+2)+" von "+(pages.length+1)+" …";await wait(1200);try{const r=await fetch(pages[i],{credentials:"include"});items=items.concat(read(new DOMParser().parseFromString(await r.text(),"text/html")))}catch(e){}}
+let stop="";for(let i=0;i<pages.length&&!stop;i++){box.textContent="VR-Navigator: lese Seite "+(i+2)+" von "+(pages.length+1)+" …";await wait(1200);try{const r=await fetch(pages[i],{credentials:"include"});if(r.status===403||r.status===429){stop=" gg.deals hat bei Seite "+(i+2)+" abgelehnt ("+r.status+"), gelesen sind die Seiten davor; später noch einmal versuchen.";break}items=items.concat(read(new DOMParser().parseFromString(await r.text(),"text/html")))}catch(e){}}
 const by={};items.forEach(x=>{const k=x.kind+":"+x.slug;if(!by[k])by[k]=x;else{if(!by[k].name&&x.name)by[k].name=x.name;if(x.ctx&&(by[k].ctx||"").length<x.ctx.length)by[k].ctx=x.ctx}});items=Object.values(by);
 const games=items.filter(x=>x.kind==="game").length;
 const found=(document.body.innerText.match(/we found\\s+([\\d.,]+)\\s+results?/i)||[])[1];
 txt=JSON.stringify({kind:coll?"gg-sammlung":"gg-wunschliste",hv:${META_HV},at:new Date().toISOString(),page:location.pathname,pages:pages.length+1,shown:found?+found.replace(/[.,]/g,""):null,items});
-msg="gg.deals-"+(coll?"Sammlung":"Wunschliste")+" gelesen: "+games+" Spiele"+(items.length>games?" und "+(items.length-games)+" Pakete oder DLC":"")+" auf "+(pages.length+1)+" Seiten. Der VR-Navigator übernimmt die Spiele"+(coll?" in die Sammlung PC.":".");file=coll?"gg-sammlung.json":"gg-wunschliste.json";
+msg="gg.deals-"+(coll?"Sammlung":"Wunschliste")+" gelesen: "+games+" Spiele"+(items.length>games?" und "+(items.length-games)+" Pakete oder DLC":"")+" auf "+(pages.length+1)+" Seiten. Der VR-Navigator übernimmt die Spiele"+(coll?" in die Sammlung PC.":".")+stop;file=coll?"gg-sammlung.json":"gg-wunschliste.json";
 }else{
 const wish=/wish/i.test(location.pathname)||/wunschliste|wishlist/i.test(document.title);
 const boxes=()=>[document.scrollingElement||document.documentElement,...[...document.querySelectorAll("div,main,section,ul")].filter(e=>e.scrollHeight>e.clientHeight+50&&/(auto|scroll)/.test(getComputedStyle(e).overflowY))];

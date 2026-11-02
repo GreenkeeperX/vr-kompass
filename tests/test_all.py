@@ -949,6 +949,20 @@ class TestLibrary(unittest.TestCase):
             self.assertIn(name, js)
         self.assertEqual(css.count("--hov:"), 3)
 
+    def test_ui_0109(self):
+        """0.10.9: Spalte in der Sortieren-Auswahl, Lesezeichen bis 200 Seiten, nur Launcher-Namen, Abbruch bei 403/429."""
+        from app import imports
+        js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "app.js"), encoding="utf-8").read()
+        for name in ("function sortOpts", "COL_LABEL", "const last=Math.min(200,", "r.status===403||r.status===429", "it.ctx=slim("):
+            self.assertIn(name, js)
+        self.assertNotIn(">nach Spalte<", js)
+        lx = js[js.index("const LX="):js.index("const slim")]
+        for word in ("steam", "gog", "epic", "ubisoft", "uplay", "ea[ -]?app", "origin", "battle", "blizzard", "xbox", "microsoft",
+                     "amazon", "prime", "itch", "humble", "rockstar", "oculus", "meta"):
+            self.assertIn(word, lx)
+        self.assertEqual(len(imports.GG_LAUNCHERS), 12)          # neuer Launcher: auch in LX im Lesezeichen nachtragen
+        self.assertEqual(imports.gg_launchers("steam | epic games store", "Harbor Heist"), ["Steam", "Epic"])
+
     def test_grade_and_now(self):
         """Preisgüte wie im eShopKompass; Jetzt zeigt nur Angebote mit „kaufen“ oder „gut“."""
         g = library.grade
@@ -3561,7 +3575,7 @@ class TestUi(unittest.TestCase):
     def test_ui_099(self):
         """0.9.9: das Lesezeichen liest auch die gg.deals-Sammlung, mit Launcher je Karte; die Vorschau zählt je Launcher."""
         js = self.read("js/app.js")
-        self.assertIn("const META_HV = 9;", js)
+        self.assertIn("const META_HV = 10;", js)
         self.assertIn('kind:coll?"gg-sammlung":"gg-wunschliste"', js)
         self.assertIn('https://gg.deals/collection/', js)
         self.assertIn('ggcoll: "gg.deals-Sammlung"', js)
