@@ -5,8 +5,10 @@ Abstand zwischen zwei Angeboten (gap) und das letzte Angebot.
 Ein Verlauf ist eine Liste [[Tag, Preis]], je Eintrag der Preis ab diesem Tag (nur Änderungen). Ein Angebot ist
 jede Strecke mindestens SALE_TOL unter dem Normalpreis; Normalpreis ist der Preis, der im Zeitraum am längsten galt
 (oder der Normalpreis, den der Laden jetzt nennt). Typischer Angebotspreis: der Median der Tiefstwerte je Angebot,
-ab zwei Angeboten; war das letzte tiefer, gilt dieses. Bei gg.deals (Händler und Keyshops) ab 0.10.3 der Preis, der in
-den letzten 90 Tagen am längsten galt. Ohne Netz, nichts wird gespeichert.
+ab zwei Angeboten; war das letzte tiefer, gilt dieses. Bei gg.deals (Händler und Keyshops) ab 0.10.3 der Median der
+Preise der letzten 90 Tage, nach Tagen gewichtet: die Hälfte der Zeit war es günstiger, die Hälfte teurer; ein kurzer
+Ausreißer (ein Tag zum Fehlerpreis, ein Laden kurz ausverkauft) verschiebt ihn kaum, anders als den Durchschnitt.
+Ohne Netz, nichts wird gespeichert.
 """
 import statistics
 from datetime import date, timedelta
@@ -72,8 +74,8 @@ def series(name, points, today, regular=None, kind=""):
     starts = [date.fromisoformat(x["start"]) for x in sales]
     gaps = sorted((b - a).days for a, b in zip(starts, starts[1:]))
     gap = round(statistics.median(gaps)) if len(gaps) >= 2 else None
-    # gg.deals (0.10.3): Händler und Keyshops kennen kaum Angebote; „typisch“ ist dort der Preis, der in den letzten
-    # RECENT_DAYS Tagen am längsten galt (Median nach Tagen)
+    # gg.deals (0.10.3): Händler und Keyshops kennen kaum Angebote; „typisch“ ist dort der Median der Preise der letzten
+    # RECENT_DAYS Tage, nach Tagen gewichtet
     typical_how = "sales"
     if kind == "gg":
         typical, typical_how = recent_median(spans, today), "recent"
@@ -122,16 +124,32 @@ def vr(t, hist, today=None):
     out = [series("Meta", (hist.get("meta") or {}).get(str(t.get("meta_id") or "")), today, (L.get("meta") or {}).get("base"), "meta"),
            series("Steam", (hist.get("steam") or {}).get(str(t.get("steam_appid") or "")), today, (L.get("steam") or {}).get("base"), "steam"),
            series("gg.deals (Händler und Keyshops)", (hist.get("gg") or {}).get(str(t.get("steam_appid") or "")), today, None, "gg")]
+    # 0.10.6: je Laden der Link zur Seite des Spiels dort
+    gg = (L.get("gg") or {}).get("url") or (t.get("links") or {}).get("gg") or ""
+    _link(out, [f"https://www.meta.com/experiences/{t['meta_id']}/" if t.get("meta_id") else "",
+                f"https://store.steampowered.com/app/{t['steam_appid']}/" if t.get("steam_appid") else "",
+                gg if str(gg).startswith("https://gg.deals/") else ""])
     return _pack(t.get("name") or "", out, today)
+
+
+def _link(out, urls):
+    for s, u in zip(out, urls):
+        if s and u:
+            s["url"] = u
 
 
 def pc(e, today=None):
     """Verlauf eines PC-Wunschs: der beste Preis bei gg.deals (eigener Verlauf ph) und je Laden von IsThereAnyDeal (sh)."""
     today = today or date.today().isoformat()
-    regs = {s["s"]: s.get("r") for s in ((e.get("itad") or {}).get("shops") or [])}
+    shops = (e.get("itad") or {}).get("shops") or []
+    regs = {s["s"]: s.get("r") for s in shops}
+    gg = e.get("gg") or {}
     out = [series("gg.deals (Händler und Keyshops)", e.get("ph"), today, None, "gg")]
+    urls = [gg.get("url") or (f"https://gg.deals/{e.get('kind') or 'game'}/{e['slug']}/" if e.get("slug") else "")]
     for name, pts in sorted((e.get("sh") or {}).items()):
         out.append(series(name, pts, today, regs.get(name), "shop"))
+        urls.append(next((s.get("u") or "" for s in shops if s["s"] == name), ""))
+    _link(out, [u if str(u).startswith("https://") else "" for u in urls])
     return _pack(e.get("name") or "", out, today)
 
 

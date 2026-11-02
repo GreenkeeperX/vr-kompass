@@ -44,7 +44,11 @@ Weitere Ausnahmen in der Sammlung, übernommen aus „Spiele“ im eShopKompass 
 bleibt frei). Mein Stand: Backlog ○ pink (`--pink`, ab 0.10.2), angefangen ▷ blau, durchgespielt ✓ grün, Favorit ★
 gold und fett (Kontur `-webkit-text-stroke`, die Größe bleibt; ○ ▷ ✓ ab 0.10.3 mit 1 px ebenso kräftig; beim Überfahren
 liegt der Rahmen des Knopfs oben, `.seg button:hover`), ignoriert ✕ rot (Tooltip „Nie wieder
-vorschlagen“; Gegenstück zu Favorit, nie in Mischungen und Vorschlägen, nur mit dem Filter „ignoriert“);
+vorschlagen“; Gegenstück zu Favorit, nie in Mischungen und Vorschlägen, nur mit dem Filter „ignoriert“).
+Ab 0.10.6 (Entscheidung 02.11.2026) sind alle fünf Zeichen kleine SVG-Grafiken (`mIcon`, `.mi`) statt
+Schriftzeichen: gleiche Strichstärke, 1 em groß, optisch mittig zum Text (`vertical-align:-.13em`), ☆ als leere und
+★ als volle Form; nichts hängt mehr von der Schrift ab, beim Klicken verschiebt sich nichts. Abstand unter der
+Überschrift „Mein Stand“ wie unter „Gespielt“ (`.gdm>.fl+.gmk`);
 nur als Zeichen, nie als Fläche. Die Marke „VR“ hinter dem Namen ist türkis gefüllt
 (`.b.vrb`). Der gewählte System-Reiter: Linie in der Familienfarbe, Schrift in `--ink`
 (Nintendo-Rot `#e60012`, dunkel `#ff3d48`).
@@ -207,6 +211,8 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - VR per Mod (0.8.1): Marke „VR per Mod“ (`.b`) nach PCGamingWiki „hackable“; nur Nexus-Mods mit VR im Namen
   oder vorpX: „VR-Mod“ (`.b.vrq`, türkis gestrichelt in der Farbe der VR-Marke, ab 0.8.20 ohne „?“), ein Hinweis. Filter „VR per Mod“ (`d.vm`) erscheint, wenn ein
   Spiel im Reiter eins von beiden hat. Einzelheiten: Zeilen „VR per Mod“ und „Nexus Mods“ mit Links.
+- Filter „Crossplay“ (ab 0.10.6, `d.xp`): Spiele mit Crossplay laut PCGamingWiki oder Steam; erscheint, wenn ein Spiel
+  im Reiter es hat.
 - SimRacing (ab 0.8.12, vorher „Lenkrad“): Marke orange gefüllt (`.b.simb`, Token `--sim`), wie VR türkis (`.b.vrb`);
   „SimRacing“ orange gestrichelt (`.b.simq`). Ab 0.8.20: bestätigte Marken VR, VR per Mod und SimRacing (`.b.vrb`, `.b.simb`)
   durchgehend umrandet in ihrer Farbe wie „Geheimtipp“, Hinweise gestrichelt ohne „?“; ein „VR“ nur nach dem Namen ebenfalls türkis gestrichelt. Filter „SimRacing“ (`d.wh`) und im Reiter PC „VR“ (`d.vr`, nur bestätigte VR-Marken).
@@ -299,7 +305,10 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - VR-Einzelheiten in Jetzt und Wunschliste (ab 0.10.3, `vrDetail`): im Raster der Tabelle links die Angaben (`.vdf`),
   ab der Spalte Meta bzw. Preis bis vor Wertung die Karten der Läden mit dem Preisverlauf (`.vdp`), rechts Genres und
   Kurzbeschreibung (`.vdd`), darunter Tiefstpreise und Links. PC-Einzelheiten: Beschreibung ab der Spalte „Wo“.
-  Marken und Genres hinter „+n weitere“ stehen in den Einzelheiten (`fitAll`, `.gmarks`, `.ggen`).
+  Marken und Genres hinter „+n weitere“ stehen in den Einzelheiten (`fitAll`, `.gmarks`, `.ggen`). Ab 0.10.6 stehen die
+  Genres dort unter der Spalte Genre (`.vdd` als `subgrid`, `--gg`), die Beschreibung ab der Spalte Wertung; über
+  den Angaben nur, was die Zeile nie zeigt („ohne Crossbuy“, `cbOff`, und die Links zum Nachtragen), keine Marke
+  doppelt.
 - Steam-Angebote (ab 0.10.2, `rhythm`): Zeile in den Einzelheiten VR und PC, „zuletzt vor n Wochen (bisher etwa alle
   m Wo.)“ oder „läuft gerade“ (`rhythmText`, `rhythmTip`), keine Vorhersage.
 - Lenkrad (0.8.3): Marke „Lenkrad“ (`.b`), wenn das Spiel in einer Liste der Rennspiele steht (SimHub,
@@ -415,6 +424,11 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 
 - Ab 0.10.3: ✕ oben rechts in einer Kopfzeile, die beim Scrollen stehen bleibt (`.vlx`, `dialog.vl header` sticky);
   Esc oder ein Klick neben das Fenster schließen es auch.
-- Spalte „typisch“: Median der Tiefstwerte je Angebot, bei gg.deals (Händler und Keyshops) der Preis, der in den
-  letzten 90 Tagen am längsten galt (klein „90 Tage“). „zuletzt“ grün (`.g-buy`), wenn das letzte Angebot höchstens
-  5 % über dem Tief aller Läden oder unter dem typischen gg.deals-Preis lag.
+- Spalte „typisch“: Median der Tiefstwerte je Angebot, bei gg.deals (Händler und Keyshops) der Median der Preise der
+  letzten 90 Tage nach Tagen (klein „90 Tage“; die Hälfte der Zeit günstiger, die Hälfte teurer, ein kurzer Ausreißer
+  zählt kaum). Ab 0.10.6 unter „zuletzt“ oben Rabatt und Preis, darunter klein die Zeit; nur bei einem guten Preis
+  (höchstens 5 % über dem Tief aller Läden oder unter dem typischen gg.deals-Preis) der Rabatt blau (`.b.deal`) und
+  der Preis grün (`.g-buy`), sonst ohne Farbe.
+- Ab 0.10.6: Spalte „überm Tief“ nach „jetzt“ wie in den Tabellen (grün „am Tief“ bis 2 %, sonst rot `+x €`). Der
+  Laden führt zu seiner Seite des Spiels (Meta, Steam, gg.deals, bei PC-Wünschen die Läden von IsThereAnyDeal), der
+  Preis jetzt ebenso (`url` je Reihe aus `verlauf.vr` und `verlauf.pc`).
