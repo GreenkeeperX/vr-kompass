@@ -96,6 +96,18 @@ TDB_XML = """<?xml version="1.0" encoding="UTF-8"?>
 </datafile>
 """
 
+# DekuDeals-Artikelseite (0.10.14), erfunden, im Aufbau des Kastens „Details“
+DEKU_ITEM = ("<html><head><title>Harbor Heist | Deku Deals</title><script>var x = {\"Genre: \": 1};</script></head><body>"
+             "<h1>Harbor Heist</h1><h4>Details</h4><ul class=\"details\"><li><b>MSRP:</b> €29,99</li>"
+             "<li><b>Release date:</b> March 20, 2020</li><li><b>Genres:</b> <a>Action</a>, <a>Adventure</a></li>"
+             "<li><b>Number of players:</b><ul><li>Offline: 1 - 4</li><li>Local: 1 - 4</li><li>Online: 1 - 8</li></ul></li>"
+             "<li><b>Developer:</b> Kite Works</li><li><b>Publisher:</b> Lantern Games</li>"
+             "<li><b>Metacritic:</b> <span>82</span> <span>7.4</span></li><li><b>OpenCritic:</b> 80</li>"
+             "<li><b>How Long To Beat:</b><ul><li>Main Story: 12½ hours</li><li>Main + Extras: 20 hours</li>"
+             "<li>Completionist: 31 hours</li></ul></li><li><b>USK Rating:</b> 12</li>"
+             "<li><b>Languages:</b> English, German, French</li><li><b>Platforms:</b> Steam, PlayStation 5, Switch</li></ul>"
+             "<p>Online: 1 - 99 in der Beschreibung zählt nicht</p></body></html>")
+
 class TestTitles(unittest.TestCase):
     def test_norm(self):
         self.assertEqual(titles.norm("Rover’s Moon Trip™"), titles.norm("rovers moon trip"))
@@ -1732,6 +1744,82 @@ class TestSync(unittest.TestCase):
         logs.clear()
         sync._gametdb(logs.append)
         self.assertIn("GameTDB: Wii und GameCube nicht lesbar (BadZipFile)", "\n".join(logs))
+
+    def test_deku(self):
+        """0.10.14: DekuDeals als zweite Quelle für PC und Konsolen. Erfundene Seiten im Aufbau von DekuDeals: Suche,
+        dann Artikelseite mit Kasten „Details“; Treffer nur mit gleichem Name und passender Plattform."""
+        from app import deku
+        page = DEKU_ITEM
+        info = deku.parse(page)
+        self.assertEqual(info, {
+            "name": "Harbor Heist", "genre": ["Action", "Adventure"],
+            "players": {"offline": [1, 4], "local": [1, 4], "online": [1, 8]}, "mc": 82, "mcu": 7.4, "oc": 80,
+            "hltb": {"main": 12.5, "extra": 20.0, "complete": 31.0}, "released": "2020-03-20", "dev": "Kite Works",
+            "pub": "Lantern Games", "platforms": ["Steam", "PlayStation 5", "Switch"], "age": ["USK", "12"],
+            "langs": ["English", "German", "French"]})
+        self.assertEqual(deku.parse("<h3>DLC</h3>"), {})
+        search = ('<a href="/items/harbor-heist-deluxe-edition">Harbor Heist Deluxe Edition</a>'
+                  '<a href="/items/harbor-heist?format=digital">Harbor Heist</a><a href="/items/night-tram">Night Tram</a>')
+        self.assertEqual(deku.search_slug(search, "Harbor Heist"), "harbor-heist")
+        self.assertEqual(deku.search_slug(search, "Night Tram, The"), "night-tram")
+        self.assertEqual(deku.search_slug("<p>nichts</p>", "Harbor Heist"), "")
+        self.assertEqual(deku.plain("Night Tram, The (2019)"), "The Night Tram")
+        pc = {"name": "Harbor Heist", "system": "PC"}
+        self.assertTrue(deku.fits(info, pc))
+        self.assertFalse(deku.fits(info, {"name": "Harbor Heist", "system": "Xbox One"}))      # andere Plattform
+        self.assertFalse(deku.fits(info, {"name": "Rally Moth", "system": "PC"}))
+        self.assertTrue(deku.fits(info, {"name": "Raub im Hafen", "system": "PS5", "igdb": {"name": "Harbor Heist"}}))
+        self.assertTrue(deku.wanted(pc))
+        self.assertFalse(deku.wanted({"name": "Star Hop", "system": "SNES", "src": "retro"}))
+        self.assertFalse(deku.wanted({"name": "Star Hop", "system": "Switch", "src": "eshop"}))
+        self.assertTrue(deku.wanted({"name": "Star Hop", "system": "PS5", "src": "retro"}))      # PS5 aus dem ROM-Ordner
+        # Abgleich: Suche, dann Seite; ein Treffer, einer mit anderem Namen, einer ohne Suchtreffer; zweiter Lauf nichts
+        store.save_json(collection.FILE, {"games": {
+            "name:pc:harbor heist": {"name": "Harbor Heist", "system": "PC", "mp": [], "players": 4, "genres": ["Action"],
+                                     "released": "2021-05-01",
+                                     "igdb": {"id": 5, "name": "Harbor Heist", "genres": ["Adventure"], "modes": ["Multiplayer"],
+                                              "off": 4, "on": 0, "hours": {"h": 9.0, "n": 3}, "v": 2, "at": "2099-01-01"}},
+            "name:pc:rally moth": {"name": "Rally Moth", "system": "PC", "mp": [], "players": 0, "genres": []},
+            "name:pc:orbit golf": {"name": "Orbit Golf", "system": "PC", "mp": [], "players": 0, "genres": []},
+            "retro:snes:star hop": {"name": "Star Hop", "system": "SNES", "src": "retro", "mp": [], "players": 0, "genres": []}}})
+        calls = []
+
+        def fake(url, timeout=25, ua=None, headers=None, data=None, raw=False):
+            calls.append(url)
+            if "q=Harbor" in url:
+                return search
+            if "q=Rally" in url:
+                return '<a href="/items/rally-moth-2">Rally Moth 2</a>'
+            if "/items/harbor-heist" in url:
+                return page
+            if "/items/rally-moth-2" in url:
+                return page.replace("Harbor Heist", "Rally Moth 2")
+            return "<p>No results</p>"
+        sources.fetch = fake
+        logs = []
+        r = sync._deku(logs.append)
+        self.assertTrue(r["ok"])
+        self.assertEqual(len(calls), 5)
+        self.assertFalse(any("Star" in c for c in calls))
+        self.assertIn("DekuDeals: 3 Spiele gelesen, 1 gefunden", "\n".join(logs))
+        col = store.load_json(collection.FILE, collection.EMPTY)["games"]
+        self.assertEqual(col["name:pc:harbor heist"]["deku"]["slug"], "harbor-heist")
+        self.assertEqual(col["name:pc:rally moth"]["deku"]["near"], "Rally Moth 2")
+        self.assertTrue(col["name:pc:orbit golf"]["deku"]["none"])
+        calls.clear()
+        sync._deku(logs.append)
+        self.assertEqual(calls, [])
+        rows = {x["key"]: x for x in collection.view(store.load_json(collection.FILE, collection.EMPTY))["games"]}
+        h = rows["name:pc:harbor heist"]
+        self.assertEqual((h["hours"], h["hours_src"], h["ihours"], h["hltb"]["complete"]), (12.5, "HowLongToBeat", 9.0, 31.0))
+        self.assertEqual((h["mc"], h["mc_src"], h["oc"]), (82, "DekuDeals", 80))
+        self.assertEqual((h["players"], h.get("pl_deku")), (4, None))      # DekuDeals sagt 8 online, Playnite 4
+        self.assertEqual((h["year"], h["dyear"], h["age"], h["age_src"], h["sde"], h["sde_src"], h["deku_slug"]),
+                         ("2021", "2020", ["USK", "12"], "DekuDeals", True, "DekuDeals", "harbor-heist"))
+        self.assertIn("DekuDeals", h["srcs"])
+        self.assertNotIn("DekuDeals", rows["name:pc:rally moth"]["srcs"])
+        # bleibt beim neuen Einlesen erhalten
+        self.assertIn("deku", col["name:pc:harbor heist"])
 
     def test_run(self):
         self.seed()

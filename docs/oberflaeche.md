@@ -440,6 +440,13 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   GameTDB dieselbe Zahl wie IGDB oder libretro, „… und GameTDB“ und nicht violett. Jahr: „Laut GameTDB“; nennt GameTDB
   ein anderes Jahr, ist die Zahl violett und der Tooltip nennt es. Unten „GameTDB (ID)“ unter den Quellen und ein
   Link „GameTDB“ zur Spielseite.
+- DekuDeals (0.10.14; PC, PlayStation 4 und 5, Xbox, Switch aus Playnite): Spalte Spielzeit mit „Laut HowLongToBeat
+  (über DekuDeals)“, IGDB im Tooltip, wenn es eine eigene Zahl hat; in den Einzelheiten die Zeile „Spielzeit“ (Hauptspiel,
+  mit Extras, komplett). Wertung: OpenCritic neben Metacritic, Metacritic von DekuDeals mit Herkunft im Tooltip
+  („laut Steam und DekuDeals“, wenn beide gleich). Spieler: nennt DekuDeals dieselbe Zahl, „… und DekuDeals“ und nicht
+  violett. Jahr: nennt DekuDeals ein anderes, ist die Zahl violett und der Tooltip nennt es. Altersfreigabe mit der
+  Stelle als Bezeichnung (USK, PEGI, ESRB) und Herkunft im Tooltip; Deutsch laut DekuDeals im Tooltip der Sprachen.
+  Unten „DekuDeals“ unter den Quellen und ein Link zur Spielseite.
 - „Zu erledigen“, Gruppe „Retro: Genre weicht von deiner Liste ab“: je Spiel deins und das der anderen Quelle,
   Knöpfe „Liste gilt“ und ab 0.9.6 „Quellen gelten“ (`data-take`), oben beide für alle. Gilt das Genre der Quellen,
   nennen die Einzelheiten unter „Genre“ deins mit dem Link „deins gilt“ (`own_taken`).

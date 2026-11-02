@@ -64,6 +64,9 @@ Weitere feste Regeln (wie im eShopKompass):
   Marke „üblich −x %“ (`stats`, `usual`, `annotate`), ab 0.10.2 Steam-Angebote je Spiel (`rhythm`), ohne Netz und ohne feste Zahlen
 - `app/gametdb.py`: ab 0.10.13 GameTDB (GameCube, Wii, DS, 3DS, PS3) ohne Netz: gepackte XML lesen (`parse`), Spiel über
   Spiel-ID oder Namen finden (`find`), am Spiel als `tdb` ablegen (`mark`); abgerufen in `sync._gametdb`
+- `app/deku.py`: ab 0.10.14 DekuDeals ohne Netz: Suche (`search_slug`), Kasten „Details“ der Spielseite (`parse`),
+  passt zum Spiel (`fits`: Name und Plattform), für welche Spiele (`wanted`); abgerufen in `sync._deku`, in der Sammlung
+  `collection.merge_deku`
 - `app/wheel.py`: Sim-Racing ohne Netz: Steam-Schlagwörter (Hinweis), Liste der Rennsimulationen (Bestätigung)
 - `app/pcwish.py`: PC-Wunschliste (`pcwish.json`), Spiegel der gg.deals-Wunschliste; Zeilen mit Preisen und ab 0.8.11
   Spielinfos nach den Regeln der Sammlung (`info`); abgerufen in `sync._pcwish` und `sync._pcwish_info`

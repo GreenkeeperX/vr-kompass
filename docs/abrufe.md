@@ -465,6 +465,22 @@ Genre, IGDB-Kennung, deutscher Artikel) und die Zusammenfassung des deutschen Wi
 (`https://de.wikipedia.org/api/rest_v1/page/summary/<Titel>`) am Retro-Spiel. Die Kennung nennt dort das öffentliche
 Repository als Kontakt, wie Wikimedia es erbittet. Nur Probe, nichts wird gespeichert.
 
+## DekuDeals (Sammlung, ab 0.10.14)
+
+Zweite Quelle für PC (Steam), PlayStation 4 und 5, Xbox One und Series, Switch; aus Playnite oder dem ROM-Ordner,
+nicht die Switch-Spiele aus dem eShopKompass. Ohne Schlüssel, nach GameTDB.
+
+| Abruf | Adresse | Wie oft | Liefert |
+|---|---|---|---|
+| Suche | `https://www.dekudeals.com/search?q=<Name>` | je Spiel ohne Stand, nach 120 Tagen (`DEKU_DAYS`), ohne Treffer nach 60 Tagen (`DEKU_MISS_DAYS`); höchstens 30 Spiele je Lauf (`DEKU_MAX`, beschleunigt mal FAST), die am längsten nicht gelesenen und bekannten zuerst | Links `/items/<slug>`; gewählt wird der mit gleichem Namen, sonst den meisten gemeinsamen Wörtern |
+| Spielseite | `https://www.dekudeals.com/items/<slug>` | nach jeder Suche mit Treffer | Kasten „Details“: Erscheinen, Genre, Spieler (an einer Konsole, lokal, online), Entwickler, Verlag, Metacritic mit Nutzerwertung, OpenCritic, HowLongToBeat, USK, PEGI oder ESRB, Sprachen, Plattformen |
+
+Gelesen wird der sichtbare Text wie im eShopKompass. Die Seite zählt nur, wenn der Name (ohne Zusätze, auch der von
+IGDB oder Steam) gleich ist und unter „Platforms“ die des Systems steht. Am Spiel bleibt unter `deku` der Treffer
+(`name`, `slug`, `genre`, `players`, `mc`, `mcu`, `oc`, `hltb`, `released`, `dev`, `pub`, `platforms`, `age`, `langs`,
+`at`, `v`), ohne Treffer `{"none": true}`, mit anderem Namen dazu `near`. Eine Cloudflare-Prüfseite, 403 oder 429
+halten die Quelle an (Ruhezeit wie bei den anderen).
+
 ## Ablage im Datenordner
 
 - `data.json`: je Titel unter `live` die letzten Werte je Quelle (`meta`, `steam`, `gg`), jeweils
@@ -490,7 +506,7 @@ Repository als Kontakt, wie Wikimedia es erbittet. Nur Probe, nichts wird gespei
 - `retro_meta.json` (0.8.8): je System Tag des letzten Abrufs der Spielinfos, Fassung (`v`) und Zahl der Einträge.
 - `gametdb.json` (0.10.13): je Datenbank (`wiitdb`, `dstdb`, `3dstdb`, `ps3tdb`) Tag des letzten Abrufs, Fassung
   (`v`) und Zahl der Einträge. Die Spielinfos selbst stehen je Spiel unter `tdb` in `collection.json`; ein neuer
-  Playnite-Export und eine neue Retro-Liste behalten sie.
+  Playnite-Export und eine neue Retro-Liste behalten sie. Ebenso `deku` (0.10.14, DekuDeals) je Spiel.
 - `collection.json`: die ganze Sammlung (je Spiel mit System, ohne Feld PC), je Spiel Merkmale aus Playnite;
   Spiele aus der Retro-Liste mit `src` „retro“, Schlüssel `retro:<system>:<name>`, dazu `files`, `regions`,
   `langs`, `lang_guess`, `flags`, gegebenenfalls `tid` und `serial` (3DS) und `gone` (Tag, seit dem es in der

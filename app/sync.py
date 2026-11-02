@@ -26,7 +26,7 @@ import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from . import accounts, collection, gametdb, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel
+from . import accounts, collection, deku, gametdb, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel
 
 PAUSE = 2.0
 PAGE_AGE_H = 20
@@ -44,7 +44,7 @@ JUMP = 0.5                  # Selbstprüfung: Normalpreis ändert sich um mehr a
 NAMES = {"steamacc": "Steam-Konto", "ggwish": "gg.deals-Wunschliste", "sharenite": "Sharenite", "qsdb": "QuestStoreDB", "steam": "Steam",
          "gg": "gg.deals", "reviews": "Steam-Rezensionen", "details": "Steam-Details",
          "rating": "Steam-Wertungen", "vrdb": "VRDB", "players": "Steam-Spieler", "active": "Aktive Spieler PC", "retro": "Retro-Fassungen",
-         "gametdb": "GameTDB", "igdb": "IGDB", "pcwish": "PC-Wunschliste", "pcinfo": "PC-Wunschliste, Spielinfos", "vrinfo": "VR-Titel, Spielinfos", "pcgw": "PCGamingWiki", "nexus": "Nexus Mods", "wheel": "Sim-Racing", "eshop": "eShopKompass",
+         "gametdb": "GameTDB", "deku": "DekuDeals", "igdb": "IGDB", "pcwish": "PC-Wunschliste", "pcinfo": "PC-Wunschliste, Spielinfos", "vrinfo": "VR-Titel, Spielinfos", "pcgw": "PCGamingWiki", "nexus": "Nexus Mods", "wheel": "Sim-Racing", "eshop": "eShopKompass",
          "itad": "IsThereAnyDeal"}
 SHOPS = {"meta": "Meta", "steam": "Steam", "gg": "gg.deals Händler"}
 QSDB_HEAD = {"Cookie": "currency=EUR"}     # Preise und Verlauf in Euro
@@ -97,10 +97,13 @@ ITAD_PAUSE = 1.0            # IsThereAnyDeal erlaubt 1000 Abrufe je 5 Minuten; e
 ITAD_HIST = 40              # Spiele je Lauf, deren Verlauf je Laden einmal rückwirkend kommt (0.9.1)
 ITAD_TITLES = 40            # PC-Wünsche ohne Steam-ID je Lauf, die IsThereAnyDeal nach dem Namen sucht (0.10.1)
 IGDB_PAUSE = 0.3            # IGDB erlaubt 4 Anfragen je Sekunde
+DEKU_MAX = 30               # DekuDeals (0.10.14): Spiele je Lauf, je Spiel Suche und Seite
+DEKU_DAYS = 120             # ein Spiel nach so vielen Tagen neu
+DEKU_MISS_DAYS = 60         # ohne Treffer nach so vielen Tagen neu
 # Beschleunigt auffüllen (0.8.6): ein Lauf von Hand mit FAST-fachen Grenzen für die langen Warteschlangen.
 # Pausen und der Abbruch bei 403 und 429 bleiben; der Lauf dauert dafür entsprechend länger.
 FAST = 5
-FAST_LIMITS = ("ACTIVE_MAX", "TREND_MAX", "REVIEWS_MAX", "DETAILS_MAX", "RATING_MAX", "IGDB_NAMES", "PCGW_MAX", "NEXUS_MAX", "WHEEL_MAX", "PCWISH_INFO",
+FAST_LIMITS = ("DEKU_MAX", "ACTIVE_MAX", "TREND_MAX", "REVIEWS_MAX", "DETAILS_MAX", "RATING_MAX", "IGDB_NAMES", "PCGW_MAX", "NEXUS_MAX", "WHEEL_MAX", "PCWISH_INFO",
                "PLAYERS_MAX", "VRDB_MAX", "PCWISH_SEARCH", "ITAD_HIST", "VRINFO_MAX", "VRINFO_NAMES")
 RATING_MAX = 60             # Steam-Rezensionen je Lauf für Titel auf Wunschliste und in der Bibliothek
 
@@ -1092,6 +1095,60 @@ def _eshop(log):
     src.stats = {"read": len(games), "new": new}
     log(f"{label}: {len(games)} Spiele (Switch 2: {s2}), {new} neu" + (f", {gone} nicht mehr dabei" if gone else "")
         + f", eShopKompass {str(d.get('version') or '?')[:12]}, {_took(start)}")
+    return src.result()
+
+
+def _deku(log):
+    """DekuDeals (0.10.14): je Spiel der Sammlung (PC, PlayStation 4 und 5, Xbox, Switch) die Suche nach dem
+    Namen und die Seite des besten Treffers; zählt nur mit gleichem Namen und passender Plattform. Höchstens DEKU_MAX
+    Spiele je Lauf (beschleunigt mal FAST, FAST_LIMITS), bekannte zuerst; nach DEKU_DAYS neu, ohne Treffer nach DEKU_MISS_DAYS."""
+    start = time.monotonic()
+    src = _Source("DekuDeals", log)
+    col = store.load_json(collection.FILE, collection.EMPTY)
+    old, old_miss = _iso(now() - timedelta(days=DEKU_DAYS)), _iso(now() - timedelta(days=DEKU_MISS_DAYS))
+
+    def due(g):
+        r = g.get("deku") or {}
+        return not r or r.get("v") != deku.V or (r.get("at") or "") < (old_miss if r.get("none") else old)
+    todo = [(((g.get("deku") or {}).get("at") or ""), _fame(g), k) for k, g in (col.get("games") or {}).items() if deku.wanted(g) and due(g)]
+    todo.sort()
+    if not todo:
+        log("DekuDeals: alle aktuell" if col.get("games") else "DekuDeals: keine Sammlung, nichts zu tun")
+        return src.result()
+    limit = DEKU_MAX
+    got = {}
+    for i, (_, _, k) in enumerate(todo[:limit]):
+        progress("DekuDeals", i, min(limit, len(todo)))
+        g = col["games"][k]
+        found = src.get(deku.search_url(g["name"]), shown=f"DekuDeals, Suche „{g['name'][:40]}“")
+        if found is None:
+            if src.stopped:
+                break
+            continue
+        slug = deku.search_slug(found, g["name"])
+        stamp = titles.now_iso()
+        if not slug:
+            got[k] = {"none": True, "at": stamp, "v": deku.V}
+            continue
+        page = src.get(deku.item_url(slug), shown=f"DekuDeals {slug}", absent=(404,))
+        if page is None:
+            if src.stopped:
+                break
+            continue
+        info = deku.parse(page)
+        got[k] = dict(info, slug=slug, at=stamp, v=deku.V) if deku.fits(info, g) else \
+            {"none": True, "near": (info.get("name") or slug)[:200], "at": stamp, "v": deku.V}
+    with store.lock:
+        col = store.load_json(collection.FILE, collection.EMPTY)
+        for k, r in got.items():
+            if k in col.get("games", {}):
+                col["games"][k]["deku"] = r
+        store.save_json(collection.FILE, col)
+    hit = sum(1 for r in got.values() if not r.get("none"))
+    left = len(todo) - len(got)
+    src.stats = {"read": len(got), "left": left}
+    log(f"DekuDeals: {len(got)} Spiele gelesen, {hit} gefunden"
+        + (f", {left} noch offen (je Lauf {limit}{_runs(left, limit, ', ')})" if left else ", alle aktuell") + f", {_took(start)}")
     return src.result()
 
 
@@ -2522,6 +2579,8 @@ def run(only=None, boot=False, by_hand=False, fast=False):
             do("retro", lambda: _retro(log))
         if not only or "gametdb" in only:
             do("gametdb", lambda: _gametdb(log))
+        if not only or "deku" in only:
+            do("deku", lambda: _deku(log))
         if sources.eshop_url() and (not only or "eshop" in only):
             do("eshop", lambda: _eshop(log))
         progress("Speichern")
