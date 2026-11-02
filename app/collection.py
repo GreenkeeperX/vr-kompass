@@ -78,6 +78,11 @@ GENRES = {
     "Party": ("party",),
     "Lernspiel": ("educational",),
 }
+# Ab 0.10.13 die Wörter von GameTDB, soweit oben noch nicht dabei
+for _g, _ws in {"Rollenspiel": ("role-playing",), "Plattformer": ("2d platformer", "3d platformer"),
+                "Shooter": ("first-person shooter", "rail shooter", "light gun shooter"), "Party": ("minigame collection", "mini games"),
+                "Rennen": ("kart racing",), "Simulation": ("life simulation", "pet simulation"), "Lernspiel": ("training", "education")}.items():
+    GENRES[_g] += _ws
 _GENRE_OF = {w: g for g, ws in GENRES.items() for w in ws}
 
 MAX_GAMES = 20000
@@ -317,7 +322,7 @@ def replace(col, games, src="playnite"):
         if o is None:
             new += 1
             continue
-        for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag"):
+        for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb"):
             if f in o:
                 g[f] = o[f]
     col["games"] = games
@@ -596,7 +601,7 @@ def sync_pcvr(col, data):
         if o is None:
             new += 1
         else:
-            for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag"):
+            for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb"):
                 if f in o:
                     g[f] = o[f]
         games[k] = g
@@ -794,6 +799,48 @@ def merge_retro(r, g):
         r["size"] = g["size"]
 
 
+def merge_tdb(r, t):
+    """GameTDB (0.10.13) für GameCube, Wii, DS und 3DS:
+    - Beschreibung auf Deutsch vor IGDB und libretro (beide englisch); englisch von GameTDB nur, wo keine steht
+    - Genre und Spielerzahl wie libretro: bestätigt, was zwei Quellen sagen, sonst Ersatz
+    - Erscheinen, Entwickler, Verlag nur, wo nichts steht; ein anderes Jahr nennt tyear
+    - neu: deutscher Titel (dtitle, wenn er anders heißt), USK oder PEGI, Sprachen der gefundenen Fassung"""
+    r["srcs"] = r["srcs"] + ["GameTDB"]
+    r["tdb_id"] = t.get("id") or ""
+    if t.get("desc") and (t.get("desc_lang") == "de" or not r.get("desc")):
+        r["desc"], r["desc_lang"], r["desc_src"] = t["desc"], t.get("desc_lang") or "en", "GameTDB"
+    tg = genres(t.get("genre") or [], [])
+    if tg:
+        r["gc"] = list(dict.fromkeys((r.get("gc") or []) + [x for x in r["genres"] if x in tg] + (tg if not r["genres"] else [])))
+        r["genres"] = r["genres"] + [x for x in tg if x not in r["genres"]]
+    p = t.get("players") or 0
+    if p:
+        if r.get("players") == p and r.get("pl_src") in ("IGDB", "libretro"):
+            r["pl_lr"] = bool(r.get("pl_ok")) and r["pl_src"] == "IGDB"     # libretro hatte IGDB schon bestätigt
+            r["pl_ok"] = r["pl_tdb"] = True
+        elif not r.get("players"):
+            r["players"], r["pl_src"] = p, "GameTDB"
+    if t.get("online"):
+        r["tdb_online"] = t["online"]
+    d = t.get("date") or ""
+    if d:
+        if not r.get("year"):
+            r.update(year=d[:4], year_src="GameTDB")
+        elif r["year"] != d[:4]:
+            r["tyear"] = d[:4]
+        if not r.get("rel") and d[:4] == r["year"]:
+            r["rel"] = d
+    for f in ("dev", "pub"):
+        if t.get(f) and not r.get(f):
+            r[f] = t[f]
+    if t.get("de_t") and titles.norm(t["de_t"]) != titles.norm(r["name"]):
+        r["dtitle"] = t["de_t"]
+    if t.get("rating"):
+        r["age"] = t["rating"]
+    if t.get("langs"):
+        r["tdb_langs"] = t["langs"]
+
+
 def view(col, data=None):
     """Zeilen für die Oberfläche, kurz gehalten (bis zu einige tausend Spiele). Mit data kommen die VR-Titel am PC
     dazu (0.8.7)."""
@@ -861,6 +908,8 @@ def view(col, data=None):
             merge_igdb(r, ig)
         if r.get("retro"):
             merge_retro(r, g)
+        if (g.get("tdb") or {}).get("id"):
+            merge_tdb(r, g["tdb"])
         # VR per Mod (0.8.1): PCGamingWiki „hackable“, vorpX; Nexus Mods mit Spielseite und Mods
         pc, nx = g.get("pcgw") or {}, g.get("nexus") or {}
         merge_pcgw(r, pc)

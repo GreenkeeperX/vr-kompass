@@ -1,4 +1,5 @@
 import gzip
+import io
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -9,6 +10,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+import zipfile
 from http.server import ThreadingHTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -54,6 +56,45 @@ Gesamt
 def empty():
     return json.loads(json.dumps(store.EMPTY_DATA))
 
+
+TDB_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<datafile>
+<WiiTDB version="20991231" games="6"/>
+<game name="Star Hop">
+  <id>GSHD01</id><type>GameCube</type><region>PAL</region><languages>DE</languages>
+  <locale lang="EN"><title>Star Hop</title><synopsis>A hop in space.</synopsis></locale>
+  <locale lang="DE"><title>Sternenhüpfer</title><synopsis>Ein Hüpfspiel im All.</synopsis></locale>
+  <developer>Kite Works</developer><publisher>Paper Moon</publisher>
+  <date year="2003" month="11" day="14"/><genre>3D platformer,action</genre>
+  <rating type="USK" value="6"/><wi-fi players="0"/><input players="2"><control type="gamecube" required="true"/></input>
+</game>
+<game name="Star Hop">
+  <id>GSHP01</id><type>GameCube</type><region>PAL</region><languages>EN,FR</languages>
+  <locale lang="EN"><title>Star Hop</title></locale><date year="2003" month="11" day="14"/><input players="2"/>
+</game>
+<game name="Star Hop">
+  <id>GSHE01</id><type>GameCube</type><region>NTSC-U</region><languages>EN</languages>
+  <locale lang="EN"><title>Star Hop</title></locale><date year="2003" month="9" day="1"/><input players="2"/>
+</game>
+<game name="The Night Tram">
+  <id>RNTP01</id><type></type><region>PAL</region><languages>EN,FR,DE</languages>
+  <locale lang="EN"><title>The Night Tram</title><synopsis>Ride the last tram.</synopsis></locale>
+  <locale lang="DE"><title>Nachtbahn</title></locale>
+  <developer>Kite Works</developer><date year="2009"/><genre>racing</genre>
+  <rating type="PEGI" value="7"/><wi-fi players="4"/><input players="4"/>
+</game>
+<game name="The Night Tram">
+  <id>RNTE01</id><type/><region>NTSC-U</region><languages>EN</languages>
+  <locale lang="EN"><title>The Night Tram</title></locale><input players="4"/>
+</game>
+<game name="The Night Tram (Demo)">
+  <id>DNTE01</id><type/><region>NTSC-U</region><locale lang="EN"><title>The Night Tram (Demo)</title></locale>
+</game>
+<game name="Orbit Golf">
+  <id>WOGP</id><type>WiiWare</type><region>PAL</region><locale lang="EN"><title>Orbit Golf</title></locale>
+</game>
+</datafile>
+"""
 
 class TestTitles(unittest.TestCase):
     def test_norm(self):
@@ -1619,6 +1660,79 @@ class TestSync(unittest.TestCase):
         store.save_data(d)
         return d
 
+    def test_gametdb(self):
+        """0.10.13: GameTDB für GameCube, Wii, DS und 3DS. Erfundene Datenbank im Aufbau von GameTDB (gepackte XML):
+        Treffer über die Spiel-ID aus dem Dateinamen, sonst über den Namen (auch „…, The“), deutsche Fassung vor
+        Europa, keine Demo, GameCube und Wii getrennt; deutsche Beschreibung vor IGDB, Spieler bestätigt."""
+        from app import gametdb
+        wii = TDB_XML.encode()
+        blob = io.BytesIO()
+        with zipfile.ZipFile(blob, "w") as z:
+            z.writestr("wiitdb.xml", wii)
+        blob = blob.getvalue()
+        gc, w = gametdb.parse(blob, "GameCube"), gametdb.parse(blob, "Wii")
+        self.assertEqual(sorted(e["id"] for e in gc), ["GSHD01", "GSHE01", "GSHP01"])
+        self.assertEqual(sorted(e["id"] for e in w), ["RNTE01", "RNTP01"])          # ohne Demo und WiiWare
+        star = next(e for e in gc if e["id"] == "GSHD01")
+        self.assertEqual((star["de_t"], star["desc_lang"], star["genre"], star["players"], star["rating"], star["date"], star["langs"]),
+                         ("Sternenhüpfer", "de", ["3D platformer", "action"], 2, ["USK", "6"], "2003-11-14", ["DE"]))
+        idx = gametdb.index(gc)
+        self.assertEqual(gametdb.find({"name": "Star Hop"}, idx)[0]["id"], "GSHD01")       # deutsche Fassung zuerst
+        self.assertEqual(gametdb.find({"name": "Star Hop", "serial": "ID-GSHE"}, idx), (idx["id"]["GSHE01"], "id"))
+        widx = gametdb.index(w)
+        self.assertEqual(gametdb.find({"name": "Night Tram, The"}, widx)[0]["id"], "RNTP01")
+        self.assertEqual(gametdb.find({"name": "Nachtbahn"}, widx)[0]["id"], "RNTP01")      # deutscher Titel
+        self.assertEqual(gametdb.find({"name": "Comet Chase"}, widx), (None, ""))
+        self.assertEqual(gametdb._code({"serial": "CTR-P-AMKP"}), "AMKP")
+        # PS3 (0.10.13): Seriennummer aus dem Redump-Namen, GameTDB ohne Bindestrich, Europa vor Amerika
+        info = retro.parse_name("Orbit Golf (Europe) (En,Fr,De) [BLES-01234].iso")
+        self.assertEqual((info["serial"], retro._serial_full(info["serial"])), ("BLES-01234", "BLES-01234"))
+        ps = [{"id": i, "en": "Orbit Golf", "de_t": "", "langs": []} for i in ("BLUS30123", "BLES01234", "BLJM60123")]
+        pidx = gametdb.index(ps)
+        self.assertEqual(gametdb.find({"name": "Orbit Golf"}, pidx)[0]["id"], "BLES01234")
+        self.assertEqual(gametdb.find({"name": "Anders", "serial": "BLUS-30123"}, pidx), (pidx["id"]["BLUS30123"], "id"))
+        self.assertEqual(gametdb.url("PS3"), "https://www.gametdb.com/ps3tdb.zip?LANG=DE")
+        self.assertIn("PS3", retro.DATS)
+        # Abgleich: holt die Datenbank einmal für Wii und GameCube, ordnet zu, beim zweiten Lauf nichts
+        store.save_json(collection.FILE, {"games": {
+            "name:gamecube:star hop": {"name": "Star Hop", "system": "GameCube", "mp": [], "players": 0, "genres": [],
+                                        "igdb": {"id": 3, "name": "Star Hop", "genres": ["Platform"], "modes": ["Multiplayer"], "off": 2, "on": 0,
+                                                 "desc": "A hop.", "year": "2003", "v": 2, "at": "2099-01-01"}},
+            "retro:wii:the night tram": {"name": "Night Tram, The", "system": "Wii", "src": "retro", "mp": [], "players": 0, "genres": []},
+            "retro:snes:orbit golf": {"name": "Orbit Golf", "system": "SNES", "src": "retro", "mp": [], "players": 0, "genres": []}}})
+        calls = []
+
+        def fake(url, timeout=25, ua=None, headers=None, data=None, raw=False):
+            calls.append((url, raw))
+            return blob
+        sources.fetch = fake
+        logs = []
+        r = sync._gametdb(logs.append)
+        self.assertTrue(r["ok"])
+        self.assertEqual(calls, [("https://www.gametdb.com/wiitdb.zip?LANG=DE", True)])
+        self.assertIn("GameTDB: Wii und GameCube gelesen; zugeordnet GameCube 1 von 1, Wii 1 von 1", "\n".join(logs))
+        col = store.load_json(collection.FILE, collection.EMPTY)["games"]
+        self.assertEqual((col["name:gamecube:star hop"]["tdb"]["id"], col["retro:wii:the night tram"]["tdb"]["via"]), ("GSHD01", "name"))
+        self.assertNotIn("tdb", col["retro:snes:orbit golf"])
+        calls.clear()
+        sync._gametdb(logs.append)
+        self.assertEqual(calls, [])
+        rows = {x["key"]: x for x in collection.view(store.load_json(collection.FILE, collection.EMPTY))["games"]}
+        s = rows["name:gamecube:star hop"]
+        self.assertEqual((s["desc"], s["desc_lang"], s["desc_src"]), ("Ein Hüpfspiel im All.", "de", "GameTDB"))
+        self.assertEqual((s["players"], s["pl_src"], s.get("pl_tdb")), (2, "IGDB", True))
+        self.assertEqual((s["dtitle"], s["age"], s["rel"], s["tdb_id"]), ("Sternenhüpfer", ["USK", "6"], "2003-11-14", "GSHD01"))
+        self.assertIn("Plattformer", s["gc"])
+        n = rows["retro:wii:the night tram"]
+        self.assertEqual((n["desc_lang"], n["players"], n["pl_src"], n["year"], n["year_src"], n["age"], n["dev"]),
+                         ("en", 4, "GameTDB", "2009", "GameTDB", ["PEGI", "7"], "Kite Works"))
+        # kaputtes Archiv: Fehler im Protokoll, kein Absturz
+        store.save_json(gametdb.FILE, {})
+        sources.fetch = lambda url, timeout=25, ua=None, headers=None, data=None, raw=False: b"<html>kein Archiv</html>"
+        logs.clear()
+        sync._gametdb(logs.append)
+        self.assertIn("GameTDB: Wii und GameCube nicht lesbar (BadZipFile)", "\n".join(logs))
+
     def test_run(self):
         self.seed()
         sync.save_settings({"gg_key": "geheim-1234567890abcd"})
@@ -3096,6 +3210,13 @@ class TestSync(unittest.TestCase):
                    ("simhubdash", 200, '<h3>Racing</h3><figure><img src="/wp-content/uploads/2018/09/3000103-300x140.jpg"><figcaption>Rally Moth (PC only)</figcaption></figure><h3>Flight simulators</h3>'),
                    ("dekudeals.com/items/orbit-golf", 200, deku),
                    ("howlongtobeat", 200, "<input placeholder='search'>"),
+                   ("wbsearchentities", 200, json.dumps({"search": [{"id": "Q1", "description": "Band"}, {"id": "Q7", "description": "1994 video game"}]})),
+                   ("wbgetentities", 200, json.dumps({"entities": {"Q7": {"claims": {
+                       "P914": [{"mainsnak": {"datavalue": {"value": {"id": "Q20"}}}}],
+                       "P1873": [{"mainsnak": {"datavalue": {"value": {"amount": "+2"}}}}],
+                       "P5794": [{"mainsnak": {"datavalue": {"value": "star-hop"}}}]},
+                       "sitelinks": {"dewiki": {"title": "Star Hop (Spiel)"}}}}})),
+                   ("de.wikipedia.org", 200, json.dumps({"extract": "Star Hop ist ein Jump ’n’ Run."})),
                    ("metadat/", 200, meta),
                    ("id.twitch.tv", 200, json.dumps({"access_token": "tok"})),
                    ("v4/external_games", 200, json.dumps([{"game": 5, "uid": "3000101"}])),
@@ -3128,7 +3249,7 @@ class TestSync(unittest.TestCase):
             return {"url": url, "status": 0, "text": "", "enc": "", "server": "", "error": "unbekannt"}
 
         def probe(name, url, info, headers=None, shown=None):
-            r = sources.request(url)
+            r = sources.request(url, headers=headers)
             lines.append(f"{name}: {info(r['text'])}")
             return r["text"]
         old = sources.request
@@ -3161,6 +3282,12 @@ class TestSync(unittest.TestCase):
         self.assertFalse(any("uevr" in u or "cargo" in u for u, d in seen))
         self.assertIn("IGDB, PC über Steam-ID", text)
         self.assertIn("GameTDB: kein GameCube- oder Wii-Spiel in der Sammlung, nicht angefragt", text)
+        # 0.10.13: Wikidata und die deutsche Wikipedia am Retro-Spiel, mit Kontakt in der Kennung
+        self.assertIn("Wikidata, Suche: „Star Hop“: Q7 (1994 video game)", text)
+        self.assertIn("Wikidata, Spiel: USK Q20; Spieler +2; IGDB star-hop; deutscher Artikel „Star Hop (Spiel)“", text)
+        self.assertIn("Wikipedia (deutsch), Zusammenfassung: 30 Zeichen", text)
+        self.assertTrue(any("Star_Hop_%28Spiel%29" in u for u, d in seen))
+        self.assertTrue(all("github.com" in h.get("User-Agent", "") for u, h in heads if "wikidata" in u or "wikipedia" in u))
         self.assertFalse(any("gametdb" in u for u, d in seen))
         self.assertIn("DekuDeals, Suche (PS4)", text)
         self.assertIn("erster Treffer „orbit-golf“", text)

@@ -417,6 +417,7 @@ def run(probe, lines, col, keys, sleep):
         lines.append("libretro metadat: keine Retro-Liste, nicht angefragt")
 
     gametdb(probe, lines, col)
+    wikidata(probe, lines, ret)
 
     nexus(lines, pc["name"], sleep, (keys or {}).get("nexus_key", ""))
 
@@ -473,6 +474,9 @@ def gametdb(probe, lines, col):
         else:
             n = re.sub(r"[^a-z0-9]+", "", search_name(g.get("name")).casefold())
             hit = sorted(k for k, v in ids.items() if re.sub(r"[^a-z0-9]+", "", search_name(v).casefold()) == n)
+        # 0.10.13: keine Demo, deutsche und europäische Fassung zuerst (wie im Abgleich)
+        from . import gametdb as tdb
+        hit = sorted((k for k in hit if not tdb._SKIP.search(ids[k])), key=lambda k: (tdb._REGION_RANK.get(k[3:4], 5), k))
         if hit:
             found["id"] = hit[0]
         return (f"{len(ids)} Spiele, davon etwa {gc} GameCube; „{g.get('name', '')[:40]}“ ({g.get('system')}) "
@@ -481,3 +485,65 @@ def gametdb(probe, lines, col):
     probe("GameTDB, Titelliste (deutsch)", GAMETDB_LIST, list_info)
     gid = found.get("id") or GAMETDB_SAMPLE
     probe(f"GameTDB, Spielseite {gid}", GAMETDB + "Wii/" + gid, gametdb_page)
+
+
+# Wikidata und die deutsche Wikipedia (0.10.13): für alle Retro-Systeme ohne Schlüssel. Wikidata nennt je Spiel USK
+# (P914), PEGI (P908), Spielerzahl (P1873), Genre (P136), die IGDB-Kennung (P5794) und den Artikel der deutschen
+# Wikipedia; deren Zusammenfassung wäre eine deutsche Beschreibung. Nur Probe, entschieden wird nach dem Ergebnis.
+WIKIDATA = "https://www.wikidata.org/w/api.php"
+WIKI_DE = "https://de.wikipedia.org/api/rest_v1/page/summary/"
+# Wikimedia bittet um eine Kennung mit Kontakt: das öffentliche Repository
+WIKI_HEAD = {"User-Agent": f"vr-navigator/{sources.VERSION} (+https://github.com/GreenkeeperX/vr-navigator; privates Sammlungs-Tool)"}
+WD_PROPS = {"P914": "USK", "P908": "PEGI", "P1873": "Spieler", "P136": "Genre", "P400": "Plattform", "P5794": "IGDB"}
+
+
+def wd_pick(text):
+    """Erster Treffer der Suche, dessen Beschreibung ein Videospiel nennt: (Q-Kennung, Beschreibung)."""
+    for x in json.loads(text).get("search") or []:
+        d = str(x.get("description") or "")
+        if re.search(r"(?i)video ?game|videospiel", d):
+            return str(x.get("id") or ""), d[:80]
+    return "", ""
+
+
+def wd_entity(text, qid):
+    """Welche Angaben ein Spiel bei Wikidata hat und wie sein deutscher Artikel heißt."""
+    e = (json.loads(text).get("entities") or {}).get(qid) or {}
+    claims = e.get("claims") or {}
+    have = {}
+    for p, label in WD_PROPS.items():
+        vals = []
+        for c in claims.get(p) or []:
+            v = ((c.get("mainsnak") or {}).get("datavalue") or {}).get("value")
+            vals.append(v.get("id") if isinstance(v, dict) and "id" in v else v.get("amount") if isinstance(v, dict) else v)
+        if vals:
+            have[label] = vals[:3]
+    de = ((e.get("sitelinks") or {}).get("dewiki") or {}).get("title") or ""
+    return have, de
+
+
+def wikidata(probe, lines, ret):
+    if not ret:
+        lines.append("Wikidata: keine Retro-Liste, nicht angefragt")
+        return
+    name = (ret.get("igdb") or {}).get("name") or re.sub(r"\s*\([^)]*\)", "", ret.get("name") or "")
+    found = {}
+
+    def search_info(t):
+        found["q"], d = wd_pick(t)
+        return f"„{name[:40]}“: " + (f"{found['q']} ({d})" if found["q"] else "kein Videospiel unter den Treffern")
+    probe("Wikidata, Suche", WIKIDATA + "?" + urllib.parse.urlencode(
+        {"action": "wbsearchentities", "search": name, "language": "en", "type": "item", "limit": 7, "format": "json"}), search_info, WIKI_HEAD)
+    if not found.get("q"):
+        return
+
+    def entity_info(t):
+        have, found["de"] = wd_entity(t, found["q"])
+        return ("; ".join(f"{k} {', '.join(str(v) for v in vs)}" for k, vs in have.items()) or "keine der Angaben") + \
+            f"; deutscher Artikel {('„' + found['de'] + '“') if found['de'] else 'keiner'}"
+    probe("Wikidata, Spiel", WIKIDATA + "?" + urllib.parse.urlencode(
+        {"action": "wbgetentities", "ids": found["q"], "props": "claims|sitelinks", "sitefilter": "dewiki", "format": "json"}), entity_info, WIKI_HEAD)
+    if found.get("de"):
+        probe("Wikipedia (deutsch), Zusammenfassung", WIKI_DE + urllib.parse.quote(found["de"].replace(" ", "_")),
+              lambda t: f"{len(json.loads(t).get('extract') or '')} Zeichen: „{_short(json.loads(t).get('extract'), 120)}“", WIKI_HEAD)
+

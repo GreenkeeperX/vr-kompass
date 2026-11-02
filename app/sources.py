@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.10.12"
+VERSION = "0.10.13"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -113,8 +113,9 @@ def _decode(raw, enc):
     return raw
 
 
-def request(url, ua=None, timeout=25, encoding="gzip, deflate", headers=None, data=None):
-    """HTTP GET (mit data POST, etwa IGDB) ohne Ausnahme: liefert Status, Text und Kopfdaten für die Diagnose."""
+def request(url, ua=None, timeout=25, encoding="gzip, deflate", headers=None, data=None, raw=False):
+    """HTTP GET (mit data POST, etwa IGDB) ohne Ausnahme: liefert Status, Text und Kopfdaten für die Diagnose.
+    Mit raw (0.10.13, gepackte Datenbanken) stehen die Bytes unter „body“, der Text bleibt leer."""
     headers = {
         "User-Agent": ua or USER_AGENT,
         "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
@@ -122,6 +123,7 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate", headers=None, da
         "Accept-Encoding": encoding,
         **(headers or {}),
     }
+    want_raw = raw
     req = urllib.request.Request(url, headers=headers, data=data)
     out = {"url": url, "status": 0, "text": "", "enc": "", "server": "", "error": ""}
     out["error"] = blocked_target(url)
@@ -141,7 +143,10 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate", headers=None, da
             out["server"] = resp.headers.get("Server") or ""
             out["final"] = resp.geturl() if hasattr(resp, "geturl") else url   # nach Umleitungen (0.7.2, Diagnose)
             if out["enc"] not in ("", "identity", "gzip", "deflate") and encoding != "identity":
-                return request(url, ua, timeout, "identity", headers, data)   # z. B. Brotli
+                return request(url, ua, timeout, "identity", headers, data, want_raw)   # z. B. Brotli
+            if want_raw:
+                out["body"] = _decode(raw, out["enc"])
+                return out
             charset = resp.headers.get_content_charset() or "utf-8"
             out["text"] = _decode(raw, out["enc"]).decode(charset, errors="replace")
     except Exception as e:                # Zeitüberschreitung, DNS, TLS
@@ -149,14 +154,14 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate", headers=None, da
     return out
 
 
-def fetch(url, timeout=25, ua=None, headers=None, data=None):
-    """HTTP GET (mit data POST), gibt Text zurück. Wirft FetchError mit Statuscode."""
-    r = request(url, ua, timeout, headers=headers, data=data)
+def fetch(url, timeout=25, ua=None, headers=None, data=None, raw=False):
+    """HTTP GET (mit data POST), gibt Text zurück, mit raw die Bytes. Wirft FetchError mit Statuscode."""
+    r = request(url, ua, timeout, headers=headers, data=data, raw=raw) if raw else request(url, ua, timeout, headers=headers, data=data)
     if r["error"]:
         raise FetchError(url, 0, r["error"])
     if r["status"] >= 400:
         raise FetchError(url, r["status"])
-    return r["text"]
+    return r.get("body", b"") if raw else r["text"]
 
 
 def challenge(text):
