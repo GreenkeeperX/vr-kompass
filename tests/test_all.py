@@ -2409,6 +2409,7 @@ class TestSync(unittest.TestCase):
         rows = {x["key"]: x for x in v["rows"]}
         h = rows["harbor-heist"]
         self.assertEqual((h["score"], h["score_src"], h["reviews"]), (92, "Steam", 300))
+        self.assertEqual(h["spct"], 92)                              # 0.9.8: Steam in Prozent für die Einzelheiten
         self.assertEqual((h["hours"], h["players"], h["pl_src"], h["dev"], h["desc"]), (7.0, 4, "IGDB", "Kite Works", "Ein Raubzug im Hafen."))
         self.assertEqual((h["genres"], h["gc"]), (["Action", "Shooter"], ["Action"]))   # Shooter nur laut IGDB
         # 0.8.18: Trend aus dem Bewertungsdiagramm (60 % der letzten 20 gegen 92 %), Pflege aus den Neuigkeiten
@@ -3249,6 +3250,21 @@ class TestUi(unittest.TestCase):
         self.assertIn('row("Koop", k.coop', js)
         for part in ('function pcTable(rows, t = "pcw")', 'function vrTable(rows, t = "vrw")', 'sortRows("all", items, ALL_KEYS)'):
             self.assertIn(part, js)
+
+    def test_ui_098(self):
+        """0.9.8: Ladenfarben, alle Läden im Preisverlauf an/ab, Marken und Genres kürzen auf allen Reitern,
+        Einzelheiten im Raster der Zeile, immer nur ein Eintrag offen."""
+        js, css = self.read("js/app.js"), self.read("style.css")
+        for cls in ("wo-steam", "wo-ms", "wo-humble", "wo-fan", "wo-gmg", "wo-key"):
+            self.assertIn(f".{cls}{{color:var(--{cls})}}", css)
+        self.assertIn('data-act="vlall"', js)
+        self.assertIn('a === "vlall"', js)
+        self.assertIn("function fitMarks()", js)
+        self.assertIn('addEventListener("resize", () => fitAll());', js)
+        self.assertIn("V.vwOpen = null; render();", js)
+        self.assertIn("V.pwOpen = null; render();", js)
+        self.assertIn(".gdm{grid-column:var(--gc,2)/-1;", css)
+        self.assertNotIn("--dcols:${dcols}", js)
 
     def test_dark_tokens_match(self):
         import re

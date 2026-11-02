@@ -175,7 +175,7 @@ function render(anchor){
   findHash();
   showLog();
   moreOnScroll();
-  if(V.tab === "find") fitTags();
+  fitAll();
   const b = anchor && $(anchor);
   if(b && top !== null) scrollBy(0, b.getBoundingClientRect().top - top);
   const q = $("q");
@@ -355,7 +355,8 @@ function pcWishView(pw){
 /* Breiten (0.8.23): Spiel wie in der Sammlung, gleich benannte Spalten überall gleich breit, Genre nimmt den Rest */
 /* Spalten (0.9.4, Entscheidung 28.10.2026): max. Spieler als zweite Spalte wie überall, dann Preis, überm Tief und Wo wie
    unter „Jetzt, Alle“, danach die Spielinfos wie in der Sammlung */
-const PC_COLS = "minmax(180px,1.5fr) 88px 96px 90px 110px 70px 98px minmax(0,1fr) 66px 56px 44px";
+// 0.9.8: Spiel breiter als Genre (2,2 : 1), damit die Genres zuerst gekürzt werden; Wo und Rezensionen schmaler
+const PC_COLS = "minmax(210px,2.2fr) 88px 96px 90px 96px 70px 88px minmax(0,1fr) 66px 56px 44px";
 /* Spaltenköpfe sortieren (0.9.7) wie in der Sammlung: Klick sortiert, zweiter Klick andersherum, dritter zurück zur
    gewählten Sortierung; je Tabelle gemerkt (V.sorts.pcw, .vrw, .all) */
 const T_PL = "Höchste Spielerzahl laut IGDB oder PCGamingWiki; „2+“: Mehrspieler ohne bekannte Zahl; Arten im Tooltip";
@@ -419,17 +420,18 @@ function pcRow(r){
   return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="pwopen" data-s="${esc(r.key)}" aria-expanded="${open}" title="${esc(r.name)} · Einzelheiten">${esc(r.name)}</button>${r.kind ? `<span class="b" title="${esc(PC_KIND[r.kind]?.[1] || "")}">${esc(PC_KIND[r.kind]?.[0] || r.kind)}</span>` : ""}${r.vr ? `<span class="b vrq" title="Nur ein Hinweis: der Name nennt VR">VR</span>` : ""}${r.owned ? `<span class="b warn" title="Steht in deiner Sammlung; bei gg.deals von der Wunschliste nehmen?">schon in der Sammlung</span>` : ""}${r.id_near ? `<span class="b warn" title="${esc(`Steam-ID nur nach der Grundform des Namens${typeof r.id_near === "string" ? `: ${r.id_near}` : ""}; bestätigen unter Einstellungen, Zu erledigen`)}">Steam-ID ≈</span>` : ""}${dropMark(r.drop)}${careMark(r.care)}</span>` +
     cell("max. Spieler", gMaxPl(g), "r") + `<span class="r" data-l="Preis">${price}</span>` + cell("überm Tief", low, "r") + cell("Wo", pcWo(r)) +
     cell("Wertung", gSc(r) + (r.score_src === "Steam" ? trendMark(r.trend) : ""), "r") + cell("Rezensionen", gRev(g), "r") +
-    `<span class="c-gen${r.genres?.length ? "" : " nil"}" data-l="Genre">${r.genres?.length ? gGenres(r, open) : G_NIL}</span>` +
+    `<span class="c-gen${r.genres?.length ? "" : " nil"}" data-l="Genre">${r.genres?.length ? gGenres(r, false) : G_NIL}</span>` +
     cell("Spielzeit", hours, "r") + cell("Aktiv", gActive(g), "r") + cell("Jahr", gYear(g), "r") + `</div>` + (open ? pcDetail(r) : "");
 }
 // Einzelheiten eines PC-Wunschs: was die Zeile nicht zeigt, rechts die Beschreibung, darunter Herkunft und Links
-function pcDetail(r){
+function pcDetail(r, gc = 8){
   const row = (l, v, tip) => v ? `<span class="fl">${l}</span><span class="fv"${tip ? ` title="${esc(tip)}"` : ""}>${v}</span>` : "";
   const g = Object.assign({mp: [], genres: []}, r);
   const steamTip = [r.rdesc && (RDESC[r.rdesc] || r.rdesc), r.reviews != null && `${num(r.reviews)} Rezensionen`].filter(Boolean).join(", ");
   // Reihenfolge ab 0.9.7 (Entscheidung 01.11.2026): Wertung, Trend, Spieler, Koop, Update, Erschienen (Firmen im Tooltip), dann die Preise
-  const score = [r.reviews != null && `Steam ${esc(steamTip)}`, r.icrit != null && `IGDB Kritik ${gScore(r.icrit, "Kritiker-Wertung laut IGDB", "")}`].filter(Boolean).join(" · ");
-  const facts = row("Wertung", score, "Steam-Rezensionen (eine Wertung gibt es ab 50) und Kritiker laut IGDB") +
+  // 0.9.8: Steam immer in Prozent und farbig wie in der Tabelle; unter 50 Rezensionen nur die Zahl
+  const score = [r.reviews != null && (r.spct != null ? `Steam ${gScore(r.spct, `Anteil positiver Steam-Rezensionen: ${steamTip}`)}` : `<span class="hint" title="Eine Wertung gibt es ab 50 Rezensionen">Steam ${num(r.reviews)} Rez.</span>`), r.icrit != null && `IGDB Kritik ${gScore(r.icrit, "Kritiker-Wertung laut IGDB", "")}`].filter(Boolean).join(" · ");
+  const facts = row("Wertung", score) +
     row("Trend", trendText(r.trend)) + plRows(g, row) +
     row("Update", r.care ? `${agoDays(r.care.date)}${CARE[r.care.state] ? ` <span class="hint">(${CARE[r.care.state]})</span>` : ""}` : "", r.care ? `Letztes Update laut Steam-Neuigkeiten am ${day(r.care.date)}` : "") +
     row("Erschienen", esc(r.sdate || r.year || ""), [r.dev && `Entwickler: ${r.dev}`, r.pub && r.pub !== r.dev && `Verlag: ${r.pub}`, r.sdate ? "Laut Steam" : r.year_src === "IGDB" ? "Laut IGDB" : ""].filter(Boolean).join("\n")) +
@@ -440,10 +442,10 @@ function pcDetail(r){
     // 0.9.4: Preisverlauf unter den Preisen, nicht in der Fußzeile
     row("", r.kind ? "" : `<button class="link" data-act="verlauf" data-pc="${esc(r.key)}" title="Kurve je Laden, Tief, Angebote der letzten 18 Monate">Preisverlauf</button>`);
   const dtip = r.desc_src === "IGDB" ? "Beschreibung laut IGDB, nur auf Englisch" : "Kurzbeschreibung laut Steam";
-  const side = `<div class="gdm">${r.desc ? `<p class="gdesc${V.gDesc === r.key ? " full" : ""}" data-act="gdesc" data-s="${esc(r.key)}" title="${dtip}${V.gDesc === r.key ? "" : ". Klick zeigt alles"}">${esc(r.desc)}</p>` : `<span class="hint">${r.kind ? "Pakete und DLC bekommen keine Spielinfos." : r.appid ? "Noch keine Spielinfos; der Abgleich holt sie." : "Ohne Steam-ID gibt es keine Spielinfos."}</span>`}</div>`;
+  const side = `<div class="gdm"><span class="gtags ggen"></span>${r.desc ? `<p class="gdesc${V.gDesc === r.key ? " full" : ""}" data-act="gdesc" data-s="${esc(r.key)}" title="${dtip}${V.gDesc === r.key ? "" : ". Klick zeigt alles"}">${esc(r.desc)}</p>` : `<span class="hint">${r.kind ? "Pakete und DLC bekommen keine Spielinfos." : r.appid ? "Noch keine Spielinfos; der Abgleich holt sie." : "Ohne Steam-ID gibt es keine Spielinfos."}</span>`}</div>`;
   const links = [r.url && `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">bei gg.deals</a>`, r.appid && `<a href="https://store.steampowered.com/app/${esc(r.appid)}/" target="_blank" rel="noopener noreferrer">bei Steam</a>`].filter(Boolean);
   const small = [r.since && `auf der Liste seit ${day(r.since)}`, r.srcs?.length && `Spielinfos von ${srcList(r)}`, r.price_at && `Preis von ${when(r.price_at)}`, ...links].filter(Boolean).join(" · ");
-  return `<div class="gd" style="--dcols:minmax(180px,3fr) minmax(320px,5fr)"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
+  return `<div class="gd" style="--gc:${gc}"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
 }
 function vrWishView(){
   const sorts = [["name", "Name"], ["best", "Nah am Tief"], ["sale", "Rabatt"], ["rating", "Wertung"], ["added", "Neu"]];
@@ -567,6 +569,10 @@ const WB_GRADE = {buy: "kaufen", good: "gut", wait: "warten"};
 /* Wo kaufen (0.9.4): dezente Marke ohne Fläche in der Farbe des Ladens (Meta, Steam, Keyshop, sonst ein anderer Laden);
    ein Klick öffnet den Preisverlauf wie „normal“ im eShopKompass. Das Preisurteil steht im Tooltip und in „überm Tief“ */
 const WO_CLS = {meta: "wo-meta", steam: "wo-steam", egal: "wo-any"};
+// Ladenfarben (0.9.8, Entscheidung 02.11.2026, vom dunklen Modus aus): Steam im Steam-Blau, Microsoft/Xbox grün,
+// Humble grau, Fanatical orange, Green Man Gaming grünlich, Keyshop gelb; Epic, GOG und alle übrigen in der Schriftfarbe
+const SHOP_CLS = [[/^steam/i, "wo-steam"], [/microsoft|xbox/i, "wo-ms"], [/humble/i, "wo-humble"], [/fanatical/i, "wo-fan"], [/green ?man/i, "wo-gmg"], [/^meta/i, "wo-meta"]];
+const shopCls = name => (SHOP_CLS.find(([re]) => re.test(name || "")) || [])[1] || "";
 const woChip = (label, cls, attr, tip) => attr ? `<button class="wo ${cls}" data-act="verlauf" ${attr} title="${esc(tip + "\nKlick öffnet den Preisverlauf")}">${esc(label)}</button>`
   : `<span class="wo ${cls}" title="${esc(tip)}">${esc(label)}</span>`;
 function buyBadge(r){
@@ -582,7 +588,7 @@ function pcWo(r){
   const s0 = (r.shops || [])[0], key = r.best_from === "Keyshop";
   const name = key ? "Keyshop" : r.best_from !== "Händler" ? r.best_from : s0 && Math.abs(s0.p - r.best) < 0.01 ? s0.s : "Händler";
   const tip = key ? "Am günstigsten im Keyshop, laut gg.deals" : name === "Händler" ? "Am günstigsten bei einem Händler, laut gg.deals" : `Am günstigsten bei ${name}`;
-  return woChip(name, key ? "wo-key" : /^steam$/i.test(name) ? "wo-steam" : "", r.kind ? "" : `data-pc="${esc(r.key)}"`, tip);
+  return woChip(name, key ? "wo-key" : shopCls(name), r.kind ? "" : `data-pc="${esc(r.key)}"`, tip);
 }
 function buyHtml(r){
   const b = r.buy;
@@ -596,7 +602,9 @@ function buyHtml(r){
   return `<div class="facts wbl">${fact("Wo", order.map(part).filter(Boolean).join(" · "), "Gründe je Laden; der mit mehr Gewicht gewinnt, bei Gleichstand ist es egal")}</div>`;
 }
 function wishRow(r, inTable){
-  const marks = inTable ? [r.crossbuy === false && badges(Object.assign({}, r, {wish: false, wheel: null, where: "", bundle: false, steam_sure: true})), wishListBadge(r)].filter(Boolean).join(" ") : "";
+  // 0.9.8: in der Tabelle steht die Marke der Wunschliste schon in der Zeile; hier nur die Links zum Nachtragen
+  const add = !r.wish || r.where ? "" : !r.wish_src?.length ? addLinks(r.add_links || []) : addLinks(r.add_links, l => (r.wish_missing || []).includes(l.label === "Meta" ? "meta" : "pc"));
+  const marks = inTable ? [r.crossbuy === false && badges(Object.assign({}, r, {wish: false, wheel: null, where: "", bundle: false, steam_sure: true})), (r.wish_missing || []).length || !r.wish_src?.length ? add : ""].filter(Boolean).join(" ") : "";
   const vl = `<button class="link vlb" data-act="verlauf" data-vr="${esc(r.key)}" title="Kurve je Laden, Tief, Angebote der letzten 18 Monate">Preisverlauf</button>`;
   // 0.9.4: Preisverlauf unter den Preisen, nicht ganz rechts
   const prices = shopsHtml(r) || sheetHtml(r);
@@ -611,7 +619,7 @@ function wishRow(r, inTable){
    Rabatt und Bestpreis des Ladens im Tooltip), zum Tief beider Läden („am Tief“ grün, sonst rot der Betrag),
    Wertung (die bessere, mit Trend), Steam-Spieler jetzt, letztes Update */
 // 0.9.4: max. Spieler als zweite Spalte, dann die Preise beider Läden, überm Tief und Wo wie unter „Jetzt, Alle“, Genre aus den Spielinfos
-const VR_COLS = "minmax(180px,1.5fr) 88px 96px 96px 90px 80px 70px 98px minmax(0,1fr) 56px 62px";
+const VR_COLS = "minmax(210px,2.2fr) 88px 96px 96px 90px 80px 70px 88px minmax(0,1fr) 56px 62px";
 const vrGap = r => { const n = ["meta", "steam"].map(k => r.live?.[k]?.price).filter(x => x != null), b = r.best_all?.best;
   return n.length && b != null ? Math.min(...n) - b : null; };
 const VR_KEYS = {title: r => r.name, pl: r => plSort(vrG(r)), meta: r => r.live?.meta?.price ?? null, steam: r => r.live?.steam?.price ?? null,
@@ -626,7 +634,7 @@ function vrTable(rows, t = "vrw"){
 }
 // Spielinfos eines VR-Titels (0.9.4) als Zeile der Sammlung, für max. Spieler und Genre
 const vrG = r => Object.assign({mp: [], mpc: [], genres: [], gc: [], players: 0, srcs: []}, r.info, {key: r.key, name: r.name});
-const vrGenre = (r, open) => { const g = vrG(r); return `<span class="c-gen${g.genres.length ? "" : " nil"}" data-l="Genre">${g.genres.length ? gGenres(g, open) : G_NIL}</span>`; };
+const vrGenre = (r, open) => { const g = vrG(r); return `<span class="c-gen${g.genres.length ? "" : " nil"}" data-l="Genre">${g.genres.length ? gGenres(g, false) : G_NIL}</span>`; };
 function vrPrice(r, k){
   const v = r.live[k], b = r.best?.[k];
   if(!v) return "";
@@ -666,7 +674,7 @@ function vrRow(r){
    bei gg.deals), Wertung, Rezensionen, Aktiv. Ein Klick auf den Namen zeigt die Einzelheiten wie in den Reitern */
 // 0.9.4 (Entscheidung 28.10.2026): Spiel, max. Spieler, Art, Preis, überm Tief, Wo, Wertung, Rezensionen, Genre, Aktiv;
 // ab 0.9.7 (Entscheidung 01.11.2026) Art hinter „überm Tief“
-const ALL_COLS = "minmax(180px,1.5fr) 88px 100px 90px 44px 110px 70px 98px minmax(0,1fr) 56px";
+const ALL_COLS = "minmax(210px,2.2fr) 88px 100px 90px 44px 96px 70px 88px minmax(0,1fr) 56px";
 const ALL_KEYS = {title: x => x.r.name, pl: x => x.vr ? plSort(vrG(x.r)) : plSort(Object.assign({mp: []}, x.r)),
   price: x => x.vr ? (vrCells(x.r).now?.[0] ?? null) : x.r.best ?? null, low: x => x.vr ? vrGap(x.r) : x.r.over ?? null,
   art: x => x.vr ? "VR" : "PC", wo: x => x.vr ? x.r.buy?.shop || null : x.r.best_from || null, sc: x => x.score,
@@ -695,8 +703,8 @@ function allPcRow(r){
     cellOf("max. Spieler", gMaxPl(g), "r") + `<span class="r" data-l="Preis">${pcPriceHtml(r)}</span>` + cellOf("überm Tief", pcLowHtml(r), "r") +
     cellOf("Art", `<span class="b pcb" title="PC-Wunsch von gg.deals">PC</span>`) + cellOf("Wo", pcWo(r)) +
     cellOf("Wertung", gSc(r) + (r.score_src === "Steam" ? trendMark(r.trend) : ""), "r") + cellOf("Rezensionen", gRev(g), "r") +
-    `<span class="c-gen${r.genres?.length ? "" : " nil"}" data-l="Genre">${r.genres?.length ? gGenres(g, open) : G_NIL}</span>` + cellOf("Aktiv", gActive(g), "r") + `</div>` +
-    (open ? pcDetail(r) : "");
+    `<span class="c-gen${r.genres?.length ? "" : " nil"}" data-l="Genre">${r.genres?.length ? gGenres(g, false) : G_NIL}</span>` + cellOf("Aktiv", gActive(g), "r") + `</div>` +
+    (open ? pcDetail(r, 9) : "");
 }
 
 /* ---------------------------------------------------------------- Sammlung
@@ -1208,7 +1216,7 @@ const K_COLS = [
   {k: "kyear", l: "Jahr", w: "44px", cls: "r", d0: -1, cell: kYear, sort: g => g.kv.year || null}];
 // Einzelheiten wie dort: Wertung, Spielzeit, Erschienen, USK, Spieler-Widersprüche, Koop, GameShare, Online;
 // rechts Mein Stand (setzt du im eShopKompass), darunter klein Sprachen, Größe, Kaufdatum, Paket und Links
-function kDetail(g, side){
+function kDetail(g, side, gc = 2){
   const k = g.kv;
   const row = (l, v, tip) => v ? `<span class="fl">${l}</span><span class="fv"${tip ? ` title="${esc(tip)}"` : ""}>${v}</span>` : "";
   const n1 = v => String(v).replace(".", ",");
@@ -1239,7 +1247,7 @@ function kDetail(g, side){
   const deku = `<a href="https://www.dekudeals.com/items/${encodeURIComponent(g.slug)}" target="_blank" rel="noopener noreferrer">DekuDeals</a>${k.nin ? ", von Nintendo geprüft" : k.read ? ", noch nicht von Nintendo geprüft" : ", Seite noch nicht gelesen"}`;
   const small = [langs, k.size_gb && `${esc(n1(k.size_gb))} GB`, g.added && `gekauft am ${day(g.added)}`, pk, ed, deku,
     `laut eShopKompass${C.eshop_at ? `, gelesen ${day(C.eshop_at)}` : ""}`].filter(Boolean).join(" · ");
-  return `<div class="gd"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
+  return `<div class="gd" style="--gc:${gc}"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
 }
 // Nur Switch-Spiele mit der Zeile aus dem eShopKompass: dessen Spalten (0.7.5)
 const colsFor = (d, rows) => rows.length && rows.every(kOn) ? K_COLS : COLS.filter(c => (c.both || (d.sys === "VR") === !!c.vr) && (!c.only || c.only(d)) && rows.some(g => c.cell(g)))
@@ -1310,11 +1318,15 @@ function gExport(){
 function gRow(g, cols, pick){
   const open = (V.gAll ? !V.gShut.has(g.key) : V.gOpen === g.key) && !pick;
   return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="gopen" data-s="${esc(g.key)}" aria-expanded="${open}" title="${esc(g.name)} · Einzelheiten">${esc(g.name)}</button>${gBadges(g)}</span>` +
-    cols.map(c => { const v = c.k === "genre" && open ? gGenres(g, true) : c.cell(g); return `<span class="${c.cls || ""}${c.k === "genre" || c.k === "op" ? " c-gen" : ""}${v ? "" : " nil"}" data-l="${c.l}">${v || G_NIL}</span>`; }).join("") + `</div>` + (open ? gDetail(g) : "");
+    cols.map(c => { const v = c.cell(g); return `<span class="${c.cls || ""}${c.k === "genre" || c.k === "op" ? " c-gen" : ""}${v ? "" : " nil"}" data-l="${c.l}">${v || G_NIL}</span>`; }).join("") + `</div>` + (open ? gDetail(g, gCol(cols), new Set(cols.map(c => c.k))) : "");
 }
+/* Einzelheiten unter der Zeile (0.9.8, Entscheidung 02.11.2026): links die Angaben bis vor die Spalte Genre, rechts ab
+   der Spalte Genre die Genres, die in der Zeile keinen Platz hatten (füllt fitTags), dann Mein Stand, Beschreibung und
+   Gespielt. Die Genres der Zeile bleiben einzeilig, damit die Angaben links oben beginnen */
+const gCol = cols => { const i = cols.findIndex(c => c.k === "genre"); return i < 0 ? 2 : i + 2; };
 /* Einzelheiten (wie im eShopKompass): links die Angaben untereinander, rechts Mein Stand, darunter klein
    Herkunft und Links. Bei VR-Titeln dieselben Fakten, Recherche und Klappe wie in der Wunschliste */
-function gDetail(g){
+function gDetail(g, gc = 2, shownCols = new Set()){
   const row = (l, v, tip) => v ? `<span class="fl">${l}</span><span class="fv"${tip ? ` title="${esc(tip)}"` : ""}>${v}</span>` : "";
   const m = mine(g);
   const marks = `<span class="seg gmark">${G_ST.map(([k, l, ic, tip]) => `<button data-act="gmark" data-s="${esc(g.key)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}"><span class="gst ${k}">${ic}</span> ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.key)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}"><span class="gfav">${m.fav ? "★" : "☆"}</span> Favorit</button></span>`;
@@ -1323,15 +1335,15 @@ function gDetail(g){
   const shown = g.eshop ? `<span class="gmk hint">${st || m.fav ? [st && `<span class="gst ${m.s}">${st[2]}</span> ${st[1]}`, m.fav && `<span class="gfav">★</span> Favorit`].filter(Boolean).join(" · ") : "noch keiner"}; ändern im ${C.eshop_link ? `<a class="eshl" href="${esc(eshUrl(g))}" target="_blank" rel="noopener noreferrer" title="Öffnet das Spiel im eShopKompass"><span class="brand">eShop</span>Kompass</a>` : "eShopKompass"}</span>` : `<span class="gmk">${marks}</span>`;
   // Kurzbeschreibung (0.7.1, Steam auf Deutsch; Switch von Nintendo Europa) unter Mein Stand
   const dtip = g.eshop ? (g.desc_lang === "en" ? "Beschreibung von Nintendo Europa, nur auf Englisch" : "Beschreibung von Nintendo Europa") : g.desc_src === "IGDB" ? "Beschreibung laut IGDB, nur auf Englisch" : g.desc_src === "libretro" ? "Beschreibung laut libretro-database, nur auf Englisch" : "Kurzbeschreibung laut Steam";
-  // 0.9.7: Gespielt über Mein Stand; reine Meta-Titel: Meta nennt keine Spielzeit
+  // Gespielt ab 0.9.8 ganz unten (0.9.7 über Mein Stand); reine Meta-Titel: Meta nennt keine Spielzeit
   const played = g.pt != null ? `<span class="fl">Gespielt</span><span class="gpt" title="Laut Steam-Konto">${playText(g)}</span>`
     : g.lib && g.lib.where === "meta" ? `<span class="fl">Gespielt</span><span class="gpt hint">unbekannt, der Meta Store nennt keine Spielzeit</span>` : "";
-  const side = `<div class="gdm">${played}<span class="fl">Mein Stand</span>${shown}${g.desc ? `<p class="gdesc${V.gDesc === g.key ? " full" : ""}" data-act="gdesc" data-s="${esc(g.key)}" title="${dtip}${V.gDesc === g.key ? "" : ". Klick zeigt alles"}">${esc(g.desc)}</p>` : ""}</div>`;
+  const side = `<div class="gdm"><span class="gtags ggen"></span><span class="fl">Mein Stand</span>${shown}${g.desc ? `<p class="gdesc${V.gDesc === g.key ? " full" : ""}" data-act="gdesc" data-s="${esc(g.key)}" title="${dtip}${V.gDesc === g.key ? "" : ". Klick zeigt alles"}">${esc(g.desc)}</p>` : ""}${played}</div>`;
   if(g.lib){
     const r = g.lib;
-    return `<div class="gd vrd"><div class="gdv"><div class="gbadges">${badges(r)}</div>${factsHtml(r)}${opinionHtml(r)}${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}${moreHtml(r)}</div>${side}</div>`;
+    return `<div class="gd vrd" style="--gc:${gc}"><div class="gdv"><div class="gbadges">${badges(Object.assign({}, r, shownCols.has("own") ? {where: ""} : {}, shownCols.has("cb") ? {crossbuy: null} : {}))}</div>${factsHtml(r)}${opinionHtml(r)}${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}${moreHtml(r)}</div>${side}</div>`;
   }
-  if(kOn(g)) return kDetail(g, side);
+  if(kOn(g)) return kDetail(g, side, gc);
   if(g.eshop){
     // Wie „Spiele“ im eShopKompass (vor eShopKompass 1.7.17, ohne kv): Wertung, Spielzeit, Erschienen (Firmen im Tooltip), USK, Sprachen
     const de = g.langs.includes("german");
@@ -1341,7 +1353,7 @@ function gDetail(g){
       row("Erschienen", g.rel?.length > 4 ? day(g.rel) : "", [g.dev && `Entwickler: ${g.dev}`, g.pub && g.pub !== g.dev && `Verlag: ${g.pub}`].filter(Boolean).join("\n"));
     const link = C.eshop_link ? `<a href="${esc(eshUrl(g))}" target="_blank" rel="noopener noreferrer">im eShopKompass</a>` : "";
     const small = [g.langs.length && !de && `<span class="gno" title="${esc("Sprachen laut Nintendo Europa: " + kLangs(g.langs))}">ohne Deutsch</span>`, g.added && `gekauft am ${day(g.added)}`, `laut eShopKompass${C.eshop_at ? `, gelesen ${day(C.eshop_at)}` : ""}`, link].filter(Boolean).join(" · ");
-    return `<div class="gd"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
+    return `<div class="gd" style="--gc:${gc}"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
   }
   const files = g.retro ? [g.files > 1 ? `${g.files} Dateien` : "", g.regions?.length ? g.regions.join(", ") : "", g.size ? mb(g.size) : g.own?.mb ? `${num(g.own.mb)} MB laut deiner Liste` : ""].filter(Boolean).join(", ") : "";
   // Deine Ordner-Liste (0.8.8): Ordner, Reihe; ein anderer Titel im Dateinamen; was andere Quellen zum Genre sagen
@@ -1375,7 +1387,7 @@ function gDetail(g){
     g.own && "deine Ordner-Liste", g.lname && `libretro-database (dort „${esc(g.lname)}“)`,
     g.ig ? `IGDB${g.iname ? ` (dort „${esc(g.iname)}“)` : ""}` : "", g.srcs?.includes("PCGamingWiki") && "PCGamingWiki"].filter(Boolean).join(", ");
   const small = [langs, g.added && `hinzugefügt am ${day(g.added)}`, src, safeUrl(g.url) && `<a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">Seite im Launcher</a>`].filter(Boolean).join(" · ");
-  return `<div class="gd"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
+  return `<div class="gd" style="--gc:${gc}"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
 }
 // Sim-Racing (0.8.3, Listen ab 0.8.5): bestätigt in einer Liste der Rennspiele; nur Steam-Schlagwörter: gestrichelt; ab 0.8.20 beide umrandet, ohne „?“
 const WHEEL_SRC = {"SimHub": ["https://www.simhubdash.com/supported-games/", "SimHub unterstützt das Spiel (Liste der Rennspiele)"],
@@ -1437,7 +1449,52 @@ function fitTags(){
     t.appendChild(more);
   }
 }
-addEventListener("resize", () => { if(V.tab === "find") fitTags(); });
+addEventListener("resize", () => fitAll());
+/* Nach jedem Zeichnen (0.9.8, auch Jetzt und Wunschliste): erst die Genres kürzen, dann die Marken neben dem Namen;
+   in aufgeklappten Zeilen stehen die versteckten Genres rechts in den Einzelheiten, Marken der Einzelheiten, die schon
+   in der Zeile stehen, fallen weg */
+function fitAll(){
+  if(V.tab === "settings") return;
+  fitTags();
+  fitMarks();
+  for(const row of document.querySelectorAll(".gr.open")){
+    const d = row.nextElementSibling;
+    if(!d || !d.classList.contains("gd")) continue;
+    const slot = d.querySelector(".ggen");
+    if(slot){
+      slot.textContent = "";
+      const hid = [...row.querySelectorAll(".gtags.fit > :not(.gmore)")].filter(c => c.hidden);
+      for(const c of hid){ const x = c.cloneNode(true); x.hidden = false; slot.appendChild(x); }
+      if(hid.length) row.querySelector(".gtags.fit > .gmore")?.remove();
+    }
+    const seen = new Set([...row.querySelectorAll(".t .b")].map(b => b.textContent.trim()));
+    d.querySelectorAll(".gbadges > .b").forEach(b => { if(seen.has(b.textContent.trim())) b.remove(); });
+  }
+}
+/* Marken neben dem Namen (0.9.8): nur so viele, wie in die Spalte passen, dann „+n weitere“ (die übrigen im Tooltip).
+   Erst alles lesen, dann alles schreiben */
+function fitMarks(){
+  const ts = [...document.querySelectorAll(".gr > .t")].filter(t => t.querySelector(":scope > .b"));
+  for(const t of ts){ t.querySelector(":scope > .tmore")?.remove(); for(const c of t.children){ c.hidden = false; c.style.maxWidth = ""; } }
+  const plan = ts.map(t => {
+    if(t.scrollWidth <= t.clientWidth + 1) return null;
+    const box = t.getBoundingClientRect(), bs = [...t.querySelectorAll(":scope > .b")], rs = bs.map(b => b.getBoundingClientRect());
+    const room = box.right - 66;          // Platz für „+9 weitere“
+    let n = 0;
+    while(n < bs.length && rs[n].right <= room) n++;
+    return n < bs.length ? [t, bs, n] : null;
+  });
+  for(const p of plan){
+    if(!p) continue;
+    const [t, bs, n] = p, more = document.createElement("span");
+    bs.slice(n).forEach(b => { b.hidden = true; });
+    if(!n) t.querySelector(":scope > .g-n")?.style.setProperty("max-width", "calc(100% - 72px)");   // „+n weitere“ ganz sichtbar
+    more.className = "b tmore";
+    more.textContent = `+${bs.length - n} weitere`;
+    more.title = bs.slice(n).map(b => b.textContent.trim()).join(", ");
+    t.appendChild(more);
+  }
+}
 // Sammlung lädt beim Scrollen weiter: kommt „weitere zeigen“ in Sicht, klickt es sich selbst
 let moreObs = null;
 function moreOnScroll(){
@@ -1551,10 +1608,8 @@ function findView(){
     ${d.sort === "random" && !colSort ? `<button data-act="dshuffle">Neu mischen</button>` : ""}${foldall}
     <button class="link gdl" data-act="gdl" title="Die Liste mit den gezeigten Spalten als Datei (CSV); aufgeklappte Spiele mit ihren Einzelheiten">herunterladen</button></div>`;
   const gcols = `minmax(180px,1.5fr) ${cols.map(c => c.w).join(" ")}`;
-  // Einzelheiten: Mein Stand steht in jedem Reiter an derselben Stelle (0.8.7), unabhängig von den Spalten
-  // Mein Stand gleich nach der Spalte „Spiel“, wie in der Switch-Ansicht bis 0.8.6 (0.8.10: 3 zu 5 statt 1,5 zu 1)
-  const dcols = "minmax(180px,3fr) minmax(320px,5fr)";
-  const glist = (list, head) => `<div class="glist${head ? " box" : ""}" style="--gcols:${gcols};--dcols:${dcols}">${head || ""}${list}</div>`;
+  // Einzelheiten ab 0.9.8 im Raster der Zeile: Mein Stand unter der Spalte Genre (gCol), vorher eigenes Raster 3 zu 5
+  const glist = (list, head) => `<div class="glist${head ? " box" : ""}" style="--gcols:${gcols}">${head || ""}${list}</div>`;
   const pickCard = pick.length || d.mix === "surprise" || d.mix === "wild" ? `<div class="card gpick"><h2>${d.mix === "wild" ? "Wilde Mischung" : "Vorschlag"}${label ? ` <span class="n">${esc(label)}</span>` : ""}</h2>
     ${pick.length ? glist(pick.map(g => gRow(g, cols, true)).join("")) : `<p class="hint">Nichts passt zu den Filtern.</p>`}
     <div class="actions"><button data-act="dpickoff">Schließen</button><button class="primary" data-act="dmix" data-v="${d.mix}">Noch mal</button></div></div>` : "";
@@ -1644,7 +1699,10 @@ function drawVerlauf(){
   }
   const days = Math.round((new Date(v.today) - new Date(v.since)) / 864e5);
   h += `<p class="hint">Verlauf seit ${day(v.since)} (${days} ${days === 1 ? "Tag" : "Tage"}), höchstens 18 Monate. Ein Angebot ist jede Strecke mindestens 3 % unter dem Normalpreis. Die eigene Aufzeichnung kennt nur Zeiten, in denen das Tool lief${v.series.some(s => s.kind === "meta") ? "; Meta reicht über QuestStoreDB weiter zurück" : ""}${v.series.some(s => s.kind === "shop") ? "; die Läden einzeln kommen von IsThereAnyDeal" : ""}.</p>`;
-  h += `<div class="lg">` + v.series.map(s => `<button class="${V.vl.hide.has(s.name) ? "off" : ""}" data-act="vltoggle" data-n="${esc(s.name)}" title="ein- oder ausblenden"><i style="background:${vlColor(v, s)}"></i>${esc(s.name)}</button>`).join("") + `</div>`;
+  // 0.9.8: alle Läden auf einmal ein- oder ausblenden
+  const allOn = v.series.every(s => !V.vl.hide.has(s.name));
+  h += `<div class="lg">` + (v.series.length > 1 ? `<button class="vlall" data-act="vlall" data-v="${allOn ? "off" : "on"}" title="${allOn ? "Alle Läden ausblenden, dann einzeln wählen" : "Alle Läden einblenden"}">${allOn ? "alle abwählen" : "alle anwählen"}</button>` : "") +
+    v.series.map(s => `<button class="${V.vl.hide.has(s.name) ? "off" : ""}" data-act="vltoggle" data-n="${esc(s.name)}" title="ein- oder ausblenden"><i style="background:${vlColor(v, s)}"></i>${esc(s.name)}</button>`).join("") + `</div>`;
   h += vlSvg(v);
   const last = s => { const l = s.sales[s.sales.length - 1]; return !l ? "–" : `${l.end ? `${dm(l.start)}–${dm(l.end)}` : `läuft seit ${dm(l.start)}`}<small>−${l.pct} %, ${eur(l.low)}</small>`; };
   h += `<div class="scroll"><table><thead><tr><th>Laden</th><th>jetzt</th><th>normal</th><th title="Niedrigster Preis der letzten 18 Monate">tiefster</th><th title="Angebote in diesem Zeitraum">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der Zeit im Angebot">im Angebot</th><th title="Median der Tiefstwerte je Angebot, ab zwei Angeboten">typisch</th><th>zuletzt</th></tr></thead><tbody>` +
@@ -2207,9 +2265,11 @@ document.addEventListener("click", async ev => {
   }
   else if(a === "verlauf") openVerlauf(el.dataset.vr ? "vr" : "pc", el.dataset.vr || el.dataset.pc);
   else if(a === "vlclose") $("verlauf").close();
+  else if(a === "vlall"){ V.vl.hide = new Set(el.dataset.v === "off" ? V.vl.data.series.map(s => s.name) : []); drawVerlauf(); }
   else if(a === "vltoggle"){ const n = el.dataset.n; V.vl.hide.has(n) ? V.vl.hide.delete(n) : V.vl.hide.add(n); drawVerlauf(); }
-  else if(a === "pwopen"){ V.pwOpen = V.pwOpen === el.dataset.s ? null : el.dataset.s; render(); }
-  else if(a === "vwopen"){ V.vwOpen = V.vwOpen === el.dataset.s ? null : el.dataset.s; render(); }
+  // 0.9.8: immer nur ein Eintrag offen, auch in „Jetzt, Alle“ mit PC und VR in einer Tabelle
+  else if(a === "pwopen"){ V.pwOpen = V.pwOpen === el.dataset.s ? null : el.dataset.s; V.vwOpen = null; render(); }
+  else if(a === "vwopen"){ V.vwOpen = V.vwOpen === el.dataset.s ? null : el.dataset.s; V.pwOpen = null; render(); }
   else if(a === "nowk"){ V.nowKind = v || ""; render(); }
   else if(a === "gdesc"){ if(String(getSelection() || "").trim()) return; V.gDesc = V.gDesc === el.dataset.s ? null : el.dataset.s; render(); }
   else if(a === "gall"){ V.gAll = !!v; V.gShut.clear(); V.gOpen = null; render(); }

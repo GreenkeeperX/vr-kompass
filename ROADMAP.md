@@ -151,9 +151,11 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
 - Freie Abrufe für die PC-Sammlung: Sind alle VR-Titel aktuell, holt der Abgleich mit dem Rest
   seines Kontingents Spielerzahlen für die Sammlung (zuerst gut bewertete Mehrspieler-Spiele) und
   hält sie dann ebenso aktuell
-- Preismuster: aus dem eigenen Verlauf und dem Verlauf je Laden (IsThereAnyDeal) ablesen, ob Rabatte an
-  Wochentage, Monate oder einen Abstand zum Erscheinen gebunden sind; zuerst einmal von Hand auswerten,
-  dann entscheiden, ob das Tool es selbst rechnet
+- Preismuster im Tool (einmal ausgewertet 02.11.2026: der Rabatt wächst mit dem Alter des Spiels, Tiefs häufen sich in
+  den großen Steam-Sales, der Wochentag zählt kaum): Hinweis „Warten lohnt“, wenn der Rabatt unter dem für das Alter
+  üblichen liegt; Monat des nächsten großen Sales aus den Häufungen im eigenen Verlauf; Rhythmus je Spiel und Laden
+- PC-Wünsche ohne Steam-ID: Preise über die Titelsuche von IsThereAnyDeal (GOG-, Epic- und andere Spiele)
+- gg.deals-Sammlung per Lesezeichen wie die Wunschliste, als zweite Quelle neben Playnite für Spiele außerhalb von Steam
 - Pflege je Laden vergleichen: Steam-Update-Datum gegen den Tag, an dem die Meta-Version zuletzt wechselte
   (`meta_ver.since`), als weiterer Grund im Urteil „wo kaufen“
 

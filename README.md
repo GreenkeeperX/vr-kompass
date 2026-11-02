@@ -7,13 +7,18 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.9.7:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.9.8:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
 Preise werden 18 Monate behalten, die Tabellen in Jetzt und Wunschliste sortieren per Klick auf den Spaltenkopf,
 die Einzelheiten folgen einer festen Reihenfolge (Wertung, Trend, Spieler, Koop, Spielzeit, Aktiv, Meta, Update,
 USK, Erschienen, VR per Mod, Sim-Racing, Mods), PC-Wünsche zeigen den Rabatt des günstigsten Ladens.
+Neu in 0.9.8: In allen Tabellen kürzen sich erst die Genres, dann die Marken neben dem Namen zu „+n weitere“;
+die Einzelheiten stehen im Raster der Zeile (links die Angaben, ab der Spalte Genre die übrigen Genres, Mein
+Stand, Beschreibung, Gespielt), Steam-Wertungen dort immer in Prozent, Marken nicht doppelt; immer nur ein Eintrag
+offen; im Preisverlauf alle Läden auf einmal an- oder abwählen; Ladenfarben für Steam, Microsoft, Humble,
+Fanatical, Green Man Gaming und Keyshop.
 
 ## Starten
 
