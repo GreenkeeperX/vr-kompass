@@ -26,8 +26,10 @@ eigene Tokens und stehen nirgends sonst.
 Ausnahme für die Marke „Wo“ (ab 0.9.4, Entscheidung 28.10.2026): Laden als dünn umrandete Marke ohne
 Fläche in der Farbe des Ladens, Meta `--wo-meta`, Steam und Händler `--wo-steam`, Keyshop `--wo-key`, „egal“
 grau gestrichelt (`.wo`, `woChip`). Das Preisurteil steht nur im Tooltip. Ein Klick öffnet den Preisverlauf.
-Diese Töne stehen nur in `.wo-meta`, `.wo-steam`, `.wo-key` (Test). Keyshop ab 0.9.7 ein gedecktes
-Graublau zwischen Meta und Steam statt Pink (Entscheidung 01.11.2026).
+Diese Töne stehen nur in `.wo-*` (Test). Ab 0.9.8 (Entscheidung 02.11.2026, vom dunklen Modus aus) je Laden
+die Farbe seiner Marke (`shopCls`): Steam im Steam-Blau `--wo-steam`, Microsoft/Xbox grün `--wo-ms`, Humble grau
+`--wo-humble`, Fanatical orange `--wo-fan`, Green Man Gaming grünlich `--wo-gmg`, Keyshop gelb wie Kinguin
+`--wo-key` (0.9.7 graublau); Epic, GOG, „Händler“ und alle übrigen in der Schriftfarbe.
 
 Ausnahme für die Marke „Crossbuy“ (ab 0.9.7, Entscheidung 01.11.2026): Goldgelb in eigenen Tokens
 `--cb`/`--cb-bg` (`.b.cb`), damit sie sich neben dem grünen „Preissturz“ abhebt. Nur diese Marke.
@@ -234,9 +236,18 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Spieler, Koop, Spielzeit, Aktiv, Meta, Update, USK, Erschienen (Entwickler und Verlag im Tooltip, keine eigene Zeile),
   VR per Mod, Sim-Racing, Mods (Nexus Mods). Danach, was es nur dort gibt: bei PC-Wünschen die Preise (Preissturz,
   Jetzt, Tief, Läden, Preisverlauf), bei Retro-Spielen Gesucht, Dateien und die Ordner-Liste, bei Switch Online und
-  GameShare vor USK. Rechts „Gespielt“ über „Mein Stand“, dann die Beschreibung; reine Meta-Titel: „Gespielt:
-  unbekannt“, der Meta Store nennt keine Spielzeit. Marken eines VR-Titels nebeneinander (`.gbadges`), in der
-  Reihenfolge Steam (Launcher), Meta, Bundle, Crossbuy oder ohne Crossbuy, SimRacing.
+  GameShare vor USK. Ab 0.9.8 (Entscheidung 02.11.2026) stehen die Einzelheiten im Raster der Zeile: links die
+  Angaben bis vor die Spalte Genre (`--gc`, `gCol`), rechts ab der Spalte Genre die Genres, die in der Zeile keinen
+  Platz hatten (`.ggen`, füllt `fitAll`), dann Mein Stand, die Beschreibung und „Gespielt“ ganz unten; reine
+  Meta-Titel: „Gespielt: unbekannt“, der Meta Store nennt keine Spielzeit. Die Genres der Zeile bleiben auch offen
+  einzeilig, damit die Angaben links oben beginnen. Steam-Wertung in den Einzelheiten immer als farbige Prozentzahl
+  (`spct`), unter 50 Rezensionen nur die Zahl. Marken eines VR-Titels nebeneinander (`.gbadges`), in der Reihenfolge
+  Steam (Launcher), Meta, Bundle, Crossbuy oder ohne Crossbuy, SimRacing; was die Zeile schon zeigt (Marke oder
+  Spalte Besitz, Crossbuy), fällt weg. In den VR-Wünschen statt der zweiten Wunschlisten-Marke nur „+ Meta“ usw.
+- Kürzen in der Zeile (ab 0.9.8, alle Reiter): erst die Genres (`fitTags`, „+n weitere“), dann die Marken neben dem
+  Namen (`fitMarks`, „+n weitere“ grau, die übrigen im Tooltip). Spalte Spiel 2,2 zu 1 gegen Genre. In jeder Tabelle
+  ist immer nur ein Eintrag offen, auch in „Jetzt, Alle“.
+- Preisverlauf (ab 0.9.8): vor den Läden „alle abwählen“ bzw. „alle anwählen“ (gestrichelt, `vlall`).
 - Sprachen (ab 0.9.5, Entscheidung 28.10.2026): nur, wenn Deutsch fehlt, als rotes „ohne Deutsch“ (`.gno`) klein in
   der Zeile unten der Einzelheiten, die Sprachen im Tooltip; gilt für PC, Retro, Switch und die eShopKompass-Zeilen.
 - Reiter VR der Sammlung (ab 0.9.5): Spiel, max. Spieler, Wertung, Rezensionen, Genre, Aktiv, Update, Crossbuy, Besitz,

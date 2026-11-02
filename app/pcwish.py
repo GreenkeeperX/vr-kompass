@@ -221,7 +221,7 @@ def _vr_keys(data, col=None):
     return ids, names
 
 
-INFO = ("genres", "gc", "gx", "mp", "mpc", "players", "pl_src", "plm", "score", "score_src", "score_alt", "score_n", "hours_n", "reviews", "rdesc",
+INFO = ("genres", "gc", "gx", "mp", "mpc", "players", "pl_src", "plm", "score", "score_src", "score_alt", "score_n", "hours_n", "reviews", "rdesc", "spct",
         "hours", "hours_all", "hours_src", "year", "year_src", "desc", "desc_lang", "dev", "pub", "gem", "gem_guess", "srcs",
         "src", "ig", "year_ok", "syear", "iyear", "icrit", "sdate", "desc_src", "iname")
 
@@ -238,6 +238,7 @@ def info(e):
     r["rdesc"] = rev.get("desc") or ""
     if r["reviews"] is not None and r["reviews"] >= 50 and rev.get("pct") is not None:
         r["score"], r["score_src"] = rev["pct"], "Steam"
+        r["spct"] = rev["pct"]          # 0.9.8: Steam in Prozent für die Einzelheiten, auch wenn IGDB die Wertung stellt
     r["gem"], r["gem_guess"] = collection.gem(e)
     collection.check(r, st)
     # Ohne Playnite kommen Genre und Mehrspieler nur von Steam: Steam allein gilt dann als bestätigt
