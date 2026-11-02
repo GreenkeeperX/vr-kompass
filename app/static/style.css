@@ -167,6 +167,9 @@ details.op .small{margin:3px 0 0 14px;font-size:13px;overflow-wrap:anywhere}
 details.sub{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:8px}
 details.sub>summary{cursor:pointer}
 details.sub>summary .n{color:var(--muted);font-size:13px}
+h4.dehd{margin:12px 0 4px;font-size:14px}
+h4.dehd .n{color:var(--muted);font-size:13px;font-weight:400}
+h4.dehd .link{font-size:13px;font-weight:400;margin-left:6px}
 details.sub details.sub{margin-left:12px;padding-left:10px;border-top:0;border-left:2px solid var(--line)}
 details.how{margin:0 0 6px}
 details.how>summary{cursor:pointer;margin:0}

@@ -110,6 +110,14 @@ def _year(ts):
         return ""
 
 
+def _date(ts):
+    """Erscheinungstag laut IGDB (0.10.12), „2019-03-12“."""
+    try:
+        return datetime.fromtimestamp(int(ts), timezone.utc).strftime("%Y-%m-%d") if ts else ""
+    except (TypeError, ValueError, OverflowError, OSError):
+        return ""
+
+
 def compact(g):
     """Knappe Fassung eines IGDB-Spiels für collection.json."""
     mm = [m for m in g.get("multiplayer_modes") or [] if isinstance(m, dict)]
@@ -122,7 +130,7 @@ def compact(g):
            "coop_on": any(m.get("onlinecoop") for m in mm), "coop_off": any(m.get("offlinecoop") for m in mm),
            "split": any(m.get("splitscreen") for m in mm), "lan": any(m.get("lancoop") for m in mm),
            "coop_on_n": num("onlinecoopmax"), "coop_off_n": num("offlinecoopmax"),
-           "year": _year(g.get("first_release_date")),
+           "year": _year(g.get("first_release_date")), "date": _date(g.get("first_release_date")),
            "desc": " ".join(str(g.get("summary") or "").split())[:900],
            "dev": next((c["company"].get("name") for c in comp if c.get("developer")), "") or "",
            "pub": next((c["company"].get("name") for c in comp if c.get("publisher")), "") or ""}

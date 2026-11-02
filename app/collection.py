@@ -536,6 +536,9 @@ def merge_igdb(r, ig):
     if ig.get("year") and r.get("src") != "steam":
         r["year_ok"] = r["year"] == ig["year"]
     r["iyear"] = ig.get("year") or ""
+    # 0.10.12: genauer Tag von IGDB, wenn sonst keiner da ist und das Jahr passt (Erschienen in den Einzelheiten)
+    if not r.get("rel") and ig.get("date") and ig["date"][:4] == r["year"]:
+        r["rel"] = ig["date"]
     if not r["dev"] and ig.get("dev"):
         r["dev"] = ig["dev"]
     if not r["pub"] and ig.get("pub"):
@@ -814,6 +817,8 @@ def view(col, data=None):
             r.update(retro=True, langs=g.get("langs") or [], lang_guess=bool(g.get("lang_guess")),
                      regions=g.get("regions") or [], files=g.get("files") or 0, flags=g.get("flags") or [],
                      gone=bool(g.get("gone")), de=g.get("de") or None)
+            if g.get("de_ign") and (g.get("de") or {}).get("st") == "missing":
+                r["de"] = dict(g["de"], ign=g["de_ign"])      # 0.10.12: „DE fehlt“ ignoriert
             if (g.get("de") or {}).get("langs"):
                 # 3DS (0.8.4): Sprachen der Fassung laut No-Intro, gefunden über den Produktcode
                 r.update(langs=g["de"]["langs"], lang_guess=False)

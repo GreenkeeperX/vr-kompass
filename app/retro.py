@@ -324,7 +324,7 @@ def apply(col, games, dry=True, own_systems=()):
     for k, g in games.items():
         o = old.get(k)
         if o:
-            for f in ("rev", "steam", "mark", "info", "igdb", "pcgw", "nexus", "stag", "alias", "near_no", "lr", "own_ok", "own_take"):
+            for f in ("rev", "steam", "mark", "info", "igdb", "pcgw", "nexus", "stag", "alias", "near_no", "lr", "own_ok", "own_take", "de_ign"):
                 if f in o:
                     g[f] = o[f]
             # Ordner-Liste (0.8.8): ohne neue Liste für das System bleibt die alte, ebenso die Größe ohne Ordnerwahl
@@ -648,6 +648,32 @@ def settle_near(col, key, ok, idx):
     else:
         g["de"] = {"st": "unknown"}
     return g
+
+
+def de_list(col):
+    """Retro-Spiele mit „DE fehlt“ für „Zu erledigen“ (0.10.12): es gab eine Fassung mit Deutsch, deine hat keins.
+    Ignorierte (de_ign) stehen nicht darin."""
+    out = [{"key": k, "name": g["name"], "system": g.get("system") or "", "alt": g["de"].get("alt") or "",
+            "guess": bool(g["de"].get("guess"))}
+           for k, g in (col.get("games") or {}).items()
+           if g.get("src") == SRC and (g.get("de") or {}).get("st") == "missing" and not g.get("de_ign") and not g.get("gone")]
+    return sorted(out, key=lambda x: (collection.system_order(x["system"]), titles.norm(x["name"])))
+
+
+def settle_de(col, keys, ign=True):
+    """„DE fehlt“ ignorieren (Tag in de_ign, bleibt beim nächsten Einlesen der Retro-Liste) oder wieder melden.
+    Gibt die Zahl der geänderten Spiele zurück."""
+    games, n = col.get("games") or {}, 0
+    for k in keys:
+        g = games.get(k)
+        if not g or g.get("src") != SRC:
+            continue
+        if ign and not g.get("de_ign"):
+            g["de_ign"] = titles.now_iso()[:10]
+            n += 1
+        elif not ign and g.pop("de_ign", None):
+            n += 1
+    return n
 
 
 # ---------------------------------------------------------------- Spielinfos aus der libretro-database (0.8.8)

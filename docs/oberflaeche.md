@@ -342,6 +342,11 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Namen „Steam-ID ungeprüft“ (`.b.warn`, Steam-Name im Tooltip), solange nicht bestätigt.
 - „Zu erledigen“, Gruppe „Meinung fehlt“ (0.9.2, `todo` mit kind `opinion`): VR-Wünsche ohne Recherche, die zuletzt gewünschten oben (in dieser Reihenfolge nimmt sie der Auftrag), je Titel
   welche Kennungen da sind und Links zu Reddit und Google; oben „Auftrag kopieren“ (`opcopy`, Text aus `opinion_task`).
+- „Zu erledigen“, Gruppe „Retro: DE fehlt“ (0.10.12, `retro_de`): je System eine Überschrift mit Zahl und „alle …
+  ignorieren“ (nur bei mehreren Systemen), oben „Alle ignorieren“; je Spiel die gesuchte Fassung (violett, wenn ihr
+  Deutsch nur aus der Region geschätzt ist) und „ignorieren“. Der Hinweis danach hat „Rückgängig“. Ignoriert: keine
+  Marke „DE fehlt“, Filter „Sprache“ zählt es als „ohne Deutsch“, in den Einzelheiten „Gesucht: …, ignoriert“ grau
+  mit „wieder melden“; die Zeile über der Tabelle nennt die Zahl der ignorierten.
 - „Zu erledigen“, Gruppe „Retro: ähnlicher Name“ (0.8.4): je Spiel System, ähnlicher Titel der Fassungsliste,
   Knöpfe „dasselbe“ und „anderes“. Sprachen eines 3DS-Spiels über den Produktcode sind nicht violett; der
   Tooltip nennt „laut No-Intro“ und die Fassung.

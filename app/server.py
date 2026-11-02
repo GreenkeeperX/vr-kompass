@@ -171,7 +171,7 @@ def memo(key, files, make):
 
 def _retro_lists():
     col = store.load_json(collection.FILE, collection.EMPTY)
-    return retro.near_list(col), retro.own_list(col)
+    return retro.near_list(col), retro.own_list(col), retro.de_list(col)
 
 
 def price_stats(data=None, pw=None, hist=None):
@@ -185,7 +185,7 @@ def price_stats(data=None, pw=None, hist=None):
 
 def state():
     data = store.load_data()
-    near, own = memo("retro", (collection.FILE,), _retro_lists)
+    near, own, de = memo("retro", (collection.FILE,), _retro_lists)
     hist, pw = store.load_json("history.json", {}), store.load_json(pcwish.FILE, pcwish.EMPTY)
     view, pcv = library.view(data, hist=hist, settings=sync.load_settings()), pcwish.view(data)
     st = price_stats(data, pw, hist)
@@ -193,7 +193,7 @@ def state():
     return dict(view, muster=st, own_check=besitz.check(data),
                 marks=data["marks"], version=sources.VERSION, pcwish=pcv,
                 pcwish_ids=pcwish.id_todo(store.load_json(pcwish.FILE, pcwish.EMPTY)),
-                retro_near=near, retro_own=own, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
+                retro_near=near, retro_own=own, retro_de=de, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
                 sync=sync.status(), settings=settings_view())
 
 
@@ -482,6 +482,21 @@ class Handler(BaseHTTPRequestHandler):
                         retro.settle_own(col, k, take=body.get("take") is True)
                     store.save_json(collection.FILE, col)
                 self._send(200, {"retro_own": retro.own_list(col), "collection": collection.view(col, store.load_data())})
+            elif path == "/api/retro/de":
+                # „DE fehlt“ aus „Zu erledigen“ (0.10.12): ignorieren (ein Spiel, alle oder alle eines Systems) oder wieder melden
+                ign = body.get("ign") is not False
+                with store.lock:
+                    col = store.load_json(collection.FILE, collection.EMPTY)
+                    if body.get("all") is True:
+                        sy = _text(body.get("system"), 40)
+                        keys = [x["key"] for x in retro.de_list(col) if not sy or x["system"] == sy]
+                    elif isinstance(body.get("keys"), list):      # „Rückgängig“ nach „alle ignorieren“
+                        keys = [_text(k, 300) for k in body["keys"][:5000]]
+                    else:
+                        keys = [_text(body.get("key"), 300)]
+                    n = retro.settle_de(col, keys, ign)
+                    store.save_json(collection.FILE, col)
+                self._send(200, {"changed": n, "retro_de": retro.de_list(col), "collection": collection.view(col, store.load_data())})
             elif path == "/api/retro/near":
                 # Ähnlicher Name aus „Zu erledigen“ (0.8.4): dieselbe Fassung oder nicht
                 key = _text(body.get("key"), 300)

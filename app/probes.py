@@ -416,8 +416,68 @@ def run(probe, lines, col, keys, sleep):
     else:
         lines.append("libretro metadat: keine Retro-Liste, nicht angefragt")
 
+    gametdb(probe, lines, col)
+
     nexus(lines, pc["name"], sleep, (keys or {}).get("nexus_key", ""))
 
     names = [("PC", pc["name"], appid), ("Konsole", con["name"], None, con.get("system"))] + (
         [("Retro", ret["name"], None, ret.get("system"))] if ret else [])
     igdb(lines, keys, names, sleep)
+
+
+# GameTDB (0.10.12): Für GameCube und Wii hat die libretro-database keine Spielinfos. GameTDB führt jedes Spiel
+# unter seiner Spiel-ID („RMCP01“) mit Titeln je Sprache, Beschreibung, Genre, Spielerzahl, USK und Sprachen je
+# Fassung. Die Probe liest die Titelliste auf Deutsch und eine Spielseite; entschieden wird nach dem Ergebnis.
+GAMETDB = "https://www.gametdb.com/"
+GAMETDB_LIST = GAMETDB + "wiitdb.txt?LANG=DE"
+GAMETDB_SAMPLE = "GALP01"       # ein bekanntes GameCube-Spiel, wenn die Sammlung keins mit Spiel-ID hat
+
+
+def gametdb_ids(text):
+    """Titelliste von GameTDB („ID = Titel“ je Zeile) als {ID: Titel}."""
+    out = {}
+    for line in str(text or "").splitlines():
+        a, sep, b = line.partition(" = ")
+        a = a.strip().upper()
+        if sep and re.fullmatch(r"[A-Z0-9]{4,6}", a) and a != "TITLES":
+            out[a] = b.strip()[:200]
+    return out
+
+
+def gametdb_page(text):
+    """Was eine Spielseite von GameTDB erkennen lässt (nur Merkmale, die Auswertung kommt nach der Probe)."""
+    t = html.unescape(re.sub(r"<[^>]+>", " ", str(text or "")))
+    t = " ".join(t.split())
+    marks = [(k, bool(re.search(p, t, re.I))) for k, p in (
+        ("Beschreibung", r"synopsis"), ("Genre", r"\bgenre"), ("Spieler", r"\bplayers?\b"), ("USK", r"\bUSK\b"),
+        ("PEGI", r"\bPEGI\b"), ("Sprachen", r"languages?"), ("Entwickler", r"developer"), ("Erscheinen", r"release date"))]
+    return ", ".join(f"{k} {'ja' if v else 'nein'}" for k, v in marks)
+
+
+def gametdb(probe, lines, col):
+    """Titelliste und eine Spielseite für GameCube oder Wii; ohne solche Spiele in der Sammlung nicht angefragt."""
+    games = [g for g in (col.get("games") or {}).values() if g.get("system") in ("GameCube", "Wii")]
+    if not games:
+        lines.append("GameTDB: kein GameCube- oder Wii-Spiel in der Sammlung, nicht angefragt")
+        return
+    with_id = [g for g in games if str(g.get("serial") or "").startswith("ID-")]
+    g = (with_id or games)[0]
+    want = str(g.get("serial") or "")[3:7].upper()
+    found = {}
+
+    def list_info(t):
+        ids = gametdb_ids(t)
+        gc = sum(1 for k in ids if k[0] in "GD")
+        if want:
+            hit = sorted(k for k in ids if k.startswith(want))
+        else:
+            n = re.sub(r"[^a-z0-9]+", "", search_name(g.get("name")).casefold())
+            hit = sorted(k for k, v in ids.items() if re.sub(r"[^a-z0-9]+", "", search_name(v).casefold()) == n)
+        if hit:
+            found["id"] = hit[0]
+        return (f"{len(ids)} Spiele, davon etwa {gc} GameCube; „{g.get('name', '')[:40]}“ ({g.get('system')}) "
+                + (f"gefunden als {', '.join(hit[:4])}: „{ids[hit[0]][:60]}“" if hit else "nicht gefunden"
+                   + (f" (Spiel-ID {want})" if want else " (über den Namen)")))
+    probe("GameTDB, Titelliste (deutsch)", GAMETDB_LIST, list_info)
+    gid = found.get("id") or GAMETDB_SAMPLE
+    probe(f"GameTDB, Spielseite {gid}", GAMETDB + "Wii/" + gid, gametdb_page)
