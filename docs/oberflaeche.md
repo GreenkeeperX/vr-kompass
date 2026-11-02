@@ -322,8 +322,10 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   (`--hov` je Ansicht: hell 6 % Textfarbe, dunkel 70 % Seitenhintergrund in der Kartenfarbe).
 - Aufklappen (ab 0.10.8, `keepRow`): die angeklickte Zeile bleibt an ihrer Stelle im Fenster, auch wenn darüber eine
   andere Zeile zuklappt; danach rückt das Fenster nach, bis die Einzelheiten zu sehen sind (`showOpen`).
-- Sortieren (ab 0.10.8, `sortSel`): ist in Jetzt oder Wunschliste eine Spalte sortiert, steht in der Auswahl „nach
-  Spalte“; eine andere Wahl hebt die Spaltensortierung dieser Tabelle auf, wie in der Sammlung.
+- Sortieren (ab 0.10.8, `sortSel`): ist in Jetzt oder Wunschliste eine Spalte sortiert, hebt eine andere Wahl die
+  Spaltensortierung dieser Tabelle auf, wie in der Sammlung. Ab 0.10.9 (`sortOpts`, Entscheidung 02.11.2026) steht
+  statt „nach Spalte“ die Spalte selbst in der Auswahl, mit Richtung (`Preis ▲`); gibt es dieselbe Wahl schon (etwa
+  „Wertung“), ist sie gewählt und trägt den Pfeil. Ebenso in der Sammlung.
 - Tooltips zum Tief (ab 0.10.7, `lowTip`): „am Tief“, Stern, Tief-Spalte, Rabatt, „kaufen“/„gut“ und `bestLine` nennen
   den tatsächlichen Tiefpreis mit Laden und Datum, den Preis jetzt und den Abstand; der Rabatt zusätzlich Normalpreis
   und Ende, die gg.deals-Zeile Händler, Keyshop und Steam. Ein Tief von 0 € (Gratis-Aktion) zählt bei PC-Wünschen

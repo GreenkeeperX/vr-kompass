@@ -470,3 +470,5 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
   führt, mit `store` (erster erkannter Launcher) und `stores`; angelegt beim Einlesen, bereinigt nach einem
   Playnite-Import und bei jedem Abgleich (`collection.sync_gg`). Die gelesene Liste selbst liegt unter `gg_coll` in
   `data.json` (`at`, `items` mit `slug`, `name`, `stores`), der Stand unter `imports.ggcoll`.
+  Das Lesezeichen liest ab 0.10.9 bis zu 200 Seiten (vorher 30) mit 1,2 s Pause und hört bei 403 oder 429 auf; es
+  gibt je Karte nur die erkannten Launcher-Namen weiter, nicht mehr den Text der Karte.
