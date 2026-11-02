@@ -259,11 +259,13 @@ function factsHtml(r){
   if(m || s){
     const mp = m ? m.pos ?? Math.round(m.stars * 20) : null, sp = s?.pct ?? null;
     const win = mp != null && sp != null && Math.abs(mp - sp) >= RATE_GAP ? (mp > sp ? "meta" : "steam") : "";
-    const cell = (k, label, v, n, tip) => `<span class="rate${win === k ? " win" : ""}" title="${esc(tip)}">${label} ${v}${n ? ` <span class="hint">(${num(n)})</span>` : ""}</span>`;
+    // 0.10.7 (Entscheidung 02.11.2026): beide Werte immer in der Farbe der Wertung, auch der schwächere; den Abstand
+    // zeigt die grüne Marke „+n“. Aus Sternen umgerechnet: violett unterstrichen
+    const cell = (k, label, v, n, tip, calc) => `<span class="rate" title="${esc(tip)}">${label} <span class="gsc${calc ? " gxu" : ""}" style="--sh:${gScoreHue(v)}">${v} %</span>${n ? ` <span class="hint">(${num(n)})</span>` : ""}</span>`;
     const parts = [];
-    if(m) parts.push(m.pos != null ? cell("meta", "Meta", `${mp} %`, m.n, `Meta Store: Anteil 4 und 5 Sterne (laut VRDB), Schnitt ${String(m.stars).replace(".", ",")} von 5`)
-      : cell("meta", "Meta", `<span class="gxc">${mp} %</span>`, m.n, `Meta Store: ${String(m.stars).replace(".", ",")} von 5 Sternen, umgerechnet × 20 (gelesen bei QuestStoreDB)`));
-    if(s) parts.push(sp != null ? cell("steam", "Steam", `${sp} %`, s.n, "Anteil positiver Steam-Rezensionen") + trendMark(s.trend)
+    if(m) parts.push(m.pos != null ? cell("meta", "Meta", mp, m.n, `Meta Store: Anteil 4 und 5 Sterne (laut VRDB), Schnitt ${String(m.stars).replace(".", ",")} von 5`)
+      : cell("meta", "Meta", mp, m.n, `Meta Store: ${String(m.stars).replace(".", ",")} von 5 Sternen, umgerechnet × 20 (gelesen bei QuestStoreDB)`, true));
+    if(s) parts.push(sp != null ? cell("steam", "Steam", sp, s.n, "Anteil positiver Steam-Rezensionen") + trendMark(s.trend)
       : `<span class="hint" title="Steam-Rezensionen; eine Wertung gibt es ab 50">Steam ${num(s.n)} Rez.</span>`);
     if(win) parts.push(`<span class="b go" title="Mindestens ${RATE_GAP} Punkte Abstand">${win === "meta" ? "Meta" : "Steam"} +${Math.abs(mp - sp)}</span>`);
     out.push(fact("Wertung", parts.join(" ")));
@@ -447,19 +449,21 @@ function atShop(r, name){
   const s = (r.shops || []).find(x => x.s === name && x.near);
   if(!s) return null;
   const lo = r.shops_low;
-  return Object.assign({}, r, {best: s.p, best_from: name, url: s.u || r.url, low: lo, over: lo ? Math.round((s.p - lo) / lo * 1000) / 1000 : 0});
+  return Object.assign({}, r, {best: s.p, best_from: name, url: s.u || r.url, low: lo, low_from: "den offiziellen Läden (IsThereAnyDeal)", over: lo ? Math.round((s.p - lo) / lo * 1000) / 1000 : 0});
 }
 // Preis und Abstand zum Tief einer PC-Zeile, auch für „Jetzt, Alle“ (0.8.27)
+const pcLowFrom = r => r.low_from || (r.low == null ? "" : r.low === r.keyshops_low ? "Keyshops (gg.deals)" : "Händlern (gg.deals)");
+const pcLowTip = r => lowTip(r.low, r.best, pcLowFrom(r));
 function pcPriceHtml(r){
   const atLow = r.over != null && r.over <= 0.02;
   const cut = r.cut ? `<span class="b deal" title="${esc(`−${r.cut} % bei ${r.cut_shop || "dem günstigsten Laden"} (IsThereAnyDeal)`)}">−${r.cut} %</span> ` : "";
-  return r.best != null ? `${cut}${atLow ? `<span class="star" title="Am bisherigen Tief (höchstens 2 % darüber)">★</span>` : ""}${extLink(r.url, `<b>${eur(r.best)}</b>`, pcPriceTip(r))}`
+  return r.best != null ? `${cut}${atLow ? `<span class="star" title="${esc(pcLowTip(r))}">★</span>` : ""}${extLink(r.url, `<b>${eur(r.best)}</b>`, pcPriceTip(r))}`
     : `<span class="hint" title="${r.kind ? "Preis auf der Seite bei gg.deals" : r.appid ? "gg.deals nennt keinen Preis" : "Noch keine Steam-ID"}">${extLink(r.kind ? r.url : "", "–")}</span>`;
 }
 function pcLowHtml(r){
   if(r.over == null) return "";
-  return r.over <= 0.02 ? `<span class="g-buy" title="${esc(`Höchstens 2 % über dem bisherigen Tief ${eur(r.low)}`)}">am Tief</span>`
-    : `<span class="over" title="${esc(`${eur(r.best - r.low)} über dem bisherigen Tief ${eur(r.low)} (+${Math.round(r.over * 100)} %)`)}">+${eur(Math.round((r.best - r.low) * 100) / 100)}</span>`;
+  return r.over <= 0.02 ? `<span class="g-buy" title="${esc(pcLowTip(r))}">am Tief</span>`
+    : `<span class="over" title="${esc(pcLowTip(r))}">+${eur(Math.round((r.best - r.low) * 100) / 100)}</span>`;
 }
 function pcRow(r){
   const open = V.pwOpen === r.key, atLow = r.over != null && r.over <= 0.02;
@@ -481,7 +485,7 @@ function pcDetail(r, gc = 5){
   const steamTip = [r.rdesc && (RDESC[r.rdesc] || r.rdesc), r.reviews != null && `${num(r.reviews)} Rezensionen`].filter(Boolean).join(", ");
   // Reihenfolge ab 0.9.7 (Entscheidung 01.11.2026): Wertung, Trend, Spieler, Koop, Update, Erschienen (Firmen im Tooltip), dann die Preise
   // 0.9.8: Steam immer in Prozent und farbig wie in der Tabelle; unter 50 Rezensionen nur die Zahl
-  const score = [r.reviews != null && (r.spct != null ? `Steam ${gScore(r.spct, `Anteil positiver Steam-Rezensionen: ${steamTip}`)}` : `<span class="hint" title="Eine Wertung gibt es ab 50 Rezensionen">Steam ${num(r.reviews)} Rez.</span>`), r.icrit != null && `IGDB Kritik ${gScore(r.icrit, "Kritiker-Wertung laut IGDB", "")}`].filter(Boolean).join(" · ");
+  const score = [r.reviews != null && (r.spct != null ? `Steam ${gScore(r.spct, `Anteil positiver Steam-Rezensionen: ${steamTip}`)} <span class="hint">(${num(r.reviews)})</span>` : `<span class="hint" title="Eine Wertung gibt es ab 50 Rezensionen">Steam ${num(r.reviews)} Rez.</span>`), r.icrit != null && `IGDB Kritik ${gScore(r.icrit, "Kritiker-Wertung laut IGDB", "")}`].filter(Boolean).join(" · ");
   const facts = row("Wertung", score) +
     row("Trend", trendText(r.trend)) + plRows(g, row) +
     row("Update", r.care ? `${agoDays(r.care.date)}${CARE[r.care.state] ? ` <span class="hint">(${CARE[r.care.state]})</span>` : ""}` : "", r.care ? `Letztes Update laut Steam-Neuigkeiten am ${day(r.care.date)}` : "") +
@@ -538,6 +542,13 @@ function nearBest(r){
    fremden Quelle stammt, solange der eigene Verlauf zu kurz ist. Der günstigere Laden bekommt einen
    grünen Rahmen und den Betrag (ab 1 €). */
 const SHOP = {meta: "Meta", steam: "Steam"};
+/* Tooltip zum Tief (0.10.7, wie im eShopKompass): der Tiefstpreis selbst mit Laden und Tag, der Preis jetzt und der
+   Abstand; „am Tief“ gilt bis 2 % darüber */
+function lowTip(low, now, where, at, src){
+  const d = Math.round((now - low) * 100) / 100, near = now <= low * 1.02 + 0.005;
+  return `Tief ${eur(low)}${where ? ` bei ${where}` : ""}${at ? ` am ${day(at)}` : ""}${src ? ` (${src})` : ""}; jetzt ${eur(now)}` +
+    (d < 0.005 ? ", genau am Tief" : near ? `, ${eur(d)} darüber, das zählt noch als Tief (bis 2 %)` : `, ${eur(d)} darüber (+${low > 0 ? Math.round(d / low * 100) : 0} %)`);
+}
 function bestFrom(b){
   return b.src ? `${b.src}${b.best_at ? ", " + day(b.best_at) : ""}` : `${day(b.best_at)}${b.full ? ", 18 Monate" : ", Verlauf seit " + day(b.since)}`;
 }
@@ -546,7 +557,7 @@ function bestLine(v, b, A, shop){
   if(!own && !A) return `<div class="bl hint" title="Der eigene Verlauf hat noch keine Preisänderung">Tief noch offen</div>`;
   A = A || {best: b.best, shop, src: b.src, at: b.best_at};
   const ap = A.src ? " gxc" : "", other = A.shop !== shop;
-  const tip = `Jetzt ${eur(v.price)}, Tief beider Läden ${eur(A.best)} bei ${SHOP[A.shop]}${A.src ? " (" + A.src + ")" : ""}` +
+  const tip = lowTip(A.best, v.price, SHOP[A.shop], A.at, A.src).replace(/^Tief/, "Tief beider Läden") +
     (own ? `; ${SHOP[shop]} selbst: ${eur(b.best)} (${bestFrom(b)})${b.usual != null ? `, übliches Angebot ${eur(b.usual)}` : ""}` : `; ${SHOP[shop]} selbst: noch offen`) +
     `, Normalpreis ${eur(v.base || v.price)}`;
   // Vergleich: der Tiefstpreis des Ladens selbst, wenn der Bestpreis aus dem anderen Laden kommt
@@ -565,12 +576,13 @@ const linkOf = (r, label) => (r.links || []).find(l => l.label === label)?.url |
 function shopCell(key, v, b, A, win, extra, url){
   const shop = SHOP[key];
   if(!v) return `<div class="shop none"><div class="sl">${shop}</div><div class="bl">kein Preis</div>${extra || ""}</div>`;
-  const sale = v.discount ? ` <span class="b deal">−${v.discount} %${v.kind === "coupon" ? " Gutschein" : ""}</span>${v.until ? ` <span class="hint">${until(v.until)}</span>` : ""}` : "";
+  const sale = v.discount ? ` <span class="b deal" title="${esc(`Normalpreis ${eur(v.base || v.price)}, jetzt ${eur(v.price)}${v.until ? `, Angebot ${until(v.until)}` : ""}`)}">−${v.discount} %${v.kind === "coupon" ? " Gutschein" : ""}</span>${v.until ? ` <span class="hint">${until(v.until)}</span>` : ""}` : "";
   const old = v.stale ? ` <span class="b warn" title="Älter als zwei Tage: Abruf prüfen">Stand ${ago(v.at)}</span>` : "";
   // Urteil wie im eShopKompass (0.6.0): grün „kaufen“ (bis 2 % oder 0,50 € über dem Tief beider Läden),
   // grün umrandet „gut“ (bis 15 % oder 2 €); „warten“ ohne Marke
-  const vd = b?.grade === "buy" ? ` <span class="vd buy" title="Höchstens 2 % oder 0,50 € über dem Tief beider Läden">kaufen</span>`
-    : b?.grade === "good" ? ` <span class="vd good" title="Höchstens 15 % oder 2 € über dem Tief beider Läden">gut</span>` : "";
+  const lt = A?.best != null ? lowTip(A.best, v.price, SHOP[A.shop], A.at, A.src).replace(/^Tief/, "Tief beider Läden") + ". " : "";
+  const vd = b?.grade === "buy" ? ` <span class="vd buy" title="${esc(lt + "„kaufen“: höchstens 2 % oder 0,50 € über dem Tief beider Läden")}">kaufen</span>`
+    : b?.grade === "good" ? ` <span class="vd good" title="${esc(lt + "„gut“: höchstens 15 % oder 2 € über dem Tief beider Läden")}">gut</span>` : "";
   return `<div class="shop${win ? " win" : ""}"><div class="sl">${shop}${vd}${sale}${old}</div>
     <div>${extLink(url, `<span class="price big">${eur(v.price)}</span>`, `${shop}: zum Spiel im Laden`)}${v.discount && v.base ? ` <s>${eur(v.base)}</s>` : ""}</div>
     ${bestLine(v, b, A, key)}${extra || ""}${win ? `<div class="cheap">${win}</div>` : ""}</div>`;
@@ -585,7 +597,7 @@ function shopsHtml(r){
   // Günstigstes Angebot bei gg.deals (Händler oder Keyshop) unter Steam: als Zeile im Steam-Feld
   const gb = g ? [[g.retail, "Händler"], [g.keyshops, "Keyshop"]].filter(x => x[0] != null).sort((a, b) => a[0] - b[0])[0] : null;
   const deal = gb && (!L.steam || gb[0] < L.steam.price - 0.005)
-    ? `<div class="bl" title="Günstigstes Angebot laut gg.deals, Händler und Keyshops">${gb[1]} ${extLink(g.url || linkOf(r, "gg.deals"), eur(gb[0]), "Angebote bei gg.deals")} <span class="hint">(gg.deals)</span></div>` : "";
+    ? `<div class="bl" title="${esc([`Günstigstes Angebot laut gg.deals`, g.retail != null && `Händler ${eur(g.retail)}`, g.keyshops != null && `Keyshop ${eur(g.keyshops)}`, L.steam && `Steam ${eur(L.steam.price)}`].filter(Boolean).join("\n"))}">${gb[1]} ${extLink(g.url || linkOf(r, "gg.deals"), eur(gb[0]), "Angebote bei gg.deals")} <span class="hint">(gg.deals)</span></div>` : "";
   return `<div class="shops">${shopCell("meta", L.meta, B.meta, r.best_all, metaWin, "", linkOf(r, "Meta"))}${shopCell("steam", L.steam, B.steam, r.best_all, pcWin, deal, linkOf(r, "Steam"))}</div>`;
 }
 V.more = new Set();
@@ -718,9 +730,9 @@ function vrCells(r){
   const now = ["meta", "steam"].filter(k => L[k]).map(k => [L[k].price, k]).sort((a, b) => a[0] - b[0])[0];
   let gap = "";
   if(now && A?.best != null){
-    const tip = `Tief beider Läden ${eur(A.best)} bei ${SHOP[A.shop]}${A.src ? ` (${A.src})` : ""}; jetzt am günstigsten ${SHOP[now[1]]} ${eur(now[0])}`;
+    const tip = lowTip(A.best, now[0], SHOP[A.shop], A.at, A.src) + ` (am günstigsten jetzt: ${SHOP[now[1]]})`;
     gap = now[0] <= A.best * 1.02 + 0.005 ? `<span class="g-buy${A.src ? " gxc" : ""}" title="${esc(tip)}">am Tief</span>`
-      : `<span class="over" title="${esc(tip + ` (+${A.best > 0 ? Math.round((now[0] - A.best) / A.best * 100) : 0} %)`)}">+${eur(Math.round((now[0] - A.best) * 100) / 100)}</span>`;
+      : `<span class="over" title="${esc(tip)}">+${eur(Math.round((now[0] - A.best) * 100) / 100)}</span>`;
   }
   const rt = r.rating || {}, m = rt.meta, st = rt.steam;
   const rtip = [m && `Meta: ${m.pos != null ? m.pos + " % (4 und 5 Sterne, VRDB)" : `etwa ${Math.round(m.stars * 20)} % (${String(m.stars).replace(".", ",")} Sterne)`}`,
@@ -1363,9 +1375,13 @@ const colsFor = (d, rows) => rows.length && rows.every(kOn) ? K_COLS : COLS.filt
 /* Marken hinter dem Namen, knapp: Mein Stand, VR, Geheimtipp, Retro (DE fehlt, Homebrew, Hack, nicht mehr
    in der Liste), bei VR-Titeln Wunsch, Bundle und was zu prüfen ist */
 const GEM_MIN = 0.4;
+function gmeHtml(g){
+  const m = mine(g), st = G_ST.find(x => x[0] === m.s);
+  return st || m.fav || m.ign ? `<span class="gme">${st ? mIcon(m.s, `Mein Stand: ${st[1]}`) : ""}${m.fav ? mIcon("fav", "Favorit") : ""}${m.ign ? mIcon("ign", "Ignoriert: wird nie vorgeschlagen") : ""}</span>` : "";
+}
 function gBadges(g){
   const b = [], m = mine(g), st = G_ST.find(x => x[0] === m.s);
-  if(st || m.fav || m.ign) b.push(`<span class="gme">${st ? mIcon(m.s, `Mein Stand: ${st[1]}`) : ""}${m.fav ? mIcon("fav", "Favorit") : ""}${m.ign ? mIcon("ign", "Ignoriert: wird nie vorgeschlagen") : ""}</span>`);
+  b.push(gmeHtml(g));
   if(g.lib){
     const r = g.lib;
     if(r.wish) b.push(`<span class="b" title="Steht auch auf der Wunschliste">Wunsch</span>`);
@@ -1434,12 +1450,17 @@ function gRow(g, cols, pick){
    der Spalte Genre die Genres, die in der Zeile keinen Platz hatten (füllt fitTags), dann Mein Stand, Beschreibung und
    Gespielt. Die Genres der Zeile bleiben einzeilig, damit die Angaben links oben beginnen */
 const gCol = cols => { const i = cols.findIndex(c => c.k === "genre"); return i < 0 ? 2 : i + 2; };
+// Knöpfe von Mein Stand (ab 0.10.7 eigene Funktion: ein Klick tauscht nur sie und die Zeichen am Namen aus)
+function gMarkHtml(g){
+  const m = mine(g);
+  return `<span class="seg gmark">${G_ST.map(([k, l, tip]) => `<button data-act="gmark" data-s="${esc(g.key)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${mIcon(k)} ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.key)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${mIcon("fav", "", !m.fav)} Favorit</button><button data-act="gmark" data-s="${esc(g.key)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}">${mIcon("ign")} ignorieren</button></span>`;
+}
 /* Einzelheiten (wie im eShopKompass): links die Angaben untereinander, rechts Mein Stand, darunter klein
    Herkunft und Links. Bei VR-Titeln dieselben Fakten, Recherche und Klappe wie in der Wunschliste */
 function gDetail(g, gc = 2, shownCols = new Set()){
   const row = (l, v, tip) => v ? `<span class="fl">${l}</span><span class="fv"${tip ? ` title="${esc(tip)}"` : ""}>${v}</span>` : "";
   const m = mine(g);
-  const marks = `<span class="seg gmark">${G_ST.map(([k, l, tip]) => `<button data-act="gmark" data-s="${esc(g.key)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${mIcon(k)} ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.key)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${mIcon("fav", "", !m.fav)} Favorit</button><button data-act="gmark" data-s="${esc(g.key)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}">${mIcon("ign")} ignorieren</button></span>`;
+  const marks = gMarkHtml(g);
   // Switch (0.7.3): Mein Stand setzt du im eShopKompass, hier steht er nur
   const st = G_ST.find(x => x[0] === m.s);
   const shown = g.eshop ? `<span class="gmk hint">${st || m.fav || m.ign ? [st && `${mIcon(m.s)} ${st[1]}`, m.fav && `${mIcon("fav")} Favorit`, m.ign && `${mIcon("ign")} ignoriert`].filter(Boolean).join(" · ") : "noch keiner"}; ändern im ${C.eshop_link ? `<a class="eshl" href="${esc(eshUrl(g))}" target="_blank" rel="noopener noreferrer" title="Öffnet das Spiel im eShopKompass"><span class="brand">eShop</span>Kompass</a>` : "eShopKompass"}</span>` : `<span class="gmk">${marks}</span>`;
@@ -1479,7 +1500,7 @@ function gDetail(g, gc = 2, shownCols = new Set()){
   // Wertung wie im eShopKompass (0.7.2): Zahlen statt Steams Worten, Steam in Prozent, Metacritic auf 100
   const steamTip = [g.rdesc && (RDESC[g.rdesc] || g.rdesc), g.reviews != null && `${num(g.reviews)} Rezensionen`].filter(Boolean).join(", ");
   // Die Zeile zeigt die Wertung schon; hier nur, wenn eine weitere Quelle etwas sagt (Metacritic, IGDB neben Steam)
-  const score = !(g.mc != null || g.icrit != null) ? "" : [g.score != null && g.score_src === "Steam" && `Steam ${gScore(g.score, `Anteil positiver Steam-Rezensionen${steamTip ? ": " + steamTip : ""}`)}`,
+  const score = !(g.mc != null || g.icrit != null) ? "" : [g.score != null && g.score_src === "Steam" && `Steam ${gScore(g.score, `Anteil positiver Steam-Rezensionen${steamTip ? ": " + steamTip : ""}`)}${g.reviews != null ? ` <span class="hint">(${num(g.reviews)})</span>` : ""}`,
     g.mc != null && `Metacritic ${gScore(g.mc, "Metacritic laut Steam", "")}`,
     g.icrit != null && `IGDB Kritik ${gScore(g.icrit, "Kritiker-Wertung laut IGDB", "")}`].filter(Boolean).join(" · ");
   const date = g.sdate && !/^\d{4}$/.test(g.sdate) ? g.sdate : relDay(g.rel);
@@ -1591,6 +1612,18 @@ function fitAll(){
     const seen = new Set([...row.querySelectorAll(".t .b")].map(b => b.textContent.trim()));
     d.querySelectorAll(".gbadges > .b").forEach(b => { if(seen.has(b.textContent.trim())) b.remove(); });
   }
+}
+function patchMarks(g){
+  const btn = [...document.querySelectorAll(".gmark button[data-s]")].filter(b => b.dataset.s === g.key);
+  const box = btn[0]?.closest(".gmk"), name = [...document.querySelectorAll(".g-n[data-s]")].find(b => b.dataset.s === g.key);
+  if(!box || !name) return false;
+  const at = [...box.querySelectorAll("button")].indexOf(document.activeElement);
+  box.innerHTML = gMarkHtml(g);
+  name.parentElement.querySelector(":scope > .gme")?.remove();
+  name.insertAdjacentHTML("afterend", gmeHtml(g));
+  fitMarks();
+  if(at >= 0) box.querySelectorAll("button")[at]?.focus();
+  return true;
 }
 /* Marken neben dem Namen (0.9.8): nur so viele, wie in die Spalte passen, dann „+n weitere“ (die übrigen im Tooltip).
    Erst alles lesen, dann alles schreiben */
@@ -1845,14 +1878,21 @@ function drawVerlauf(){
     return `<span${ok ? ` title="Guter Preis: nah am Tief aller Läden oder unter dem, was gg.deals zuletzt meist verlangte"` : ""}>${ok ? `<span class="b deal">−${l.pct} %</span> <b class="g-buy">${eur(l.low)}</b>` : `−${l.pct} %, ${eur(l.low)}`}</span><small>${when}</small>`;
   };
   // 0.10.6: Abstand zum Tief aller Läden wie in den Tabellen: grün „am Tief“ (höchstens 2 % darüber), sonst rot der Betrag
+  // 0.10.7: Tooltips nennen das Tief selbst mit Laden und Tag (lowTip); „jetzt“ am Tief grün mit ★ wie in den Tabellen
+  const bs = v.series.filter(s => s.low != null && Math.abs(s.low - v.best) < 0.005).sort((a, b) => (b.low_at || "").localeCompare(a.low_at || ""))[0];
+  const atLow = s => v.best != null && s.now != null && s.now <= v.best * 1.02 + 0.005;
+  const tipOf = s => lowTip(v.best, s.now, bs?.name, bs?.low_at).replace(/^Tief/, "Tief aller Läden");
   const over = s => {
     if(v.best == null || s.now == null) return "–";
     const d = Math.round((s.now - v.best) * 100) / 100;
-    return s.now <= v.best * 1.02 + 0.005 ? `<span class="g-buy" title="Höchstens 2 % über dem Tief aller Läden (${eur(v.best)})">am Tief</span>`
-      : `<span class="over" title="${esc(`${eur(d)} über dem Tief aller Läden ${eur(v.best)} (+${Math.round(d / v.best * 100)} %)`)}">+${eur(d)}</span>`;
+    return atLow(s) ? `<span class="g-buy" title="${esc(tipOf(s))}">am Tief</span>` : `<span class="over" title="${esc(tipOf(s))}">+${eur(d)}</span>`;
   };
   const shopName = s => s.url ? extLink(s.url, esc(s.name), `${s.name} öffnen`) : esc(s.name);
-  const nowCell = s => s.url ? extLink(s.url, eur(s.now), `Preis jetzt bei ${s.name}`) : eur(s.now);
+  const nowCell = s => {
+    if(s.now == null) return "–";
+    const ok = atLow(s), inner = ok ? `<b class="g-buy">${eur(s.now)}</b>` : eur(s.now);
+    return (ok ? `<span class="star" title="${esc(tipOf(s))}">★</span>` : "") + (s.url ? extLink(s.url, inner, `Preis jetzt bei ${s.name}`) : inner);
+  };
   const typTip = "Median nach Tagen: die Hälfte der letzten 90 Tage war es günstiger, die Hälfte teurer; ein kurzer Ausreißer zählt kaum";
   h += `<div class="scroll"><table><thead><tr><th>Laden</th><th>jetzt</th><th title="Abstand zum Tief aller Läden">überm Tief</th><th>normal</th><th title="Niedrigster Preis der letzten 18 Monate">tiefster</th><th title="Angebote in diesem Zeitraum">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der Zeit im Angebot">im Angebot</th><th title="${esc(`Median der Tiefstwerte je Angebot, ab zwei Angeboten; bei gg.deals (Händler und Keyshops, kaum echte Angebote) der mittlere Preis der letzten 90 Tage. ${typTip}`)}">typisch</th><th title="Üblicher Abstand zwischen zwei Angeboten, ab drei Angeboten">Rhythmus</th><th title="Das letzte Angebot; Preis grün und Rabatt blau, wenn es ein guter Preis war">zuletzt</th></tr></thead><tbody>` +
     v.series.map(s => `<tr><td>${shopName(s)}</td><td>${nowCell(s)}</td><td>${over(s)}</td><td>${eur(s.regular)}</td><td>${eur(s.low)}<small>${day(s.low_at)}</small></td><td>${s.sale_count}</td><td>${s.typical_days == null ? "–" : s.typical_days + " T."}</td><td>${s.on_sale_pct} %</td><td${s.typical_how === "recent" ? ` title="${typTip}"` : ""}>${s.typical == null ? "–" : eur(s.typical)}${s.typical_how === "recent" && s.typical != null ? "<small>90 Tage</small>" : ""}</td><td>${gapText(s.gap)}</td><td>${last(s)}</td></tr>`).join("") + `</tbody></table></div>`;
@@ -2455,7 +2495,10 @@ document.addEventListener("click", async ev => {
     if(val && k === "fav") delete m.ign;
     if(val && k === "ign") delete m.fav;
     if(Object.keys(m).length) S.marks[key] = m; else delete S.marks[key];
-    render();
+    // 0.10.7: ohne Filter oder Mischung nach Mein Stand nur Knöpfe und Zeichen am Namen austauschen statt alles neu zu
+    // zeichnen; so zuckt die Tabelle beim Klicken nicht
+    const g = !V.d.me && !V.d.mix && V.tab === "find" && allGames().find(x => x.key === key);
+    if(!g || !patchMarks(g)) render();
     api("/api/mark", {key, k, v: val}).then(r => { S.marks = r.marks; }).catch(e => { toast(e.message); load(); });
   }
   else if(a === "tsort"){

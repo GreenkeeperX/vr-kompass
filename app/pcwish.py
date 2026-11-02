@@ -264,7 +264,8 @@ def view(data, col=None):
         gg = e.get("gg") or {}
         cands = [(gg.get("retail"), "Händler"), (gg.get("keyshops"), "Keyshop")]
         best = min((c for c in cands if c[0] is not None), default=(None, ""))
-        lows = [x for x in (gg.get("retail_low"), gg.get("keyshops_low")) if x is not None]
+        # 0.10.7: ein Tief von 0 € (Gratis-Aktion) zählt nicht, sonst stünde jeder Preis „am Tief“
+        lows = [x for x in (gg.get("retail_low"), gg.get("keyshops_low")) if x]
         low = min(lows) if lows else None
         kind = e.get("kind") or ""
         inf = info(e)
@@ -286,7 +287,7 @@ def view(data, col=None):
         # (Händler bei gg.deals oder IsThereAnyDeal), nicht am Keyshop
         it = e.get("itad") or {}
         if it.get("shops"):
-            lo = min((x for x in (gg.get("retail_low"), it.get("low")) if x is not None), default=None)
+            lo = min((x for x in (gg.get("retail_low"), it.get("low")) if x), default=None)
             r["shops"], r["shops_at"], r["shops_low"] = itad.shop_rows(it, lo, NEAR), it.get("at") or "", lo
             # 0.9.7: Rabattmarke wie bei VR, vom günstigsten offiziellen Laden
             top = min(it["shops"], key=lambda x: x.get("p") if x.get("p") is not None else 1e9)

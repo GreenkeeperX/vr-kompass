@@ -48,7 +48,9 @@ vorschlagen“; Gegenstück zu Favorit, nie in Mischungen und Vorschlägen, nur 
 Ab 0.10.6 (Entscheidung 02.11.2026) sind alle fünf Zeichen kleine SVG-Grafiken (`mIcon`, `.mi`) statt
 Schriftzeichen: gleiche Strichstärke, 1 em groß, optisch mittig zum Text (`vertical-align:-.13em`), ☆ als leere und
 ★ als volle Form; nichts hängt mehr von der Schrift ab, beim Klicken verschiebt sich nichts. Abstand unter der
-Überschrift „Mein Stand“ wie unter „Gespielt“ (`.gdm>.fl+.gmk`);
+Überschrift „Mein Stand“ wie unter „Gespielt“ (`.gdm>.fl+.gmk`); ab 0.10.7 kräftiger (Strich 2,4, ☆ 1,4) und in der
+Namenszeile 15 px mittig ohne Einfluss auf die Zeilenhöhe (`.gme .mi`); ein Klick baut nur Knöpfe und Namenszeile neu
+(`patchMarks`), die ganze Tabelle nur bei aktivem Filter oder Mischung;
 nur als Zeichen, nie als Fläche. Die Marke „VR“ hinter dem Namen ist türkis gefüllt
 (`.b.vrb`). Der gewählte System-Reiter: Linie in der Familienfarbe, Schrift in `--ink`
 (Nintendo-Rot `#e60012`, dunkel `#ff3d48`).
@@ -308,7 +310,17 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Marken und Genres hinter „+n weitere“ stehen in den Einzelheiten (`fitAll`, `.gmarks`, `.ggen`). Ab 0.10.6 stehen die
   Genres dort unter der Spalte Genre (`.vdd` als `subgrid`, `--gg`), die Beschreibung ab der Spalte Wertung; über
   den Angaben nur, was die Zeile nie zeigt („ohne Crossbuy“, `cbOff`, und die Links zum Nachtragen), keine Marke
-  doppelt.
+  doppelt. Ab 0.10.7 stehen die Genres bündig mit denen der Zeile (`.gdm.vdd{column-gap:10px}`) und 10 px höher,
+  ohne die übrigen Angaben mitzunehmen.
+- Wertung in den Einzelheiten (ab 0.10.7): jeder Wert in der Farbe der Wertung (`.gsc`, `--sh` aus `gScoreHue`), auch
+  bei VR und beim schwächeren Laden; aus Sternen umgerechnete Werte violett gepunktet unterstrichen (`.gxu`); „+24“
+  bleibt grün; bei PC dahinter klein die Zahl der Rezensionen in Klammern.
+- Zeile unter der Maus (ab 0.10.7, nur mit Maus `@media (hover:hover)`): Hintergrund 6 % Textfarbe (`--hov`), in
+  allen Tabellen, im Preisverlauf und in den kleinen Tabellen der Einzelheiten.
+- Tooltips zum Tief (ab 0.10.7, `lowTip`): „am Tief“, Stern, Tief-Spalte, Rabatt, „kaufen“/„gut“ und `bestLine` nennen
+  den tatsächlichen Tiefpreis mit Laden und Datum, den Preis jetzt und den Abstand; der Rabatt zusätzlich Normalpreis
+  und Ende, die gg.deals-Zeile Händler, Keyshop und Steam. Ein Tief von 0 € (Gratis-Aktion) zählt bei PC-Wünschen
+  und im Preisverlauf nicht (`pcwish.view`, `verlauf._pack`).
 - Steam-Angebote (ab 0.10.2, `rhythm`): Zeile in den Einzelheiten VR und PC, „zuletzt vor n Wochen (bisher etwa alle
   m Wo.)“ oder „läuft gerade“ (`rhythmText`, `rhythmTip`), keine Vorhersage.
 - Lenkrad (0.8.3): Marke „Lenkrad“ (`.b`), wenn das Spiel in einer Liste der Rennspiele steht (SimHub,
@@ -431,4 +443,5 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   der Preis grün (`.g-buy`), sonst ohne Farbe.
 - Ab 0.10.6: Spalte „überm Tief“ nach „jetzt“ wie in den Tabellen (grün „am Tief“ bis 2 %, sonst rot `+x €`). Der
   Laden führt zu seiner Seite des Spiels (Meta, Steam, gg.deals, bei PC-Wünschen die Läden von IsThereAnyDeal), der
-  Preis jetzt ebenso (`url` je Reihe aus `verlauf.vr` und `verlauf.pc`).
+  Preis jetzt ebenso (`url` je Reihe aus `verlauf.vr` und `verlauf.pc`). Ab 0.10.7 steht „jetzt“ am Tief (bis 2 %)
+  grün und fett, beim Tiefstpreis mit ★ wie in der Tabelle; Tooltip mit Tief aller Läden.
