@@ -2404,6 +2404,7 @@ def run(only=None, boot=False, by_hand=False, fast=False):
                 col = store.load_json(collection.FILE, collection.EMPTY)
                 new, gone = collection.sync_pcvr(col, store.load_data())
                 snew, sgone = collection.sync_steam(col, store.load_data())
+                collection.sync_gg(col, store.load_data())       # 0.9.9: kennt Playnite oder Steam ein Spiel jetzt, fällt es weg
                 store.save_json(collection.FILE, col)
             if new or gone:
                 log(f"Sammlung: VR-Titel am PC ohne Playnite-Eintrag {new} neu" + (f", {gone} entfallen" if gone else ""))

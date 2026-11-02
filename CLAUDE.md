@@ -42,7 +42,8 @@ Weitere feste Regeln (wie im eShopKompass):
   `docs/abrufe.md`)
 - `app/titles.py`: Namen vergleichen, Kennungen aus Links, Titel finden, anlegen, zusammenführen,
   Vorschläge für ähnliche Namen, Steam-ID prüfen, Liste „Zu erledigen“ (`todo`), Suchlinks
-- `app/imports.py`: Vergleichstabelle, Playnite-CSV, gg.deals-Wunschliste (CSV), Meta-Bestellungen
+- `app/imports.py`: Vergleichstabelle, Playnite-CSV, gg.deals-Wunschliste (CSV), ab 0.9.9 gg.deals-Sammlung
+  (Lesezeichen, Launcher je Karte, `import_ggcoll`), Meta-Bestellungen
   und Meta-Wunschliste (Lesezeichen-JSON oder Text), Meinungen (`docs/meinungen.md`),
   Erkennung der Art (`detect`);
   jeder Import aus Datei oder Text erst als Vorschau; das Lesezeichen „Meta-Käufe lesen“ übergibt
@@ -54,7 +55,8 @@ Weitere feste Regeln (wie im eShopKompass):
   libretro-database (`parse_meta`, `meta_for`, `mark_meta`) und deine Ordner-Listen `…_ordner.csv`
   (`parse_folder_list`, `apply_folder_lists`, Widersprüche `own_list`, `settle_own`)
 - `app/collection.py`: ganze Sammlung je System für die Sammlung (`collection.json`) aus dem Playnite-Export
-  und ab 0.8.9 deinen VR-Titeln am PC ohne Playnite-Eintrag (`sync_pcvr`),
+  und ab 0.8.9 deinen VR-Titeln am PC ohne Playnite-Eintrag (`sync_pcvr`), Steam-Konto (`sync_steam`),
+  gg.deals-Sammlung (`sync_gg`),
   Merkmale (Mehrspieler, Spielerzahl, Genre-Gruppen, Wertung), Geheimtipp-Wert
 - `app/wheel.py`: Sim-Racing ohne Netz: Steam-Schlagwörter (Hinweis), Liste der Rennsimulationen (Bestätigung)
 - `app/pcwish.py`: PC-Wunschliste (`pcwish.json`), Spiegel der gg.deals-Wunschliste; Zeilen mit Preisen und ab 0.8.11

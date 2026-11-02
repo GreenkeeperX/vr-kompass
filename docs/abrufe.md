@@ -454,4 +454,8 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
   `rev` (Steam-Rezensionen) und `steam` (Steam-Details). Ab 0.8.9 dazu `pcvr:<Titel>` mit `src` „pcvr“: deine
   VR-Titel am PC, die Playnite nicht kennt (`store` Steam, Epic … oder „Meta (Crossbuy)“, `id` die Steam-ID,
   `from_vr` der Titel), angelegt und bereinigt bei jedem Abgleich vor den Steam-Abrufen und nach einem
-  Playnite-Import; ein Playnite-Import lässt sie stehen.
+  Playnite-Import; ein Playnite-Import lässt sie stehen. Ab 0.9.9 dazu `gg:<Slug>` mit `src` „ggcoll“: Spiele aus
+  deiner gg.deals-Sammlung (Lesezeichen, kein Abruf des Servers), die keine andere Quelle unter demselben Namen
+  führt, mit `store` (erster erkannter Launcher) und `stores`; angelegt beim Einlesen, bereinigt nach einem
+  Playnite-Import und bei jedem Abgleich (`collection.sync_gg`). Die gelesene Liste selbst liegt unter `gg_coll` in
+  `data.json` (`at`, `items` mit `slug`, `name`, `stores`), der Stand unter `imports.ggcoll`.
