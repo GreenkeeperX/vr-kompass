@@ -289,8 +289,10 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - Pakete (ab 0.10.2, `bundles` am Wunsch): Zeile „Paket“ in den Einzelheiten VR, „statt“ mit der Summe grün, wenn das
   Paket günstiger ist; Marke „im Paket günstiger“ (`.b.go`) am Namen. Tooltip `bundleTip`.
 - PC-Einzelheiten (ab 0.10.3, Entscheidung 02.11.2026): „Jetzt“ und „Tief“ zeigen Händler und Keyshop nur, wenn der
-  teurere höchstens 10 % über dem günstigeren liegt (`pcPair`, `PC_ALT`; der Tooltip nennt den anderen), „Läden“ nur die
-  Läden bis 10 % über dem günstigsten Preis jetzt. „Üblich“ (mit Preis, „−40 % = 17,99 €“) und „Steam-Angebote“ nur,
+  teurere höchstens 8 % (ab 0.10.4, vorher 10 %) über dem günstigeren liegt (`pcPair`, `PC_ALT`; der Tooltip nennt den
+  anderen), „Läden“ nur die Läden bis 8 % über dem günstigsten Preis jetzt. Ab 0.10.4 muss ein teurerer Weg in „Jetzt“
+  und „Läden“ außerdem höchstens 10 % über dem Tief liegen (`PC_ALT_LOW`): gekauft wird fast immer zum günstigsten
+  Preis, ein Umweg (etwa günstig gekauftes Guthaben) lohnt nur nah am Tief (Entscheidung 02.11.2026). „Üblich“ (mit Preis, „−40 % = 17,99 €“) und „Steam-Angebote“ nur,
   wenn ein Steam-Angebot in üblicher Höhe unter dem günstigsten Preis jetzt und höchstens 5 % über dem Tief läge
   (`muster.worth_pc`); bei VR bleiben sie, weil sie Meta gegen Steam abwägen.
 - VR-Einzelheiten in Jetzt und Wunschliste (ab 0.10.3, `vrDetail`): im Raster der Tabelle links die Angaben (`.vdf`),
