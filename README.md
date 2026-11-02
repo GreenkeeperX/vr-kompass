@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.10:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.11:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -52,6 +52,8 @@ allen Tabellen. Das Lesezeichen liest bis zu 200 Seiten der gg.deals-Sammlung od
 nur die Launcher weiter; bitte das Lesezeichen neu anlegen (Fassung 10).
 Neu in 0.10.10: Konsolenspiele aus der gg.deals-Sammlung (Zusatz wie „(PS4)“ oder „(PS4 & PS5)“ hinter dem Namen)
 kommen nicht mehr in die Sammlung PC; schon übernommene fallen beim nächsten Abgleich weg. Das Ergebnis nennt ihre Zahl.
+Neu in 0.10.11: Auch aus Playnite kommen keine PlayStation-Spiele mehr in die Sammlung (sie kommen später aus dem
+ROM-Ordner); schon übernommene fallen beim nächsten Abgleich weg, Retro-Einträge bleiben.
 Neu in 0.10.5: Meta im Meta-Blau, Steam im dunkleren Blau des Steam-Logos (vorher war Steam im dunklen Modus
 heller als Meta).
 Neu in 0.10.4: ein teurerer Weg (Händler statt Keyshop, ein anderer Laden) steht in den Einzelheiten der PC-Wünsche nur
@@ -198,8 +200,10 @@ still nichts zu übernehmen:
   stehen unter „PS3 / Vita“, weil Playnite die Plattform dort nicht nennt. Die Vorschau sagt es
   in einfachen Sätzen (0.7.2): „Für die Sammlung: 6 Spiele (PS1 1, PS2 2 …), alle neu. Deine anderen
   … Spiele bleiben, wie sie sind. VR-Titel: keine darin“; VR-Titel zählen für den Reiter VR und die Wunschliste. Ein neuer Export ersetzt nur die Systeme, die in ihm vorkommen: ein
-  Export nur der PlayStation-Bibliothek lässt die PC-Spiele stehen. Unter VR (deine VR-Titel)
-  bleiben Spiele nur für Konsolen weiter draußen.
+  Export nur der Nintendo-Bibliothek lässt die PC-Spiele stehen. Unter VR (deine VR-Titel)
+  bleiben Spiele nur für Konsolen weiter draußen. Ab 0.10.11 (Entscheidung 02.11.2026) nimmt die Sammlung aus
+  Playnite keine PlayStation-Spiele mehr, auch wenn der Export sie enthält: sie kommen später aus dem ROM-Ordner
+  (Retro-Liste). Schon übernommene fallen beim nächsten Abgleich weg; die Vorschau nennt ihre Zahl.
 - **gg.deals-Wunschliste (CSV)** mit einer Spalte Name und Links auf die geteilte Liste.
 - **Datei des Meta-Lesezeichens** oder kopierter Text der Bestellseite.
 - **Meinungen (JSON)** aus einer Recherche auf Reddit und im Web: je Titel Kurzfazit, bessere

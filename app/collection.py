@@ -251,6 +251,10 @@ def parse(text, rows=None, stats=None):
             continue
         store = store_of(cell("src")) or store_of(cell("cat"))
         system = system_of(_split(cell("plat")), store, cell("id"))
+        if is_ps(system):                   # 0.10.11: PlayStation kommt später aus dem ROM-Ordner, nicht aus Playnite
+            if stats is not None:
+                stats["ps"] = stats.get("ps", 0) + 1
+            continue
         gid = cell("id")[:40]
         guess = False
         if system == "PC" and not store and re.fullmatch(r"\d{1,7}", gid):
@@ -280,6 +284,23 @@ def parse(text, rows=None, stats=None):
     return out
 
 
+# 0.10.11 (Entscheidung 02.11.2026): PlayStation-Spiele kommen später über den ROM-Ordner (Retro-Liste); aus Playnite,
+# Sharenite und der gg.deals-Sammlung nimmt die Sammlung keine, auch wenn der Export sie enthält
+def is_ps(system):
+    return str(system or "").startswith("PS")
+
+
+def drop_ps(col):
+    """PlayStation-Spiele, die nicht aus der Retro-Liste stammen (frühere Playnite-Exporte), fallen weg. Gibt ihre Zahl zurück."""
+    games = col.get("games") or {}
+    gone = [k for k, g in games.items() if is_ps(g.get("system")) and g.get("src") != "retro"]
+    for k in gone:
+        del games[k]
+    if gone:
+        col["n"] = len(games)
+    return len(gone)
+
+
 def replace(col, games, src="playnite"):
     """Neue Liste übernehmen, Abgerufenes je Spiel behalten. Ersetzt werden nur die Systeme, die
     in der neuen Liste vorkommen: ein Export nur der PlayStation-Bibliothek lässt die PC-Spiele
@@ -300,6 +321,7 @@ def replace(col, games, src="playnite"):
             if f in o:
                 g[f] = o[f]
     col["games"] = games
+    drop_ps(col)
     col["at"] = titles.now_iso()
     col["n"] = len(games)
     col["src"] = src
