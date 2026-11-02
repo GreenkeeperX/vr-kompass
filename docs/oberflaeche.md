@@ -433,6 +433,13 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - Spalten: Spieler mit Tooltip „Laut libretro-database“, violett nur, wenn IGDB etwas weiß und keine Zahl nennt;
   Jahr mit „Laut libretro-database“; Erscheinen mit nur Monat als „im Juli 2003“ (`relDay`). Beschreibung von
   libretro: Tooltip „nur auf Englisch“.
+- GameTDB (0.10.13; GameCube, Wii, DS, 3DS, PS3): die deutsche Beschreibung steht vor der von IGDB und libretro,
+  Tooltip „Beschreibung laut GameTDB“ (englisch: „…, nur auf Englisch“). Nach Erschienen die Zeilen „Deutscher Titel“
+  (wenn er anders heißt), „USK“ oder „PEGI“ (USK 16 und 18 in ihrer Farbe wie bei Switch) und „Online“ (Spieler über
+  die abgeschaltete Nintendo Wi-Fi Connection). Spieler: Tooltip „Laut GameTDB (Spieler an einer Konsole)“, nennt
+  GameTDB dieselbe Zahl wie IGDB oder libretro, „… und GameTDB“ und nicht violett. Jahr: „Laut GameTDB“; nennt GameTDB
+  ein anderes Jahr, ist die Zahl violett und der Tooltip nennt es. Unten „GameTDB (ID)“ unter den Quellen und ein
+  Link „GameTDB“ zur Spielseite.
 - „Zu erledigen“, Gruppe „Retro: Genre weicht von deiner Liste ab“: je Spiel deins und das der anderen Quelle,
   Knöpfe „Liste gilt“ und ab 0.9.6 „Quellen gelten“ (`data-take`), oben beide für alle. Gilt das Genre der Quellen,
   nennen die Einzelheiten unter „Genre“ deins mit dem Link „deins gilt“ (`own_taken`).

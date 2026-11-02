@@ -148,7 +148,7 @@ function renderHead(){
   $("syncBtn").disabled = !!sy.running;
 }
 /* Hinweise über den Ansichten: kein Abgleich, ruhende Quelle, Selbstprüfung, Fehler */
-const SRC_NAME = {qsdb: "QuestStoreDB", steam: "Steam", gg: "gg.deals", steamacc: "Steam-Konto", ggwish: "gg.deals-Wunschliste", sharenite: "Sharenite", reviews: "Steam-Rezensionen", details: "Steam-Details", rating: "Steam-Wertungen", players: "Steam-Spieler", vrdb: "VRDB", retro: "Retro-Fassungen", igdb: "IGDB", pcgw: "PCGamingWiki", nexus: "Nexus Mods", wheel: "Sim-Racing", eshop: "eShopKompass", itad: "IsThereAnyDeal", pcinfo: "PC-Wunschliste, Spielinfos", vrinfo: "VR-Titel, Spielinfos"};
+const SRC_NAME = {qsdb: "QuestStoreDB", steam: "Steam", gg: "gg.deals", steamacc: "Steam-Konto", ggwish: "gg.deals-Wunschliste", sharenite: "Sharenite", reviews: "Steam-Rezensionen", details: "Steam-Details", rating: "Steam-Wertungen", players: "Steam-Spieler", vrdb: "VRDB", retro: "Retro-Fassungen", gametdb: "GameTDB", igdb: "IGDB", pcgw: "PCGamingWiki", nexus: "Nexus Mods", wheel: "Sim-Racing", eshop: "eShopKompass", itad: "IsThereAnyDeal", pcinfo: "PC-Wunschliste, Spielinfos", vrinfo: "VR-Titel, Spielinfos"};
 function banners(){
   const sy = S.sync || {}, out = [];
   const logLink = `<button class="link" data-act="showlog">Protokoll öffnen</button>`;
@@ -1093,11 +1093,12 @@ function gGenres(g, all){
 function gYear(g){
   if(!g.year) return "";
   const tip = g.src === "steam" ? (g.year_ok ? "Playnite und Steam einig" : `Playnite ${g.year === g.syear ? "ohne Jahr" : "und Steam verschieden"}${g.syear ? `, Steam ${g.syear}` : ""}`)
-    : g.ig ? (g.year_src === "IGDB" ? "Laut IGDB" : g.year_ok ? `${g.retro ? "libretro" : "Playnite"} und IGDB einig` : `${g.retro ? "libretro" : "Playnite"} ${g.year}, IGDB ${g.iyear || "ohne Jahr"}`)
+    : g.year_src === "GameTDB" ? "Laut GameTDB" : g.ig ? (g.year_src === "IGDB" ? "Laut IGDB" : g.year_ok ? `${g.retro ? "libretro" : "Playnite"} und IGDB einig` : `${g.retro ? "libretro" : "Playnite"} ${g.year}, IGDB ${g.iyear || "ohne Jahr"}`)
     : g.retro ? (g.year_src === "libretro" ? "Laut libretro-database" : "") : g.eshop ? ESH : "Laut Playnite";
   // Wie im eShopKompass: Erscheinen, Entwickler und Verlag im Tooltip (0.6.2), die Suche findet sie
   const who = [g.rel?.length > 4 && `Erschienen ${/^\d{4}-\d{2}$/.test(g.rel) ? "im" : "am"} ${relDay(g.rel)}`, g.dev && `Entwickler: ${g.dev}`, g.pub && g.pub !== g.dev && `Verlag: ${g.pub}`].filter(Boolean);
-  return `<span class="${chk(g) && !g.year_ok ? "gxc" : ""}" title="${esc(who.concat(tip ? [tip] : []).join("\n"))}">${esc(g.year)}</span>`;
+  const tdb = g.tyear ? [`GameTDB ${g.tyear}`] : [];      // 0.10.13: GameTDB nennt ein anderes Jahr
+  return `<span class="${chk(g) && !g.year_ok || g.tyear ? "gxc" : ""}" title="${esc(who.concat(tip ? [tip] : [], tdb).join("\n"))}">${esc(g.year)}</span>`;
 }
 const vrMod = g => !!(g.vrmod?.length || g.nexus?.vr?.length || g.vorpx);
 // Wertung nach Rangfolge (0.8.0); eine Ersatzquelle grau und kursiv wie OpenCritic im eShopKompass
@@ -1140,10 +1141,13 @@ function gMaxPl0(g){
   const kinds = plKinds(g, false);
   if(!g.players) return (g.mp || []).length ? `<span class="hint" title="${esc(`Mehrspieler, keine Quelle nennt eine Zahl${kinds ? `\n${kinds}` : ""}`)}">2+</span>`
     : plSolo(g) ? `<span class="hint" title="${g.src === "steam" ? "Laut Steam" : "Laut IGDB"} ohne Mehrspieler">1</span>` : "";
-  const from = g.pl_src === "IGDB" ? `Laut IGDB${g.pl_ok ? " und libretro" : ""}` : g.pl_src === "libretro" ? `Laut libretro-database${g.ig ? ", IGDB nennt keine Zahl" : ""}` : g.pl_src === "Playnite" || !g.pl_src ? (g.ig ? "Nur laut Playnite, IGDB nennt keine Zahl" : "Laut Playnite") : PL_SRC(g.pl_src);
+  // 0.10.13: pl_tdb heißt, GameTDB nennt dieselbe Zahl; pl_lr, dass libretro IGDB vorher schon bestätigt hatte
+  const okBy = [g.pl_ok && (!g.pl_tdb || g.pl_lr) ? "libretro" : "", g.pl_tdb ? "GameTDB" : ""].filter(Boolean).join(" und ");
+  const from = g.pl_src === "IGDB" ? `Laut IGDB${okBy ? " und " + okBy : ""}` : g.pl_src === "libretro" ? `Laut libretro-database${g.pl_tdb ? " und GameTDB" : g.ig ? ", IGDB nennt keine Zahl" : ""}`
+    : g.pl_src === "GameTDB" ? `Laut GameTDB (Spieler an einer Konsole)${g.ig ? ", IGDB nennt keine Zahl" : ""}` : g.pl_src === "Playnite" || !g.pl_src ? (g.ig ? "Nur laut Playnite, IGDB nennt keine Zahl" : "Laut Playnite") : PL_SRC(g.pl_src);
   // 0.10.1: Zahl nur aus der Recherche: violett
   if(g.pl_src === "Recherche") return `<span class="gxc" title="${esc(from + (kinds ? `\n${kinds}` : ""))}">${g.players}</span>`;
-  return `<span class="${g.pl_src && !g.pl_src.includes("IGDB") && !g.pl_src.includes("PCGamingWiki") && g.ig ? "gxc" : ""}" title="${esc(from + (kinds ? `\n${kinds}` : ""))}">${g.players}</span>`;
+  return `<span class="${g.pl_src && !g.pl_src.includes("IGDB") && !g.pl_src.includes("PCGamingWiki") && g.ig && !g.pl_tdb ? "gxc" : ""}" title="${esc(from + (kinds ? `\n${kinds}` : ""))}">${g.players}</span>`;
 }
 /* Spieler je Art, ab 0.9.7 die Zahl fett vorn: „8 online · 4 lokal · 2+ LAN“, Koop in einer eigenen Zeile darunter
    („4 online · 2 lokal“); ohne Zahl „2+“. html: mit Marken (violett, was nur eine Quelle nennt; Quelle im Tooltip),
@@ -1485,7 +1489,7 @@ function gDetail(g, gc = 2, shownCols = new Set()){
   const st = G_ST.find(x => x[0] === m.s);
   const shown = g.eshop ? `<span class="gmk hint">${st || m.fav || m.ign ? [st && `${mIcon(m.s)} ${st[1]}`, m.fav && `${mIcon("fav")} Favorit`, m.ign && `${mIcon("ign")} ignoriert`].filter(Boolean).join(" · ") : "noch keiner"}; ändern im ${C.eshop_link ? `<a class="eshl" href="${esc(eshUrl(g))}" target="_blank" rel="noopener noreferrer" title="Öffnet das Spiel im eShopKompass"><span class="brand">eShop</span>Kompass</a>` : "eShopKompass"}</span>` : `<span class="gmk">${marks}</span>`;
   // Kurzbeschreibung (0.7.1, Steam auf Deutsch; Switch von Nintendo Europa) unter Mein Stand
-  const dtip = g.eshop ? (g.desc_lang === "en" ? "Beschreibung von Nintendo Europa, nur auf Englisch" : "Beschreibung von Nintendo Europa") : g.desc_src === "IGDB" ? "Beschreibung laut IGDB, nur auf Englisch" : g.desc_src === "libretro" ? "Beschreibung laut libretro-database, nur auf Englisch" : "Kurzbeschreibung laut Steam";
+  const dtip = g.eshop ? (g.desc_lang === "en" ? "Beschreibung von Nintendo Europa, nur auf Englisch" : "Beschreibung von Nintendo Europa") : g.desc_src === "IGDB" ? "Beschreibung laut IGDB, nur auf Englisch" : g.desc_src === "GameTDB" ? `Beschreibung laut GameTDB${g.desc_lang === "en" ? ", nur auf Englisch" : ""}` : g.desc_src === "libretro" ? "Beschreibung laut libretro-database, nur auf Englisch" : "Kurzbeschreibung laut Steam";
   // Gespielt ab 0.9.8 ganz unten (0.9.7 über Mein Stand); reine Meta-Titel: Meta nennt keine Spielzeit
   const played = g.pt != null ? `<span class="fl">Gespielt</span><span class="gpt" title="Laut Steam-Konto">${playText(g)}</span>`
     : g.lib && g.lib.where === "meta" ? `<span class="fl">Gespielt</span><span class="gpt hint">unbekannt, der Meta Store nennt keine Spielzeit</span>` : "";
@@ -1531,16 +1535,23 @@ function gDetail(g, gc = 2, shownCols = new Set()){
     : rde ? `<span class="gno${g.lang_guess ? " gxc" : ""}" title="${esc(`Sprachen ${g.lang_guess ? "nur aus der Region geschätzt" : g.de?.langs ? `laut No-Intro über den Produktcode: ${g.de.rel}` : "laut Dateiname"}: ${g.langs.join(", ")}`)}">ohne Deutsch</span>` : "";
   // Spieler je Art (0.9.5, vorher „Mehrspieler“ mit der höchsten Zahl)
   // Reihenfolge ab 0.9.7 (Entscheidung 01.11.2026): Wertung, Spieler, Koop, Erschienen (Firmen im Tooltip), VR per Mod, Sim-Racing, Mods
-  const facts = row("Wertung", score) + plRows(g, row) + row("Erschienen", esc(date), who) +
+  // GameTDB (0.10.13): deutscher Titel, USK oder PEGI, online
+  const tdbRows = row("Deutscher Titel", g.dtitle ? esc(g.dtitle) : "", "Laut GameTDB") +
+    row(g.age?.[0] === "PEGI" ? "PEGI" : "USK", g.age ? `<span class="${g.age[0] === "USK" && ["16", "18"].includes(g.age[1]) ? "usk" + g.age[1] : ""}">${esc(g.age[1])}</span>` : "", "Laut GameTDB, für die gefundene Fassung") +
+    row("Online", g.tdb_online ? `bis ${g.tdb_online} Spieler` : "", "Nintendo Wi-Fi Connection laut GameTDB; die Dienste sind abgeschaltet");
+  const facts = row("Wertung", score) + plRows(g, row) + row("Erschienen", esc(date), who) + tdbRows +
     row("VR per Mod", vrModHtml(g)) + row("Sim-Racing", wheelHtml(g)) + row("Mods", nexusHtml(g), "Nexus Mods") +
     row("Gesucht", g.de?.st !== "missing" ? "" : g.de.ign ? `<span class="hint">${esc(g.de.alt)}, ignoriert</span> <button class="link" data-act="deign" data-k="${esc(g.key)}" data-v="" title="„DE fehlt“ wieder an diesem Spiel und unter Zu erledigen zeigen">wieder melden</button>` : esc(g.de.alt), "Die Fassung mit Deutsch laut No-Intro, Redump oder Retool") + row("Dateien", esc(files), "Regionen, Fassungen oder Discs desselben Spiels") + ownRows;
   // 0.10.3 (Entscheidung 02.11.2026): in der Zeile nur „n Quellen“, welche und wie im Tooltip
   const srcs = [g.from_vr ? `dein VR-Titel im Tool (${g.store}), Playnite kennt ihn nicht${g.src === "steam" ? "; Steam-Details" : ""}` : g.retro ? `System laut Retro-Liste${S.imports.retro?.at ? ` vom ${day(S.imports.retro.at)}` : ""}` : g.src === "steam" ? "Playnite, mit Steam abgeglichen (Steam-Details)" : g.system === "PC" ? "Playnite, noch nicht mit Steam abgeglichen" : "laut Playnite",
     g.own && "deine Ordner-Liste", g.lname && `libretro-database (dort „${g.lname}“)`,
-    g.ig ? `IGDB${g.iname ? ` (dort „${g.iname}“)` : ""}` : "", g.srcs?.includes("PCGamingWiki") && "PCGamingWiki"].filter(Boolean);
+    g.ig ? `IGDB${g.iname ? ` (dort „${g.iname}“)` : ""}` : "", g.srcs?.includes("PCGamingWiki") && "PCGamingWiki",
+    g.tdb_id && `GameTDB (${g.tdb_id})`].filter(Boolean);
   const nSrc = srcs.length + (g.src === "steam" ? 1 : 0);      // Playnite und Steam zählen einzeln
   const src = srcs.length ? `<span title="${esc("Angaben aus:\n" + srcs.join("\n"))}">${nSrc === 1 ? "1 Quelle" : `${nSrc} Quellen`}</span>` : "";
-  const small = [langs, g.added && `hinzugefügt am ${day(g.added)}`, src, safeUrl(g.url) && `<a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">Seite im Launcher</a>`].filter(Boolean).join(" · ");
+  const tdbUrl = g.tdb_id ? `https://www.gametdb.com/${{GameCube: "Wii", Wii: "Wii", DS: "DS", "3DS": "3DS"}[g.system] || "Wii"}/${encodeURIComponent(g.tdb_id)}` : "";
+  const small = [langs, g.added && `hinzugefügt am ${day(g.added)}`, src, safeUrl(g.url) && `<a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">Seite im Launcher</a>`,
+    tdbUrl && `<a href="${esc(tdbUrl)}" target="_blank" rel="noopener noreferrer">GameTDB</a>`].filter(Boolean).join(" · ");
   return `<div class="gd" style="--gc:${gc}"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
 }
 // Sim-Racing (0.8.3, Listen ab 0.8.5): bestätigt in einer Liste der Rennspiele; nur Steam-Schlagwörter: gestrichelt; ab 0.8.20 beide umrandet, ohne „?“
@@ -1967,7 +1978,7 @@ function vlSvg(v){
 /* ---------------------------------------------------------------- Abrufe */
 const SOURCES = [["steamacc", "Steam-Konto (Besitz, Wunschliste)"], ["ggwish", "gg.deals-Wunschliste"], ["sharenite", "Sharenite (Playnite)"],
   ["qsdb", "QuestStoreDB (Meta-Preise)"], ["steam", "Steam-Store"], ["gg", "gg.deals"], ["reviews", "Steam-Rezensionen (Sammlung)"], ["details", "Steam-Details (Sammlung)"], ["rating", "Steam-Wertungen (Wunschliste, Sammlung VR)"],
-  ["players", "Steam-Spieler und Updates"], ["active", "Aktive Spieler PC (Wunschliste, Sammlung)"], ["vrdb", "VRDB (Crossbuy, Version, Meta-Wertung)"], ["retro", "Retro-Fassungen (No-Intro, Redump, Retool)"], ["igdb", "IGDB (Spielinfos der Sammlung)"], ["pcinfo", "PC-Wunschliste, Spielinfos (Steam, IGDB)"], ["vrinfo", "VR-Titel, Spielinfos (Steam, IGDB)"], ["itad", "IsThereAnyDeal (Läden einzeln, PC-Wunschliste)"], ["pcgw", "PCGamingWiki (VR per Mod)"], ["nexus", "Nexus Mods (Mods je PC-Spiel)"], ["wheel", "Sim-Racing (Steam-Schlagwörter, Listen von SimHub und Simucube)"], ["eshop", "eShopKompass (Switch-Sammlung)"]];
+  ["players", "Steam-Spieler und Updates"], ["active", "Aktive Spieler PC (Wunschliste, Sammlung)"], ["vrdb", "VRDB (Crossbuy, Version, Meta-Wertung)"], ["retro", "Retro-Fassungen (No-Intro, Redump, Retool)"], ["gametdb", "GameTDB (GameCube, Wii, DS, 3DS)"], ["igdb", "IGDB (Spielinfos der Sammlung)"], ["pcinfo", "PC-Wunschliste, Spielinfos (Steam, IGDB)"], ["vrinfo", "VR-Titel, Spielinfos (Steam, IGDB)"], ["itad", "IsThereAnyDeal (Läden einzeln, PC-Wunschliste)"], ["pcgw", "PCGamingWiki (VR per Mod)"], ["nexus", "Nexus Mods (Mods je PC-Spiel)"], ["wheel", "Sim-Racing (Steam-Schlagwörter, Listen von SimHub und Simucube)"], ["eshop", "eShopKompass (Switch-Sammlung)"]];
 const ACCOUNT_SET = {igdb: se => se.igdb_set, steamacc: se => se.steam_id, ggwish: se => se.gg_wish_set, sharenite: se => se.sharenite};
 /* Eine Tabellenzeile je Quelle (0.6.2, kompakt wie im eShopKompass): Name, Zustand farbig, wann, Abrufe und Meldung */
 function srcRow(k, l, x){

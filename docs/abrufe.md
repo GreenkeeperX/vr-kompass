@@ -425,6 +425,9 @@ Sprachen und der Name genau dieser Fassung (ab 0.8.4, `retro_dat.json` in Fassun
 Ab 0.8.6 (`retro_dat.json` in Fassung 3, alle Listen einmal neu): eine Fassung je Eintrag `game ( name … )`
 (in der DSi-Liste heißen viele Dateien nur „00000000“), dazu `sq` mit Titeln ohne Leerzeichen.
 Systeme ohne Liste bleiben ohne Angabe. „Verbindung testen“ fragt beide Listen eines Systems der Retro-Liste einmal ab.
+Ab 0.10.13 auch PS3 (`…/metadat/redump/Sony - PlayStation 3.dat` und die Retool-Liste dazu); die Seriennummer
+aus dem Dateinamen („BLES-01234“, Download „NPEB-00123“) nennt die Fassung genau. Für PS4, PS5 und Vita gibt es in der
+libretro-database keine Redump-Liste (Vita nur No-Intro für Downloads, noch nicht genutzt).
 
 ### Spielinfos (0.8.8)
 
@@ -437,6 +440,30 @@ passt (`n` Name der Fassung, `genre` als Liste, `users`, `rel` als `JJJJ`, `JJJJ
 `pub`, `desc`), `{}` ohne Treffer. Gesucht wird unter dem bestätigten ähnlichen Namen, dem Titel aus dem
 Dateinamen und deinem Titel aus der Ordner-Liste, Fassungen der eigenen Region zuerst. Fehlt ein Feld in der
 besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht.
+
+## GameTDB (Sammlung, ab 0.10.13)
+
+Für GameCube, Wii, DS, 3DS und PS3, mit Spielen aus jeder Quelle (Retro-Liste oder Playnite). Ohne Schlüssel, nach den
+Retro-Fassungen.
+
+| Abruf | Adresse | Wie oft | Liefert |
+|---|---|---|---|
+| Datenbank | `https://www.gametdb.com/wiitdb.zip?LANG=DE` (Wii und GameCube zusammen), `dstdb.zip`, `3dstdb.zip`, `ps3tdb.zip` | je Datenbank höchstens alle 30 Tage (`gametdb.DAYS`), früher nur, wenn ein Spiel des Systems noch nicht zugeordnet ist (`tdb` fehlt oder hat ein anderes `v`) | je Spiel ID, Typ, Titel und Beschreibung auf Englisch und Deutsch, Entwickler, Verlag, Erscheinen, Genre, USK oder PEGI, Spieler an einer Konsole und online, Sprachen |
+
+Das Archiv kommt als Bytes (`sources.fetch(…, raw=True)`), die XML-Datei darin wird schrittweise gelesen (höchstens
+400 MB entpackt). Bei Wii zählen nur Einträge ohne Typ (Disc), bei GameCube der Typ „GameCube“; WiiWare, Virtual
+Console und Kanäle nicht, ebenso keine Demo. Gesucht wird über die Spiel-ID aus dem Dateinamen (Wii, GameCube: die
+ersten vier Zeichen, 3DS und DS: der Produktcode, PS3: die Seriennummer), sonst über den Namen (deiner aus der
+Ordner-Liste, der Name, der von IGDB und libretro; englisch und deutsch, „…, The“ vorn). Deutsche Fassung vor Europa
+vor Amerika. Am Spiel bleibt unter `tdb` nur der Treffer (`id`, `en`, `de_t`, `desc`, `desc_lang`, `genre`, `dev`, `pub`,
+`date`, `langs`, `players`, `online`, `rating`, `via`, `at`, `v`), ohne Treffer `{"none": true}`. Ein kaputtes Archiv
+oder eine Prüfseite zählt als Fehler im Protokoll.
+
+Der Verbindungstest fragt ab 0.10.12 die Titelliste (`wiitdb.txt?LANG=DE`) und eine Spielseite, ab 0.10.13 dazu
+Wikidata (`https://www.wikidata.org/w/api.php`, `wbsearchentities` und `wbgetentities`: USK, PEGI, Spielerzahl,
+Genre, IGDB-Kennung, deutscher Artikel) und die Zusammenfassung des deutschen Wikipedia-Artikels
+(`https://de.wikipedia.org/api/rest_v1/page/summary/<Titel>`) am Retro-Spiel. Die Kennung nennt dort das öffentliche
+Repository als Kontakt, wie Wikimedia es erbittet. Nur Probe, nichts wird gespeichert.
 
 ## Ablage im Datenordner
 
@@ -461,6 +488,9 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
 - `retro_dat.json`: die Fassungen je System aus den Listen oben, mit Tag des Abrufs; wird neu
   geholt, wenn sie fehlt oder älter als sieben Tage ist.
 - `retro_meta.json` (0.8.8): je System Tag des letzten Abrufs der Spielinfos, Fassung (`v`) und Zahl der Einträge.
+- `gametdb.json` (0.10.13): je Datenbank (`wiitdb`, `dstdb`, `3dstdb`, `ps3tdb`) Tag des letzten Abrufs, Fassung
+  (`v`) und Zahl der Einträge. Die Spielinfos selbst stehen je Spiel unter `tdb` in `collection.json`; ein neuer
+  Playnite-Export und eine neue Retro-Liste behalten sie.
 - `collection.json`: die ganze Sammlung (je Spiel mit System, ohne Feld PC), je Spiel Merkmale aus Playnite;
   Spiele aus der Retro-Liste mit `src` „retro“, Schlüssel `retro:<system>:<name>`, dazu `files`, `regions`,
   `langs`, `lang_guess`, `flags`, gegebenenfalls `tid` und `serial` (3DS) und `gone` (Tag, seit dem es in der

@@ -26,7 +26,7 @@ import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from . import accounts, collection, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel
+from . import accounts, collection, gametdb, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel
 
 PAUSE = 2.0
 PAGE_AGE_H = 20
@@ -44,7 +44,7 @@ JUMP = 0.5                  # Selbstprüfung: Normalpreis ändert sich um mehr a
 NAMES = {"steamacc": "Steam-Konto", "ggwish": "gg.deals-Wunschliste", "sharenite": "Sharenite", "qsdb": "QuestStoreDB", "steam": "Steam",
          "gg": "gg.deals", "reviews": "Steam-Rezensionen", "details": "Steam-Details",
          "rating": "Steam-Wertungen", "vrdb": "VRDB", "players": "Steam-Spieler", "active": "Aktive Spieler PC", "retro": "Retro-Fassungen",
-         "igdb": "IGDB", "pcwish": "PC-Wunschliste", "pcinfo": "PC-Wunschliste, Spielinfos", "vrinfo": "VR-Titel, Spielinfos", "pcgw": "PCGamingWiki", "nexus": "Nexus Mods", "wheel": "Sim-Racing", "eshop": "eShopKompass",
+         "gametdb": "GameTDB", "igdb": "IGDB", "pcwish": "PC-Wunschliste", "pcinfo": "PC-Wunschliste, Spielinfos", "vrinfo": "VR-Titel, Spielinfos", "pcgw": "PCGamingWiki", "nexus": "Nexus Mods", "wheel": "Sim-Racing", "eshop": "eShopKompass",
          "itad": "IsThereAnyDeal"}
 SHOPS = {"meta": "Meta", "steam": "Steam", "gg": "gg.deals Händler"}
 QSDB_HEAD = {"Cookie": "currency=EUR"}     # Preise und Verlauf in Euro
@@ -251,7 +251,7 @@ class _Source:
         self.stopped, self.blocked = why, True
         self.log(f"{self.name}: {why} bei {where}, Quelle ruht {REST_H} Stunden")
 
-    def get(self, url, shown=None, absent=(), data=None):
+    def get(self, url, shown=None, absent=(), data=None, raw=False):
         """Text der Antwort, None bei Fehler. Statuscodes in absent heißen „gibt es nicht“: dann
         "" ohne Fehlerzeile (etwa Steam-Spielerzahl 404 für eine App ohne Spieler). Mit data als POST (IGDB)."""
         if self.stopped:
@@ -262,7 +262,8 @@ class _Source:
         where = shown or url
         for attempt in (1, 2):
             try:
-                text = sources.fetch(url, headers=self.headers, data=data) if data is not None else sources.fetch(url, headers=self.headers)
+                text = (sources.fetch(url, headers=self.headers, raw=True, timeout=90) if raw
+                        else sources.fetch(url, headers=self.headers, data=data) if data is not None else sources.fetch(url, headers=self.headers))
                 break
             except sources.FetchError as e:
                 if e.status == 0 and attempt == 1:
@@ -280,7 +281,7 @@ class _Source:
                         self.stopped = f"{self.errors} Fehler"
                         self.log(f"{self.name}: zu viele Fehler, Quelle für diesen Lauf beendet")
                 return None
-        why = sources.challenge(text)
+        why = sources.challenge(text if not raw else text[:4000].decode("utf-8", "replace"))
         if why:
             self._stop(why, where)
             return None
@@ -1091,6 +1092,51 @@ def _eshop(log):
     src.stats = {"read": len(games), "new": new}
     log(f"{label}: {len(games)} Spiele (Switch 2: {s2}), {new} neu" + (f", {gone} nicht mehr dabei" if gone else "")
         + f", eShopKompass {str(d.get('version') or '?')[:12]}, {_took(start)}")
+    return src.result()
+
+
+def _gametdb(log):
+    """GameTDB (0.10.13): Spielinfos für GameCube, Wii, DS und 3DS. Je Datenbank (Wii und GameCube zusammen) ein
+    Abruf der gepackten XML-Datei, höchstens alle gametdb.DAYS Tage oder wenn ein Spiel noch nicht zugeordnet ist;
+    am Spiel bleibt nur, was zu ihm passt."""
+    start = time.monotonic()
+    src = _Source("GameTDB", log)
+    col = store.load_json(collection.FILE, collection.EMPTY)
+    present = sorted({g.get("system") for g in (col.get("games") or {}).values() if g.get("system") in gametdb.DBS})
+    if not present:
+        log("GameTDB: kein Spiel für GameCube, Wii, DS oder 3DS in der Sammlung, nichts zu tun")
+        return src.result()
+    state = store.load_json(gametdb.FILE, {})
+    old = _iso(now() - timedelta(days=gametdb.DAYS))
+    parts, read = [], []
+    for db in dict.fromkeys(gametdb.DBS[s] for s in present):
+        systems = [s for s in present if gametdb.DBS[s] == db]
+        if not any(gametdb.due(col, s, state.get(db), old) for s in systems):
+            continue
+        blob = src.get(gametdb.url(systems[0]), shown=f"GameTDB {gametdb.NAMES[db]}", raw=True)
+        if not blob:
+            if src.stopped:
+                break
+            continue
+        try:
+            entries = {s: gametdb.parse(blob, s) for s in systems}
+        except Exception as e:          # kaputtes Archiv, Prüfseite statt Datei
+            src.errors += 1
+            log(f"GameTDB: {gametdb.NAMES[db]} nicht lesbar ({type(e).__name__})")
+            continue
+        stamp = titles.now_iso()
+        with store.lock:
+            col = store.load_json(collection.FILE, collection.EMPTY)
+            for s in systems:
+                got, n = gametdb.mark(col, s, gametdb.index(entries[s]), stamp)
+                parts.append(f"{s} {got} von {n}")
+            store.save_json(collection.FILE, col)
+        state[db] = {"at": stamp, "v": gametdb.V, "n": sum(len(x) for x in entries.values())}
+        read.append(gametdb.NAMES[db])
+    if read:
+        store.save_json(gametdb.FILE, state)
+    src.stats = {"read": len(read)}
+    log("GameTDB: " + (f"{', '.join(read)} gelesen; zugeordnet {', '.join(parts)}" if read else "aktuell") + f", {_took(start)}")
     return src.result()
 
 
@@ -2474,6 +2520,8 @@ def run(only=None, boot=False, by_hand=False, fast=False):
             do("vrdb", lambda: _vrdb(log))
         if not only or "retro" in only:
             do("retro", lambda: _retro(log))
+        if not only or "gametdb" in only:
+            do("gametdb", lambda: _gametdb(log))
         if sources.eshop_url() and (not only or "eshop" in only):
             do("eshop", lambda: _eshop(log))
         progress("Speichern")

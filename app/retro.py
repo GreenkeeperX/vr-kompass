@@ -71,7 +71,8 @@ _SHORT_REGION = {"E": "Europe", "U": "USA", "J": "Japan", "W": "World", "K": "Ko
 _ID_REGION = {"E": "USA", "P": "Europe", "D": "Germany", "F": "France", "S": "Spain", "I": "Italy", "J": "Japan",
               "K": "Korea", "U": "Australia", "H": "Netherlands", "X": "Europe", "Y": "Europe", "Z": "Europe"}
 _GAME_ID = re.compile(r"[GRSDP][A-Z0-9]{2}[A-Z][A-Z0-9]{2}")
-_PS_SERIAL = re.compile(r"S[LC][EUPJKA][SMD][-_ ]?\d{3}\.?\d{2}", re.I)
+# PS1, PS2, PSP („SLES-02376“, „ULES-00123“), ab 0.10.13 PS3 („BLES-01017“, Download „NPEB-00123“)
+_PS_SERIAL = re.compile(r"(?:S[LC][EUPJKA][SMD]|U[LC][EUJAK][SM]|B[LC][EUJAK][SM]|NP[EUJHA][A-Z])[-_ ]?\d{3}\.?\d{2}", re.I)
 _LANG = re.compile(r"^[A-Z][a-z](?:-[A-Z][a-z]+)?$")
 _ARTICLE = re.compile(r"^(.+?), (The|A|An|Der|Die|Das|Le|La|Les|Il|El)(\s+-\s+.*|:.*)?$")
 _TID = re.compile(r"^[0-9A-F]{16}\s+", re.I)
@@ -324,7 +325,7 @@ def apply(col, games, dry=True, own_systems=()):
     for k, g in games.items():
         o = old.get(k)
         if o:
-            for f in ("rev", "steam", "mark", "info", "igdb", "pcgw", "nexus", "stag", "alias", "near_no", "lr", "own_ok", "own_take", "de_ign"):
+            for f in ("rev", "steam", "mark", "info", "igdb", "pcgw", "nexus", "stag", "alias", "near_no", "lr", "own_ok", "own_take", "de_ign", "tdb"):
                 if f in o:
                     g[f] = o[f]
             # Ordner-Liste (0.8.8): ohne neue Liste für das System bleibt die alte, ebenso die Größe ohne Ordnerwahl
@@ -374,6 +375,7 @@ DATS = {
     "Master System": ("no-intro", "Sega - Master System - Mark III"), "Game Gear": ("no-intro", "Sega - Game Gear"),
     "GameCube": ("redump", "Nintendo - GameCube"), "Wii": ("redump", "Nintendo - Wii"),
     "PS1": ("redump", "Sony - PlayStation"), "PS2": ("redump", "Sony - PlayStation 2"), "PSP": ("redump", "Sony - PlayStation Portable"),
+    "PS3": ("redump", "Sony - PlayStation 3"),     # 0.10.13: Fassungen mit Sprachen und Seriennummer, Spielinfos von GameTDB
     "3DS": ("no-intro", "Nintendo - Nintendo 3DS"),
 }
 # Weitere Listen desselben Systems (0.8.4): beim 3DS die Download-Titel aus dem eShop, beim DS ab 0.8.6 die
@@ -413,7 +415,7 @@ def _serial_full(serial):
     m = re.fullmatch(r"(?:CTR|KTR|NTR|TWL)-[A-Z]-([A-Z0-9]{4})|(?:DL-DOL|RVL)-([A-Z0-9]{4})-[A-Z]{3}(?:-[A-Z0-9]+)?|ID-([A-Z0-9]{4})", s)
     if m:
         return next(x for x in m.groups() if x)
-    return s if re.fullmatch(r"S[LC][EUPJKA][SMD]-\d{5}", s) else ""
+    return s if re.fullmatch(r"(?:S[LC][EUPJKA][SMD]|U[LC][EUJAK][SM]|B[LC][EUJAK][SM]|NP[EUJHA][A-Z])-\d{5}", s) else ""
 
 
 def build_index(dat_text, retool_text=""):
