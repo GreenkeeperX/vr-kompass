@@ -613,6 +613,15 @@ def sync_steam(col, data):
     return new, len(gone)
 
 
+# 0.10.10: gg.deals führt in der Sammlung auch Konsolenspiele, erkennbar am Zusatz „(PS4)“, „(PS4 & PS5)“, „(Xbox …)“
+# oder „(Switch)“ hinter dem Namen; die gehören nicht in die Sammlung PC
+_GG_CONSOLE = re.compile(r"\((?:PS ?[1-5]|PS Vita|PSP|Xbox|Switch|Nintendo)\b[^()]*\)\s*$")
+
+
+def gg_console(name):
+    return bool(_GG_CONSOLE.search(str(name or "")))
+
+
 def sync_gg(col, data):
     """Spiele aus deiner gg.deals-Sammlung (data["gg_coll"], Lesezeichen „Seite lesen“, 0.9.9) unter „gg:<Slug>“, wenn
     weder Playnite noch das Steam-Konto noch die VR-Titel am PC sie unter demselben Namen führen. gg.deals führt
@@ -628,7 +637,7 @@ def sync_gg(col, data):
     want = {}
     for it in gc["items"]:
         n = titles.norm(it.get("name") or "")
-        if not n or n in other or not re.fullmatch(r"[a-z0-9-]{1,150}", str(it.get("slug") or "")):
+        if not n or n in other or gg_console(it.get("name")) or not re.fullmatch(r"[a-z0-9-]{1,150}", str(it.get("slug") or "")):
             continue
         stores = [x for x in it.get("stores") or [] if isinstance(x, str)]
         want["gg:" + it["slug"]] = {"name": str(it["name"])[:200], "store": stores[0] if stores else "", "stores": stores[:6],

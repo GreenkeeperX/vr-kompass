@@ -2356,7 +2356,7 @@ function previewHtml(p){
   // gg.deals-Sammlung (0.9.9): wie viele Spiele, wie viele davon neu für die Sammlung PC, je Launcher
   const gc = p.ggc, gcs = gc ? Object.entries(gc.stores || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k === "?" ? "ohne Launcher" : esc(k)} ${num(v)}`).join(", ") : "";
   if(gc){
-    const head = `${num(gc.n)} Spiele (${gcs}). ${gc.fresh ? `${num(gc.fresh)} davon kennt die Sammlung PC noch nicht` : "Alle stehen schon in der Sammlung PC"}${gc.gone ? `, ${num(gc.gone)} nicht mehr in der gg.deals-Sammlung` : ""}.`;
+    const head = `${num(gc.n)} Spiele (${gcs}). ${gc.fresh ? `${num(gc.fresh)} davon kennt die Sammlung PC noch nicht` : "Alle stehen schon in der Sammlung PC"}${gc.gone ? `, ${num(gc.gone)} nicht mehr in der gg.deals-Sammlung` : ""}.${gc.console ? ` ${num(gc.console)} Konsolenspiele (etwa „(PS4)“ im Namen) gehören nicht in die Sammlung PC und bleiben draußen.` : ""}`;
     const li = e => `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.known ? " · schon in der Sammlung" : ` · ${e.store ? esc(e.store) : "Launcher unbekannt"}`}</li>`;
     return p.done ? `<p class="ok">gg.deals-Sammlung übernommen: ${head}</p><details class="prev"><summary class="hint">Was gelesen wurde</summary><ul>${p.entries.slice(0, 600).map(li).join("")}</ul></details>`
       : `<div class="prev"><b>gg.deals-Sammlung:</b> ${head} Noch nichts gespeichert. <span class="hint">${esc(p.note || "")}</span><ul>${p.entries.slice(0, 300).map(li).join("")}</ul></div>`;
