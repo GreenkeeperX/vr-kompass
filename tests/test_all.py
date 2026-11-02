@@ -949,6 +949,22 @@ class TestLibrary(unittest.TestCase):
             self.assertIn(name, js)
         self.assertEqual(css.count("--hov:"), 3)
 
+    def test_0110_gg_console(self):
+        """0.10.10: Konsolenspiele aus der gg.deals-Sammlung („(PS4)“ hinter dem Namen) kommen nicht in die Sammlung PC."""
+        self.assertTrue(all(collection.gg_console(n) for n in ("Lantern Keep (PS4)", "Sky Garden (PS4 & PS5)", "Comet Chase (PS3)",
+                                                                  "Star Ride (PS Vita)", "Orbit Golf (Xbox Series X|S)", "Night Tram (Switch)")))
+        self.assertFalse(any(collection.gg_console(n) for n in ("Lantern Keep", "Sky Garden (2024)", "PS5 Simulator", "Harbor Heist (PSX Style)")))
+        d = empty()
+        d["gg_coll"] = {"at": "2026-11-02", "items": [{"slug": "lantern-keep-ps4", "name": "Lantern Keep (PS4)", "stores": []},
+                                                     {"slug": "sky-garden", "name": "Sky Garden", "stores": ["Steam"]}]}
+        col = {"games": {"gg:lantern-keep-ps4": {"name": "Lantern Keep (PS4)", "src": collection.GGCOLL, "system": "PC"}}}
+        self.assertEqual(collection.sync_gg(col, d), (1, 1))      # der alte Konsoleneintrag fällt beim Abgleich weg
+        self.assertEqual(set(col["games"]), {"gg:sky-garden"})
+        payload = json.dumps({"kind": "gg-sammlung", "hv": 10, "items": [
+            {"kind": "game", "slug": "sky-garden", "name": "Sky Garden", "ctx": "steam"},
+            {"kind": "game", "slug": "lantern-keep-ps4", "name": "Lantern Keep (PS4)", "ctx": ""}]})
+        self.assertEqual(imports.import_meta(empty(), payload, dry=True)["ggc"]["console"], 1)
+
     def test_ui_0109(self):
         """0.10.9: Spalte in der Sortieren-Auswahl, Lesezeichen bis 200 Seiten, nur Launcher-Namen, Abbruch bei 403/429."""
         from app import imports
@@ -3314,7 +3330,7 @@ class TestAccounts(unittest.TestCase):
             self.assertEqual(imports.detect(payload), "meta")
             d = empty()
             res = imports.import_meta(d, payload, dry=True)
-            self.assertEqual(res["ggc"], {"n": 4, "fresh": 3, "known": 1, "stores": {"Steam": 1, "GOG": 1, "Epic": 1, "?": 1}})
+            self.assertEqual(res["ggc"], {"n": 4, "fresh": 3, "known": 1, "stores": {"Steam": 1, "GOG": 1, "Epic": 1, "?": 1}, "console": 0})
             self.assertNotIn("ggcoll", d["imports"])
             self.assertNotIn("gg:rally-moth", store.load_json(collection.FILE, collection.EMPTY)["games"])
             res = imports.import_meta(d, payload, dry=False)

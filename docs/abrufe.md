@@ -472,3 +472,5 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
   `data.json` (`at`, `items` mit `slug`, `name`, `stores`), der Stand unter `imports.ggcoll`.
   Das Lesezeichen liest ab 0.10.9 bis zu 200 Seiten (vorher 30) mit 1,2 s Pause und hört bei 403 oder 429 auf; es
   gibt je Karte nur die erkannten Launcher-Namen weiter, nicht mehr den Text der Karte.
+  Ab 0.10.10 bleiben Konsolenspiele (Zusatz wie „(PS4)“ hinter dem Namen, `collection.gg_console`) draußen, beim
+  Einlesen und bei jedem Abgleich.

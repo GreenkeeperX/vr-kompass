@@ -573,6 +573,8 @@ def import_ggcoll(data, payload, dry=True):
     obj = json.loads(str(payload).strip())
     st = {}
     items = [it for it in parse_ggpage(payload, st) if not it.get("kind")]
+    console = sum(1 for it in items if collection.gg_console(it["name"]))      # 0.10.10: nicht in die Sammlung PC
+    items = [it for it in items if not collection.gg_console(it["name"])]
     if not items:
         raise ValueError("Keine Spiele in der gg.deals-Sammlung erkannt. Bitte die Seite neu laden und noch einmal versuchen")
     ctx = {}
@@ -591,7 +593,7 @@ def import_ggcoll(data, payload, dry=True):
     for it in items:
         for x in it["stores"][:1] or ["?"]:
             counts[x] = counts.get(x, 0) + 1
-    res["ggc"] = {"n": len(items), "fresh": new_n, "known": len(items) - new_n, "stores": counts}
+    res["ggc"] = {"n": len(items), "fresh": new_n, "known": len(items) - new_n, "stores": counts, "console": console}
     if not dry:
         data["gg_coll"] = {"at": titles.now_iso(), "items": [{"slug": it["slug"], "name": it["name"], "stores": it["stores"]} for it in items]}
         added, gone = collection.sync_gg(col, data)
