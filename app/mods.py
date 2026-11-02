@@ -12,7 +12,7 @@ import urllib.parse
 from . import titles
 from .probes import NEXUS_GQL, PCGW, PCGW_APPID, pcgw_title, pcgw_vr, search_name
 
-V = 2                       # 2: dazu Spielerzahlen aus „Network/Multiplayer“ (0.9.5)
+V = 3                       # 2: dazu Spielerzahlen aus „Network/Multiplayer“ (0.9.5); 3: Crossplay (0.10.0)
 HEADSETS = {"htc vive": "HTC Vive", "oculus rift": "Oculus Rift", "windows mixed reality": "Windows Mixed Reality",
             "osvr": "OSVR", "openxr": "OpenXR", "steamvr": "SteamVR", "oculusvr": "Oculus"}
 GAMES_PAGE = 100            # erbetene Spiele je Seite; Nexus liefert höchstens 80 (Verbindungstest 0.8.4),
@@ -60,7 +60,15 @@ def pcgw(text):
             "vorpx": val(f.get("vorpx", "")) == "true",
             "mp": [MP_PLAY[k] for k in on],
             "pl": {MP_PLAY[k]: _most(m.get(k + " players")) for k in on if _most(m.get(k + " players")) > 1},
-            "coop": [MP_PLAY[k] for k in on if "co-op" in val(m.get(k + " modes", ""))]}
+            "coop": [MP_PLAY[k] for k in on if "co-op" in val(m.get(k + " modes", ""))],
+            # 0.10.0: Crossplay (Partien über Plattformen hinweg) und mit welchen
+            "xp": True if val(m.get("crossplay", "")) in ("true", "limited") else False if val(m.get("crossplay", "")) == "false" else None,
+            "xpw": xp_platforms(m.get("crossplay platforms"))}
+
+
+def xp_platforms(v):
+    """Plattformen aus „crossplay platforms“ (etwa „Xbox, PlayStation, Mac OS“), höchstens acht."""
+    return [" ".join(x.split())[:30] for x in re.split(r"\s*[,;/]\s*|<br\s*/?>", str(v or "")) if x.strip()][:8]
 
 
 def games_query(offset):

@@ -115,7 +115,7 @@ Menü am Ende der Filterzeile; „hinzugefügt am“; Jetzt mit PC über VR. 0.8
 Rezensionszahl. 0.8.22: VR-Wünsche als Tabelle wie die PC-Wünsche, die Karte als Einzelheiten; Jetzt
 mit zwei gleich gebauten Tabellen. 0.8.23: eine Spaltenreihenfolge für alle Tabellen, „max. Spieler“ statt Mehrspieler,
 „Aktiv“ auch für PC-Spiele, Wertung der eigenen Fassung im Reiter VR. 0.8.24: PC-Wünsche ohne Steam-ID: mehr Suchen, Grundform des
-Namens, Ähnliches zum Bestätigen in „Zu erledigen“; Geheimtipp dunkler. 0.8.25: Preissturz auch für VR-Wünsche. 0.8.26: Trend zählt halb in „wo kaufen“. 0.8.27: Jetzt „Alle“ als eine gemischte Tabelle. 0.9.0: Läden einzeln über IsThereAnyDeal, Jetzt PC nach Laden. 0.9.1: Preisverlauf je Titel. 0.9.2: „Meinung fehlt“ mit Auftrag für die Recherche. 0.9.3: Spielzeit und „zuletzt gespielt“ aus dem Steam-Konto, Mischung „Liegt brach“. 0.9.7: Spiele aus dem Steam-Konto in der Sammlung. 0.9.8: Kürzen zu „+n weitere“, Ladenfarben. 0.9.9: gg.deals-Sammlung per Lesezeichen. Grundsatz (Entscheidung 22.10.2026): so wenig
+Namens, Ähnliches zum Bestätigen in „Zu erledigen“; Geheimtipp dunkler. 0.8.25: Preissturz auch für VR-Wünsche. 0.8.26: Trend zählt halb in „wo kaufen“. 0.8.27: Jetzt „Alle“ als eine gemischte Tabelle. 0.9.0: Läden einzeln über IsThereAnyDeal, Jetzt PC nach Laden. 0.9.1: Preisverlauf je Titel. 0.9.2: „Meinung fehlt“ mit Auftrag für die Recherche. 0.9.3: Spielzeit und „zuletzt gespielt“ aus dem Steam-Konto, Mischung „Liegt brach“. 0.9.7: Spiele aus dem Steam-Konto in der Sammlung. 0.9.8: Kürzen zu „+n weitere“, Ladenfarben. 0.9.9: gg.deals-Sammlung per Lesezeichen. 0.10.0: Preismuster aus dem eigenen Verlauf („üblich −x %“, Rhythmus), Crossplay. Grundsatz (Entscheidung 22.10.2026): so wenig
 Handarbeit wie möglich; was sich abrufen und von einer zweiten Quelle bestätigen lässt, geht vor
 Bestätigen und Einlesen von Hand. Als Nächstes:
 
@@ -154,9 +154,8 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
 - Freie Abrufe für die PC-Sammlung: Sind alle VR-Titel aktuell, holt der Abgleich mit dem Rest
   seines Kontingents Spielerzahlen für die Sammlung (zuerst gut bewertete Mehrspieler-Spiele) und
   hält sie dann ebenso aktuell
-- Preismuster im Tool (einmal ausgewertet 02.11.2026: der Rabatt wächst mit dem Alter des Spiels, Tiefs häufen sich in
-  den großen Steam-Sales, der Wochentag zählt kaum): Hinweis „Warten lohnt“, wenn der Rabatt unter dem für das Alter
-  üblichen liegt; Monat des nächsten großen Sales aus den Häufungen im eigenen Verlauf; Rhythmus je Spiel und Laden
+- Höchstzahl der Spieler für VR-Titel über den Auftrag für die Meinungen (als Recherche gekennzeichnet)
+- Aktive Steam-Spieler in der Sammlung zuerst für Mehrspieler-Spiele
 - PC-Wünsche ohne Steam-ID: Preise über die Titelsuche von IsThereAnyDeal (GOG-, Epic- und andere Spiele)
 - Pflege je Laden vergleichen: Steam-Update-Datum gegen den Tag, an dem die Meta-Version zuletzt wechselte
   (`meta_ver.since`), als weiterer Grund im Urteil „wo kaufen“
@@ -165,4 +164,3 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
 - Benachrichtigung bei neuem Tief eines Wunschtitels
 - Export der Meta-Bibliothek als CSV für Playnite
 - weitere Anbieter über gg.deals
-- Angebotsrhythmus je Titel

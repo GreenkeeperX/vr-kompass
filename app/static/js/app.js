@@ -203,6 +203,7 @@ function badges(r, compact){
   if(r.steam_appid && !r.steam_sure) out.push(`<span class="b warn" title="${esc(r.steam_doubt ? "Steam-ID passt wohl nicht: " + r.steam_doubt + " (siehe Einstellungen, Zu erledigen)" : "Steam-ID nur nach dem Namen zugeordnet, das Tool prüft sie beim nächsten Abgleich")}">Steam-ID ≈</span>`);
   out.push(wheelBadge(r.wheel));
   if(!r.where) out.push(dropMark(r.drop));     // 0.8.25: Preissturz auch für VR-Wünsche
+  if(!r.where) out.push(usualMark(r.usual));
   out.push(compact ? wishListShort(r) : wishListBadge(r));
   return out.filter(Boolean).join(" ");
 }
@@ -264,11 +265,13 @@ function factsHtml(r){
   const vg = vrG(r), vk = plKinds(vg, true);
   if(vk.main) out.push(fact("Spieler", vk.main, "Je Art die höchste Zahl (IGDB, PCGamingWiki); „2+“: Zahl unbekannt; violett: nur eine Quelle"));
   if(vk.coop) out.push(fact("Koop", vk.coop, "Gemeinsam gegen das Spiel, je Art die höchste Zahl"));
+  if(vg.xp) out.push(fact("Crossplay", xpText(vg.xp), vg.xp.on ? xpTip(vg.xp) : `Laut ${vg.xp.src} kein Crossplay`));
   if(vg.hours) out.push(fact("Spielzeit", hrs(vg.hours), "Laut IGDB"));
   if(g.players && g.players.now != null) out.push(fact("Aktiv", `${num(g.players.now)}${g.players.peak > g.players.now ? ` <span class="hint">(Spitze ${num(g.players.peak)})</span>` : ""}`,
     `Steam-Spieler gerade eben (${when(g.players.at)}); Spitze: höchster gemessener Wert seit ${day(g.players.since)}`));
   if(g.meta_ver) out.push(fact("Meta", `v${esc(g.meta_ver.v.split("_")[0])}${g.meta_ver.since ? ` seit ${agoDays(g.meta_ver.since).replace("vor ", "")}` : ""}`,
     `Version im Meta Store laut VRDB${g.meta_ver.since ? "; das Tool sah sie zuerst am " + day(g.meta_ver.since) : ", zuerst gesehen beim ersten Abruf"}`));
+  if(r.usual && !r.where) out.push(fact("Üblich", usualText(r.usual), usualTip(r.usual)));
   if(g.update) out.push(fact("Update", agoDays(g.update.date) + (CARE[g.update.care?.state] ? ` <span class="hint">(${CARE[g.update.care.state]})</span>` : ""), `Steam, laut Meldung des Entwicklers: ${g.update.title}`));
   return out.length ? `<div class="facts">${out.join("")}</div>` : "";
 }
@@ -296,6 +299,20 @@ function listBar(o){
   return `<div class="bar"><span class="sbox"><input type="search" id="q" placeholder="Titel oder Notiz suchen" aria-label="Titel oder Notiz suchen" value="${esc(V.q)}" data-in="q">${V.q ? `<button class="sx" data-act="qclear" title="Suche leeren (Esc)" aria-label="Suche leeren">×</button>` : ""}</span>
     <span class="tools">${sel}${menu}<button data-act="legend" class="${V.legend ? "on" : ""}" aria-label="Legende" title="Was Farben und Zeichen bedeuten">?</button>${o.extra || ""}</span></div>${chips}${V.legend ? legendHtml() : ""}`;
 }
+// Was der eigene Verlauf aller Spiele zeigt (0.10.0): Rabatt je Alter, Monate mit vielen Angeboten, übliche Dauer;
+// in der Legende und im Preisverlauf. Alles aus S.muster, nichts davon steht fest im Code
+const MON_SHORT = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
+function musterHtml(){
+  const m = S.muster;
+  if(!m || !m.sales) return "";
+  const bands = m.bands.filter(b => b.pct != null).map(b => `${esc(b.label)} <b>−${b.pct} %</b>`).join(" · ");
+  const peak = m.peak.length ? m.peak.map(i => MON_SHORT[i - 1]).join(", ") : "";
+  return `<div class="muster"><b>Was dein Preisverlauf zeigt</b> <span class="hint">(Steam, ${num(m.games)} Spiele, ${num(m.sales)} Angebote)</span><ul>
+    ${bands ? `<li>Üblicher Rabatt nach Alter des Spiels: ${bands}</li>` : ""}
+    ${peak ? `<li>Viele Angebote gab es bisher im ${peak}</li>` : ""}
+    ${m.days ? `<li>Ein Angebot dauert meist ${m.days} Tage</li>` : ""}</ul>
+    <span class="hint">Häufungen aus der Vergangenheit, keine Vorhersage. Liegt ein laufendes Angebot deutlich unter dem Üblichen, steht neben dem Namen <span class="b usq">üblich −30 %</span>.</span></div>`;
+}
 // Legende: einmal für alle Listen, statt Erklärtext über jeder Liste (Regeln: docs/oberflaeche.md)
 function legendHtml(){
   return `<div class="card legend"><h2>Farben und Zeichen <button class="link" data-act="legend">schließen</button></h2>
@@ -308,7 +325,8 @@ function legendHtml(){
     <div class="lg"><span class="shopmark">grüner Rahmen</span> der günstigere Laden, mit Betrag (ab 1 €; Steam-Seite zählt auch Händler und Keyshops bei gg.deals)</div>
     <div class="lg"><span class="b cb">Crossbuy</span> Meta-Kauf gilt auch am PC; <span class="b">ohne Crossbuy</span> nur auf der Quest</div>
     <div class="lg"><span class="rate win">Meta 88 %</span> besser bewerteter Laden (ab 5 Punkten Abstand)</div>
-    <div class="lg">ohne Zeichen: vom Tool gemessen · <b>≈</b> abgeleitet oder aus fremder Quelle · <b>Tabelle</b> aus deiner Vergleichstabelle · <span class="ux">violett gestrichelt</span> Recherche · <span class="b warn">violett</span> prüfen</div></div>`;
+    <div class="lg">ohne Zeichen: vom Tool gemessen · <b>≈</b> abgeleitet oder aus fremder Quelle · <b>Tabelle</b> aus deiner Vergleichstabelle · <span class="ux">violett gestrichelt</span> Recherche · <span class="b warn">violett</span> prüfen</div>
+    <div class="lg"><span class="b usq">üblich −30 %</span> das laufende Steam-Angebot liegt deutlich unter dem Rabatt, der für Spiele dieses Alters bisher üblich war</div>${musterHtml()}</div>`;
 }
 
 /* ---------------------------------------------------------------- Wunschliste */
@@ -417,7 +435,7 @@ function pcRow(r){
   const hours = !r.hours ? "" : `<span title="${esc(`Laut IGDB${r.hours_all ? `; komplett ${hrs(r.hours_all)}` : ""}`)}">${hrs(r.hours)}</span>`;
   const price = pcPriceHtml(r), low = pcLowHtml(r);
   const g = Object.assign({mp: [], genres: []}, r);
-  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="pwopen" data-s="${esc(r.key)}" aria-expanded="${open}" title="${esc(r.name)} · Einzelheiten">${esc(r.name)}</button>${r.kind ? `<span class="b" title="${esc(PC_KIND[r.kind]?.[1] || "")}">${esc(PC_KIND[r.kind]?.[0] || r.kind)}</span>` : ""}${r.vr ? `<span class="b vrq" title="Nur ein Hinweis: der Name nennt VR">VR</span>` : ""}${r.owned ? `<span class="b warn" title="Steht in deiner Sammlung; bei gg.deals von der Wunschliste nehmen?">schon in der Sammlung</span>` : ""}${r.id_near ? `<span class="b warn" title="${esc(`Steam-ID nur nach der Grundform des Namens${typeof r.id_near === "string" ? `: ${r.id_near}` : ""}; bestätigen unter Einstellungen, Zu erledigen`)}">Steam-ID ≈</span>` : ""}${dropMark(r.drop)}${careMark(r.care)}</span>` +
+  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="pwopen" data-s="${esc(r.key)}" aria-expanded="${open}" title="${esc(r.name)} · Einzelheiten">${esc(r.name)}</button>${r.kind ? `<span class="b" title="${esc(PC_KIND[r.kind]?.[1] || "")}">${esc(PC_KIND[r.kind]?.[0] || r.kind)}</span>` : ""}${r.vr ? `<span class="b vrq" title="Nur ein Hinweis: der Name nennt VR">VR</span>` : ""}${r.owned ? `<span class="b warn" title="Steht in deiner Sammlung; bei gg.deals von der Wunschliste nehmen?">schon in der Sammlung</span>` : ""}${r.id_near ? `<span class="b warn" title="${esc(`Steam-ID nur nach der Grundform des Namens${typeof r.id_near === "string" ? `: ${r.id_near}` : ""}; bestätigen unter Einstellungen, Zu erledigen`)}">Steam-ID ≈</span>` : ""}${dropMark(r.drop)}${usualMark(r.usual)}${careMark(r.care)}</span>` +
     cell("max. Spieler", gMaxPl(g), "r") + `<span class="r" data-l="Preis">${price}</span>` + cell("überm Tief", low, "r") + cell("Wo", pcWo(r)) +
     cell("Wertung", gSc(r) + (r.score_src === "Steam" ? trendMark(r.trend) : ""), "r") + cell("Rezensionen", gRev(g), "r") +
     `<span class="c-gen${r.genres?.length ? "" : " nil"}" data-l="Genre">${r.genres?.length ? gGenres(r, false) : G_NIL}</span>` +
@@ -436,6 +454,7 @@ function pcDetail(r, gc = 8){
     row("Update", r.care ? `${agoDays(r.care.date)}${CARE[r.care.state] ? ` <span class="hint">(${CARE[r.care.state]})</span>` : ""}` : "", r.care ? `Letztes Update laut Steam-Neuigkeiten am ${day(r.care.date)}` : "") +
     row("Erschienen", esc(r.sdate || r.year || ""), [r.dev && `Entwickler: ${r.dev}`, r.pub && r.pub !== r.dev && `Verlag: ${r.pub}`, r.sdate ? "Laut Steam" : r.year_src === "IGDB" ? "Laut IGDB" : ""].filter(Boolean).join("\n")) +
     row("Preissturz", r.drop ? `${eur(r.best)} statt üblich ${eur(r.drop.usual)} (−${r.drop.pct} %)` : "", "Median der Preise der letzten Tage aus dem eigenen Verlauf") +
+    row("Üblich", usualText(r.usual), r.usual ? usualTip(r.usual) : "") +
     row("Jetzt", [r.retail != null && `Händler ${eur(r.retail)}`, r.keyshops != null && `Keyshop ${eur(r.keyshops)}`].filter(Boolean).join(" · "), "Preise jetzt laut gg.deals") +
     row("Tief", [r.retail_low != null && `Händler ${eur(r.retail_low)}`, r.keyshops_low != null && `Keyshop ${eur(r.keyshops_low)}`].filter(Boolean).join(" · "), "Bisheriges Tief laut gg.deals") +
     row("Läden", pcShopsHtml(r), r.shops_at ? `Offizielle Läden laut IsThereAnyDeal, Stand ${when(r.shops_at)}; grün: höchstens 5 % über dem Tief der Händler` : "") +
@@ -699,7 +718,7 @@ function allVrRow(r){
 }
 function allPcRow(r){
   const open = V.pwOpen === r.key, g = Object.assign({mp: [], genres: []}, r);
-  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="pwopen" data-s="${esc(r.key)}" aria-expanded="${open}" title="${esc(r.name)} · Einzelheiten">${esc(r.name)}</button>${dropMark(r.drop)}${careMark(r.care)}</span>` +
+  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="pwopen" data-s="${esc(r.key)}" aria-expanded="${open}" title="${esc(r.name)} · Einzelheiten">${esc(r.name)}</button>${dropMark(r.drop)}${usualMark(r.usual)}${careMark(r.care)}</span>` +
     cellOf("max. Spieler", gMaxPl(g), "r") + `<span class="r" data-l="Preis">${pcPriceHtml(r)}</span>` + cellOf("überm Tief", pcLowHtml(r), "r") +
     cellOf("Art", `<span class="b pcb" title="PC-Wunsch von gg.deals">PC</span>`) + cellOf("Wo", pcWo(r)) +
     cellOf("Wertung", gSc(r) + (r.score_src === "Steam" ? trendMark(r.trend) : ""), "r") + cellOf("Rezensionen", gRev(g), "r") +
@@ -938,6 +957,11 @@ const trendMark = t => !t || t.dir === "flat" ? "" : `<span class="tr ${t.dir}" 
 const trendText = t => !t ? "" : `<span title="${esc(trendTip(t))}">${t.dir === "up" ? "steigend" : t.dir === "down" ? "fallend" : "gleichbleibend"}${trendMark(t) ? " " + trendMark(t) : ""} <span class="hint">(${t.recent} % gegen ${t.all} %)</span></span>`;
 const CARE = {fresh: "gepflegt", ok: "", stale: "ruht"};
 const careMark = c => c?.state === "stale" ? `<span class="b care" title="${esc(`Letztes Update laut Steam-Neuigkeiten am ${day(c.date)}, über ein Jahr her`)}">ruht</span>` : "";
+// Üblicher Steam-Rabatt (0.10.0): aus dem eigenen Verlauf je Alter des Spiels; die Marke nur, wenn ein laufendes Angebot
+// deutlich darunter liegt. Keine Vorhersage, nur die Zahl, auf der sie beruht (Entscheidung 02.11.2026)
+const usualTip = u => `Bei Steam lag der Rabatt für Spiele im Alter von ${u.band} in deinem Preisverlauf meist bei ${u.pct} % (Median aus ${u.n} Angeboten); jetzt ${u.now ? u.now + " %" : "kein Angebot"}.${u.peak ? ` Nächster Monat, in dem es bisher viele Angebote gab: ${u.peak}.` : ""} Keine Vorhersage.`;
+const usualMark = u => !u?.mark ? "" : `<span class="b usq" title="${esc(usualTip(u))}">üblich −${u.pct} %</span>`;
+const usualText = u => !u ? "" : `−${u.pct} % <span class="hint">(${esc(u.band)}, jetzt ${u.now ? "−" + u.now + " %" : "kein Angebot"})</span>`;
 const dropMark = d => !d ? "" : `<span class="b go" title="${esc(`${d.shop ? `${SHOP[d.shop]}: ` : ""}${d.pct} % unter dem üblichen Preis von ${eur(d.usual)} (Median der letzten ${d.days} Tage, eigener Preisverlauf${d.shop ? "" : " aus gg.deals"})`)}">Preissturz</span>`;
 /* Genres als Blasen, Farbton nach Verwandtschaft (wie im eShopKompass): Action und Kampf rot, Tempo
    orange bis gelbgrün, Plattformer gelb, ruhiges Leben grün, Erkunden türkis bis cyan, Denken blau bis
@@ -999,7 +1023,12 @@ function gActive(g){
 const PL_SRC = s => ({"IGDB": "Laut IGDB", "PCGamingWiki": "Laut PCGamingWiki", "IGDB, PCGamingWiki": "IGDB und PCGamingWiki einig", "libretro": "Laut libretro-database", "Playnite": "Laut Playnite"})[s] || (s ? `Laut ${s}` : "");
 const plSolo = g => !g.players && !(g.mp || []).length && !Object.keys(g.plm || {}).length && (g.src === "steam" || !!g.ig);
 const plSort = g => g.players || ((g.mp || []).length ? 2 : plSolo(g) ? 1 : null);
-function gMaxPl(g){
+// Crossplay (0.10.0): Partien über Plattformen hinweg, laut PCGamingWiki (mit Plattformen) und Steam-Kategorie
+const xpTip = x => `Crossplay: gemeinsame Partien über Plattformen hinweg${x.with?.length ? ` (${x.with.join(", ")})` : ""}; laut ${x.src}${x.src.includes(",") ? ", bestätigt" : ""}${x.doubt ? `. Widerspruch: ${x.doubt}` : ""}`;
+const xpMark = x => !x?.on ? "" : ` <span class="xpm${x.doubt || !x.src.includes(",") ? " gxc" : ""}" title="${esc(xpTip(x))}">⇄</span>`;
+const xpText = x => !x ? "" : x.on ? `ja${x.with?.length ? ` <span class="hint">(${esc(x.with.join(", "))})</span>` : ""}${x.doubt ? ` <span class="b warn">${esc(x.doubt)}</span>` : ""}` : "nein";
+const gMaxPl = g => gMaxPl0(g) + xpMark(g.xp);
+function gMaxPl0(g){
   const kinds = plKinds(g, false);
   if(!g.players) return (g.mp || []).length ? `<span class="hint" title="${esc(`Mehrspieler, keine Quelle nennt eine Zahl${kinds ? `\n${kinds}` : ""}`)}">2+</span>`
     : plSolo(g) ? `<span class="hint" title="${g.src === "steam" ? "Laut Steam" : "Laut IGDB"} ohne Mehrspieler">1</span>` : "";
@@ -1034,7 +1063,8 @@ function plKinds(g, html){
 function plRows(g, row){
   const k = plKinds(g, true);
   return row("Spieler", k.main, "Je Art die höchste Zahl (IGDB, PCGamingWiki); „2+“: Zahl unbekannt; violett: nur eine Quelle") +
-    row("Koop", k.coop, "Gemeinsam gegen das Spiel, je Art die höchste Zahl");
+    row("Koop", k.coop, "Gemeinsam gegen das Spiel, je Art die höchste Zahl") +
+    row("Crossplay", xpText(g.xp), g.xp ? (g.xp.on ? xpTip(g.xp) : `Laut ${g.xp.src} kein Crossplay`) : "");
 }
 function vrScoreCell(g){
   const o = vrOwnScore(g.lib), st = g.lib.rating?.steam;
@@ -1705,10 +1735,13 @@ function drawVerlauf(){
     v.series.map(s => `<button class="${V.vl.hide.has(s.name) ? "off" : ""}" data-act="vltoggle" data-n="${esc(s.name)}" title="ein- oder ausblenden"><i style="background:${vlColor(v, s)}"></i>${esc(s.name)}</button>`).join("") + `</div>`;
   h += vlSvg(v);
   const last = s => { const l = s.sales[s.sales.length - 1]; return !l ? "–" : `${l.end ? `${dm(l.start)}–${dm(l.end)}` : `läuft seit ${dm(l.start)}`}<small>−${l.pct} %, ${eur(l.low)}</small>`; };
-  h += `<div class="scroll"><table><thead><tr><th>Laden</th><th>jetzt</th><th>normal</th><th title="Niedrigster Preis der letzten 18 Monate">tiefster</th><th title="Angebote in diesem Zeitraum">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der Zeit im Angebot">im Angebot</th><th title="Median der Tiefstwerte je Angebot, ab zwei Angeboten">typisch</th><th>zuletzt</th></tr></thead><tbody>` +
-    v.series.map(s => `<tr><td>${esc(s.name)}</td><td>${eur(s.now)}</td><td>${eur(s.regular)}</td><td>${eur(s.low)}<small>${day(s.low_at)}</small></td><td>${s.sale_count}</td><td>${s.typical_days == null ? "–" : s.typical_days + " T."}</td><td>${s.on_sale_pct} %</td><td>${s.typical == null ? "–" : eur(s.typical)}</td><td>${last(s)}</td></tr>`).join("") + `</tbody></table></div>`;
+  h += `<div class="scroll"><table><thead><tr><th>Laden</th><th>jetzt</th><th>normal</th><th title="Niedrigster Preis der letzten 18 Monate">tiefster</th><th title="Angebote in diesem Zeitraum">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der Zeit im Angebot">im Angebot</th><th title="Median der Tiefstwerte je Angebot, ab zwei Angeboten">typisch</th><th title="Üblicher Abstand zwischen zwei Angeboten, ab drei Angeboten">Rhythmus</th><th>zuletzt</th></tr></thead><tbody>` +
+    v.series.map(s => `<tr><td>${esc(s.name)}</td><td>${eur(s.now)}</td><td>${eur(s.regular)}</td><td>${eur(s.low)}<small>${day(s.low_at)}</small></td><td>${s.sale_count}</td><td>${s.typical_days == null ? "–" : s.typical_days + " T."}</td><td>${s.on_sale_pct} %</td><td>${s.typical == null ? "–" : eur(s.typical)}</td><td>${gapText(s.gap)}</td><td>${last(s)}</td></tr>`).join("") + `</tbody></table></div>`;
+  const mh = musterHtml();
+  if(mh) h += `<details class="how" ${foldAttr("vlmuster", true)}><summary class="hint">Was der Verlauf aller Spiele zeigt</summary>${mh}</details>`;
   d.innerHTML = h;
 }
+const gapText = g => g == null ? "–" : g < 14 ? `alle ${g} T.` : `alle ${Math.round(g / 7)} Wo.`;
 function vlSvg(v){
   // Breite nach Bildschirm, damit die Schrift auch am Handy lesbar bleibt (wie im eShopKompass)
   const W = Math.max(300, Math.min(860, window.innerWidth - 70)), H = W < 600 ? 220 : 260, L = 44, R = 10, T = 12, B = 26;
