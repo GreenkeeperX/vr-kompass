@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.11:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.12:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -54,6 +54,10 @@ Neu in 0.10.10: Konsolenspiele aus der gg.deals-Sammlung (Zusatz wie „(PS4)“
 kommen nicht mehr in die Sammlung PC; schon übernommene fallen beim nächsten Abgleich weg. Das Ergebnis nennt ihre Zahl.
 Neu in 0.10.11: Auch aus Playnite kommen keine PlayStation-Spiele mehr in die Sammlung (sie kommen später aus dem
 ROM-Ordner); schon übernommene fallen beim nächsten Abgleich weg, Retro-Einträge bleiben.
+Neu in 0.10.12: Unter Einstellungen, „Zu erledigen“ stehen alle Retro-Spiele mit „DE fehlt“ je System, mit
+„ignorieren“ einzeln, je System oder für alle; die Marke verschwindet dann, das Spiel zählt als „ohne Deutsch“, und in
+den Einzelheiten holt „wieder melden“ es zurück. IGDB liefert den genauen Erscheinungstag, wo sonst keiner da ist. Der
+Verbindungstest probiert GameTDB für GameCube und Wii (die libretro-database hat dafür keine Spielinfos).
 Neu in 0.10.5: Meta im Meta-Blau, Steam im dunkleren Blau des Steam-Logos (vorher war Steam im dunklen Modus
 heller als Meta).
 Neu in 0.10.4: ein teurerer Weg (Händler statt Keyshop, ein anderer Laden) steht in den Einzelheiten der PC-Wünsche nur
@@ -241,7 +245,9 @@ Kopieren) oder eine CSV mit den Spalten `System` und `Titel`. Erst kommt die Vor
   aus der Region geschätzt, steht die Marke violett. Der Filter „Sprache“ zeigt „mit Deutsch“,
   „DE fehlt“ oder „ohne Deutsch“ (keine deutsche Fassung bekannt). Ab 0.8.12 gelten die Sprachen auch ohne
   Sprachangabe im Namen als bestätigt (nicht violett), wenn deine Datei genau so in der Fassungsliste steht:
-  No-Intro nennt die Sprachen nur, wenn sie von der Sprache der Region abweichen.
+  No-Intro nennt die Sprachen nur, wenn sie von der Sprache der Region abweichen. Ab 0.10.12 listet „Zu erledigen“
+  alle Spiele mit „DE fehlt“; „ignorieren“ blendet die Marke aus (das Spiel zählt dann als „ohne Deutsch“, auch nach
+  neuem Einlesen der Retro-Liste), „wieder melden“ in den Einzelheiten holt sie zurück.
 - **3DS** (0.8.4): Fassungsliste von No-Intro für Module und für Download-Titel aus dem eShop. Nennt der
   Dateiname den Produktcode („… (CTR-P-ABCP) (v0) (E).cia“), gelten die Sprachen genau dieser Fassung
   laut No-Intro statt der aus der Region geschätzten (nicht mehr violett), und die Fassungen anderer

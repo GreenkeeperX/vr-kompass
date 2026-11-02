@@ -1215,6 +1215,38 @@ class TestServer(unittest.TestCase):
         self.assertEqual(self.call("/api/retro/gone", {"action": "nope"})[0], 400)
         self.assertEqual(self.call("/api/import", {"kind": "retro", "text": "nur Text", "dry": True})[0], 400)
 
+    def test_retro_de_ignore(self):
+        """0.10.12: „DE fehlt“ unter Zu erledigen ignorieren, einzeln, je System oder alle, und wieder melden."""
+        text = "ROMs/NES/Lantern Keep (USA).nes\nROMs/NES/Deep Dive (USA).nes\nROMs/GB/Sky Garden (USA).gb\n"
+        self.call("/api/import", {"kind": "retro", "text": text, "dry": False})
+        col = store.load_json(collection.FILE, collection.EMPTY)
+        for g in col["games"].values():
+            g["de"] = {"st": "missing", "alt": g["name"] + " (Europe) (En,De)", "guess": False, "via": "name"}
+        store.save_json(collection.FILE, col)
+        st = json.loads(self.call("/api/state")[1])
+        self.assertEqual([(x["system"], x["name"]) for x in st["retro_de"]], [("NES", "Deep Dive"), ("NES", "Lantern Keep"), ("GB", "Sky Garden")])
+        key = st["retro_de"][0]["key"]
+        p = json.loads(self.call("/api/retro/de", {"key": key})[1])
+        self.assertEqual((p["changed"], len(p["retro_de"])), (1, 2))
+        row = next(r for r in p["collection"]["games"] if r["key"] == key)
+        self.assertTrue(row["de"]["ign"])
+        p = json.loads(self.call("/api/retro/de", {"all": True, "system": "GB"})[1])
+        self.assertEqual((p["changed"], [x["name"] for x in p["retro_de"]]), (1, ["Lantern Keep"]))
+        # erneut eingelesen: ignoriert bleibt ignoriert
+        self.call("/api/import", {"kind": "retro", "text": text, "dry": False})
+        col = store.load_json(collection.FILE, collection.EMPTY)
+        self.assertEqual(sum(1 for g in col["games"].values() if g.get("de_ign")), 2)
+        for g in col["games"].values():         # der nächste Abgleich ordnet die Fassungen wieder zu
+            g["de"] = {"st": "missing", "alt": g["name"] + " (Europe) (En,De)", "guess": False, "via": "name"}
+        store.save_json(collection.FILE, col)
+        self.assertEqual([x["name"] for x in json.loads(self.call("/api/state")[1])["retro_de"]], ["Lantern Keep"])
+        p = json.loads(self.call("/api/retro/de", {"key": key, "ign": False})[1])
+        self.assertEqual((p["changed"], len(p["retro_de"])), (1, 2))
+        p = json.loads(self.call("/api/retro/de", {"all": True})[1])
+        self.assertEqual((p["changed"], p["retro_de"]), (2, []))
+        p = json.loads(self.call("/api/retro/de", {"keys": [key, "retro:x:unbekannt"], "ign": False})[1])     # Rückgängig
+        self.assertEqual((p["changed"], [x["key"] for x in p["retro_de"]]), (1, [key]))
+
     def test_collection(self):
         code, body = self.call("/api/import", {"kind": "auto", "text": COLLECTION, "dry": False})
         self.assertEqual(code, 200)
@@ -2441,6 +2473,7 @@ class TestSync(unittest.TestCase):
         self.assertEqual(h["gc"], [])
         self.assertIn("online", h["mp"])
         self.assertEqual((h["desc"], h["desc_src"], h["year"], h["dev"]), ("A heist.", "IGDB", "2019", "Kite Works"))
+        self.assertEqual(h["rel"], "2019-03-12")        # 0.10.12: genauer Tag von IGDB
         self.assertEqual((m["score"], m["score_src"], m.get("score_alt")), (55, "IGDB gesamt", True))
         self.assertEqual((m["genres"], m["gc"], m["players"]), (["Kampfspiel"], ["Kampfspiel"], 2))
         self.assertIn("couch", m["mpc"])
@@ -3003,6 +3036,28 @@ class TestSync(unittest.TestCase):
         self.assertNotIn("geheim", text)
         self.assertTrue(any("key=geheim" in u for u in seen))
 
+    def test_probe_gametdb(self):
+        """0.10.12: GameTDB für GameCube und Wii, Titelliste auf Deutsch und eine Spielseite; Treffer über die
+        Spiel-ID aus dem Dateinamen, sonst über den Namen."""
+        from app import probes
+        listing = "TITLES = https://www.gametdb.com (type: Wii language: DE)\nGSHP01 = Sternenhüpfer\nRNTP01 = Nachtbahn\nRNTE01 = Night Tram\nDOGE01 = Orbit Golf\n"
+        page = ("<html><body><h2>Synopsis</h2><p>Ein Spiel.</p><table><tr><td>developer</td><td>Kite Works</td></tr>"
+                "<tr><td>genre</td><td>platformer</td></tr><tr><td>rating</td><td>USK 6</td></tr>"
+                "<tr><td>languages</td><td>EN DE</td></tr><tr><td>input</td><td>1 players</td></tr></table></body></html>")
+        self.assertEqual(probes.gametdb_ids(listing), {"GSHP01": "Sternenhüpfer", "RNTP01": "Nachtbahn", "RNTE01": "Night Tram", "DOGE01": "Orbit Golf"})
+        self.assertEqual(probes.gametdb_page(page), "Beschreibung ja, Genre ja, Spieler ja, USK ja, PEGI nein, Sprachen ja, Entwickler ja, Erscheinen nein")
+        for col, want in (({"games": {"retro:wii:night tram": {"name": "Night Tram", "system": "Wii", "src": "retro", "serial": "ID-RNTP"}}}, "Wii/RNTP01"),
+                          ({"games": {"name:gamecube:orbit golf": {"name": "Orbit Golf", "system": "GameCube"}}}, "Wii/DOGE01"),
+                          ({"games": {"name:gamecube:comet chase": {"name": "Comet Chase", "system": "GameCube"}}}, "Wii/" + probes.GAMETDB_SAMPLE)):
+            urls, lines = [], []
+
+            def probe(name, url, info):
+                urls.append(url)
+                lines.append(f"{name}: {info(listing if url == probes.GAMETDB_LIST else page)}")
+            probes.gametdb(probe, lines, col)
+            self.assertEqual(urls, [probes.GAMETDB_LIST, probes.GAMETDB + want])
+        self.assertIn("4 Spiele, davon etwa 2 GameCube; „Comet Chase“ (GameCube) nicht gefunden (über den Namen)", lines[0])
+
     def test_probes(self):
         """Proben der neuen Quellen (0.7): erfundene Antworten im echten Aufbau, nichts wird gespeichert,
         der IGDB-Schlüssel steht nie im Ergebnis."""
@@ -3105,6 +3160,8 @@ class TestSync(unittest.TestCase):
         self.assertTrue(any("page=Harbor+Heist" in u for u, d in seen))
         self.assertFalse(any("uevr" in u or "cargo" in u for u, d in seen))
         self.assertIn("IGDB, PC über Steam-ID", text)
+        self.assertIn("GameTDB: kein GameCube- oder Wii-Spiel in der Sammlung, nicht angefragt", text)
+        self.assertFalse(any("gametdb" in u for u, d in seen))
         self.assertIn("DekuDeals, Suche (PS4)", text)
         self.assertIn("erster Treffer „orbit-golf“", text)
         self.assertIn("Metacritic: 81 (Nutzer 7.9)", text)

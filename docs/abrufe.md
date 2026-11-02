@@ -72,6 +72,10 @@ bleiben wie sonst; danach gelten wieder die üblichen Grenzen. Der Zeitplan star
   Spielseite, die drei beliebtesten Mods und Mods mit „VR“ im Namen; Fehler stehen wörtlich im
   Ergebnis. Seit 0.7.7 geht ein gespeicherter persönlicher Schlüssel als Kopfzeile `apikey` mit
   (Zeile „Nexus Mods (mit Schlüssel)“); er steht nie im Protokoll.
+  Seit 0.10.12 GameTDB für GameCube und Wii (nur mit einem solchen Spiel in der Sammlung): die Titelliste auf Deutsch
+  (`https://www.gametdb.com/wiitdb.txt?LANG=DE`, „ID = Titel“), das Spiel über die Spiel-ID aus dem Dateinamen, sonst
+  über den Namen, dann dessen Spielseite (`…/Wii/<ID>`, ohne Treffer ein bekanntes GameCube-Spiel); das Ergebnis nennt,
+  ob die Seite Beschreibung, Genre, Spieler, USK, PEGI, Sprachen, Entwickler und Erscheinen erkennen lässt.
   DekuDeals erkennt Treffer auch als ganze Adresse mit Zusatz; IGDB versucht bei Konsolen
   auch den Namen ohne Satzzeichen und den Teil nach dem Doppelpunkt.
   Seit 0.7.5: DekuDeals nimmt den Treffer, dessen Name am besten passt (nicht den ersten), und trennt
@@ -225,6 +229,8 @@ Switch-Spiele aus dem eShopKompass fragt es nicht an.
 Jedes Spiel nach 90 Tagen neu (`IGDB_DAYS`), ohne Treffer nach 30 (`IGDB_MISS_DAYS`), alles sofort,
 wenn sich der Stand der Ablage ändert (`igdb.V`). Abgelegt je Spiel unter `igdb` in `collection.json`
 (`none: true` ohne Treffer); ein neuer Playnite-Export und eine neue Retro-Liste behalten es.
+Ab 0.10.12 steht dort auch der Erscheinungstag (`date`, „2019-03-12“); er gilt in der Sammlung, wenn keine andere Quelle
+einen Tag nennt und das Jahr passt. Ohne neuen Stand der Ablage kommt er mit dem nächsten regulären Lesen (90 Tage).
 
 Ab 0.9.5 fragt IGDB auch `onlinecoopmax` und `offlinecoopmax` (Koop online und lokal, abgelegt als `coop_on_n`,
 `coop_off_n`). Die knappe Fassung hat dafür `v` 2: Der nächste Abgleich liest alle Spiele neu, die Steam-IDs gebündelt
@@ -476,3 +482,5 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
   Einlesen und bei jedem Abgleich.
   Ab 0.10.11 nimmt `collection.json` auch aus Playnite keine PlayStation-Spiele (`collection.is_ps`); frühere
   fallen bei jedem Abgleich weg (`collection.drop_ps`), Einträge der Retro-Liste bleiben.
+  Ab 0.10.12 trägt ein Retro-Spiel `de_ign` (Tag), wenn du „DE fehlt“ unter „Zu erledigen“ ignorierst; eine neue
+  Retro-Liste behält es, „wieder melden“ löscht es (`POST /api/retro/de`).

@@ -118,7 +118,7 @@ const foldAll = `<span class="foldall"><button class="link" data-act="foldall" d
 
 /* ---------------------------------------------------------------- Rahmen */
 function renderNav(){
-  const c = S.counts, sug = S.suggestions.length + (S.todo || []).length + (S.lists || []).length + (S.retro_near || []).length + (S.pcwish_ids || []).length + (S.own_check?.doubt || []).length;
+  const c = S.counts, sug = S.suggestions.length + (S.todo || []).length + (S.lists || []).length + (S.retro_near || []).length + (S.retro_de || []).length + (S.pcwish_ids || []).length + (S.own_check?.doubt || []).length;
   const sy = S.sync || {};
   const set = sy.running ? "läuft" : Object.values(sy.sources || {}).some(x => !x.ok) ? "Fehler" : sug ? `${sug} offen` : "";
   const cnt = {now: c.now || "", wish: c.wish + (S.pcwish?.rows || []).filter(r => !pcIsVr(r)).length || "", find: (S.imports.collection?.n || 0) + (c.owned || 0) || "", settings: set};
@@ -943,8 +943,10 @@ function genreOrder(list){
 }
 // Sprache der Retro-Spiele: mit Deutsch, deutsche Fassung fehlt, ohne Deutsch (keine bekannt)
 const LANG_FILTER = [["", "alle"], ["de", "mit Deutsch"], ["miss", "DE fehlt"], ["nde", "ohne Deutsch"]];
+// „DE fehlt“, außer du hast es unter Zu erledigen ignoriert (0.10.12); dann zählt es als „ohne Deutsch“
+const deMiss = g => g.de?.st === "missing" && !g.de.ign;
 function langOk(g, f){
-  const de = (g.langs || []).includes(g.eshop ? "german" : "De"), miss = g.de?.st === "missing";
+  const de = (g.langs || []).includes(g.eshop ? "german" : "De"), miss = deMiss(g);
   return f === "de" ? de : f === "miss" ? miss : f === "nde" ? !!(g.retro || g.eshop && g.langs?.length) && !de && !miss : true;
 }
 // „Alle“ heißt alle Systeme aus Playnite und der Retro-Liste; VR-Titel stehen nur unter VR, am PC
@@ -1423,7 +1425,7 @@ function gBadges(g){
   // bei bis zu 100 Rezensionen oder 95 % bei bis zu 400
   if(g.gem >= GEM_MIN) b.push(`<span class="b gemb" title="Geheimtipp-Wert ${String(g.gem).replace(".", ",")} von 1: sehr gute Wertung, wenig bekannt (Steam-Rezensionen)">Geheimtipp</span>`);
   if(g.retro){
-    if(g.de?.st === "missing") b.push(`<span class="b warn" title="Es gab eine Fassung mit Deutsch: ${esc(g.de.alt)}${g.de.guess ? " (Deutsch nur aus der Region geschätzt)" : ""}; gefunden über ${{code: "den Produktcode", retool: "die Retool-Liste", name: "den gleichen Namen", alias: "den von dir bestätigten ähnlichen Namen"}[g.de.via] || "die Fassungsliste"}">DE fehlt</span>`);
+    if(deMiss(g)) b.push(`<span class="b warn" title="Es gab eine Fassung mit Deutsch: ${esc(g.de.alt)}${g.de.guess ? " (Deutsch nur aus der Region geschätzt)" : ""}; gefunden über ${{code: "den Produktcode", retool: "die Retool-Liste", name: "den gleichen Namen", alias: "den von dir bestätigten ähnlichen Namen"}[g.de.via] || "die Fassungsliste"}">DE fehlt</span>`);
     if(g.flags.includes("homebrew")) b.push(`<span class="b">Homebrew</span>`);
     if(g.flags.includes("hack")) b.push(`<span class="b">Hack</span>`);
     if(g.gone) b.push(`<span class="b warn" title="Stand in der letzten Retro-Liste nicht mehr">nicht mehr in der Liste</span>`);
@@ -1531,7 +1533,7 @@ function gDetail(g, gc = 2, shownCols = new Set()){
   // Reihenfolge ab 0.9.7 (Entscheidung 01.11.2026): Wertung, Spieler, Koop, Erschienen (Firmen im Tooltip), VR per Mod, Sim-Racing, Mods
   const facts = row("Wertung", score) + plRows(g, row) + row("Erschienen", esc(date), who) +
     row("VR per Mod", vrModHtml(g)) + row("Sim-Racing", wheelHtml(g)) + row("Mods", nexusHtml(g), "Nexus Mods") +
-    row("Gesucht", g.de?.st === "missing" ? esc(g.de.alt) : "", "Die Fassung mit Deutsch laut No-Intro, Redump oder Retool") + row("Dateien", esc(files), "Regionen, Fassungen oder Discs desselben Spiels") + ownRows;
+    row("Gesucht", g.de?.st !== "missing" ? "" : g.de.ign ? `<span class="hint">${esc(g.de.alt)}, ignoriert</span> <button class="link" data-act="deign" data-k="${esc(g.key)}" data-v="" title="„DE fehlt“ wieder an diesem Spiel und unter Zu erledigen zeigen">wieder melden</button>` : esc(g.de.alt), "Die Fassung mit Deutsch laut No-Intro, Redump oder Retool") + row("Dateien", esc(files), "Regionen, Fassungen oder Discs desselben Spiels") + ownRows;
   // 0.10.3 (Entscheidung 02.11.2026): in der Zeile nur „n Quellen“, welche und wie im Tooltip
   const srcs = [g.from_vr ? `dein VR-Titel im Tool (${g.store}), Playnite kennt ihn nicht${g.src === "steam" ? "; Steam-Details" : ""}` : g.retro ? `System laut Retro-Liste${S.imports.retro?.at ? ` vom ${day(S.imports.retro.at)}` : ""}` : g.src === "steam" ? "Playnite, mit Steam abgeglichen (Steam-Details)" : g.system === "PC" ? "Playnite, noch nicht mit Steam abgeglichen" : "laut Playnite",
     g.own && "deine Ordner-Liste", g.lname && `libretro-database (dort „${g.lname}“)`,
@@ -1810,7 +1812,7 @@ function findView(){
   const src = vr ? `Deine VR-Titel: Meta-Käufe und VR-Spiele aus Playnite. Wertungen von Meta (VRDB, sonst aus dem Sternschnitt) und Steam, Spieler und Updates von Steam, Recherche aus Foren und Tests violett.`
     : [nPn && `${at ? `Playnite-Export vom ${day(at)}. ` : ""}Genres und Mehrspieler aus Playnite${pcTab ? `, bei PC-Spielen mit Steam abgeglichen: ${inTab.filter(g => g.src === "steam").length} bisher (violett: nur eine Quelle). Wertung aus Steam-Rezensionen ab 50 (${inTab.filter(g => g.reviews != null).length} abgerufen)` : "; Steam-Abgleich und Wertung gibt es nur für PC-Spiele"}.`,
       nEsh && `Switch-Sammlung aus dem eShopKompass${C.eshop_at ? `, gelesen ${day(C.eshop_at)}` : ""}: Genre, Spieler, Wertung und Spielzeit von DekuDeals und Nintendo, Mein Stand setzt du dort.`,
-      nRetro && `Retro-Liste${rat ? ` vom ${day(rat)}` : ""}: Sprache laut Dateiname, violett: nur aus der Region geschätzt${inTab.some(g => g.de) ? `; deutsche Fassung fehlt bei ${inTab.filter(g => g.de?.st === "missing").length}, laut No-Intro, Redump und Retool` : ""}. Genres und Spielerzahl für Retro-Spiele kommen später.`].filter(Boolean).join(" ");
+      nRetro && `Retro-Liste${rat ? ` vom ${day(rat)}` : ""}: Sprache laut Dateiname, violett: nur aus der Region geschätzt${inTab.some(g => g.de) ? `; deutsche Fassung fehlt bei ${inTab.filter(deMiss).length}, laut No-Intro, Redump und Retool${inTab.some(g => g.de?.ign) ? ` (${inTab.filter(g => g.de?.ign).length} ignoriert)` : ""}` : ""}. Genre, Spieler und Jahr von der libretro-database und IGDB.`].filter(Boolean).join(" ");
   // Kurz, die Herkunft zum Aufklappen (0.7.5, Entscheidung 27.10.2026: der lange Text war zu viel)
   const note = `<details class="gnote"><summary class="hint">${rows.length === inTab.length ? (inTab.length === 1 ? "1 Spiel" : `Alle ${num(inTab.length)} Spiele`) : `${num(rows.length)} von ${num(inTab.length)} Spielen`}${d.sys ? ` (${esc(d.sys[0] === "@" ? famName(d.sys) : d.sys)})` : ""}.</summary><p class="hint">${src}</p></details>`;
   const es = false;     // 0.8.23: ohne die Gruppe „Spieler“ über vier Spalten
@@ -2000,10 +2002,10 @@ function settingsView(){
   // Wie im eShopKompass: grün, was läuft, rot mit Namen, was nicht läuft
   const badNames = shown.filter(([k]) => isBad(k)).map(([k]) => SRC_NAME[k] || k).join(", ");
   const srcInfo = [okN && `<b class="ok">${okN} ok</b>`, bad && `<b class="err">${bad} mit Problem</b> (${esc(badNames)})`].filter(Boolean).join(", ") || "noch nicht gelaufen";
-  const todo = S.todo || [], lists = S.lists || [], near = S.retro_near || [], rown = S.retro_own || [], pcIds = S.pcwish_ids || [];
+  const todo = S.todo || [], lists = S.lists || [], near = S.retro_near || [], rown = S.retro_own || [], rde = S.retro_de || [], pcIds = S.pcwish_ids || [];
   // Besitz mit zweiter Quelle (0.10.2): Widersprüche nur gemeldet, der Besitz bleibt
   const oc = S.own_check || {doubt: []}, own = oc.doubt || [];
-  const open = sug + todo.length + lists.length + near.length + rown.length + pcIds.length + own.length;
+  const open = sug + todo.length + lists.length + near.length + rown.length + rde.length + pcIds.length + own.length;
   const jumps = [open && ["todo", "Zu erledigen"], ["importe", "Einlesen"], ["abgleich", "Abgleich"], ["sicherung", "Sicherung"]].filter(Boolean);
   const sugList = `<p class="hint">Diese Paare heißen fast gleich, einer stammt aus Meta, der andere vom PC. Zusammenführen heißt: ein Eintrag mit beiden Seiten, unter dem Namen, den du anklickst. Der andere Name bleibt für spätere Importe bekannt, und unter „bearbeiten“ kannst du jederzeit umbenennen.</p>
     <div class="list">${S.suggestions.map(x => `<div class="item"><span class="nm">${esc(x.a_name)} ↔ ${esc(x.b_name)}</span>
@@ -2053,6 +2055,14 @@ function settingsView(){
       <span class="row2"><span class="hint">deins: ${esc(x.diff[0].own)}; ${x.diff.map(d => `${esc(d.src)}: ${esc(d.other)}`).join("; ")}</span>
         <button data-act="ownok" data-k="${esc(x.key)}" title="Dein Genre gilt; der Hinweis verschwindet">Liste gilt</button>
         <button data-act="ownok" data-k="${esc(x.key)}" data-take="1" title="Das Genre von libretro und IGDB gilt statt deinem; deine Liste bleibt">Quellen gelten</button></span></div>`).join("")}</div>${rown.length > 300 ? `<p class="hint">… und ${rown.length - 300} weitere</p>` : ""}`;
+  // Retro (0.10.12): alle Spiele mit „DE fehlt“ auf einen Blick, je System; „ignorieren“ blendet die Marke aus
+  const deSys = [...new Set(rde.map(x => x.system))];
+  const deList = `<p class="hint">Von diesen Spielen gab es laut No-Intro, Redump oder Retool eine Fassung mit Deutsch, deine Datei hat keins. „ignorieren“, wenn dir deine Fassung reicht: Die Marke „DE fehlt“ verschwindet, das Spiel zählt dann als „ohne Deutsch“. Zurück holst du es in den Einzelheiten des Spiels mit „wieder melden“.</p>
+    <div class="bar"><button data-act="deign" data-k="" data-v="1" title="Alle hier ignorieren">Alle ignorieren</button></div>
+    ${deSys.map(sy => { const xs = rde.filter(x => x.system === sy); return `<h4 class="dehd">${esc(sy)} <span class="n">${xs.length}</span>${deSys.length > 1 ? ` <button class="link" data-act="deign" data-k="" data-sys="${esc(sy)}" data-v="1" title="Alle von ${esc(sy)} ignorieren">alle ${esc(sy)} ignorieren</button>` : ""}</h4>
+    <div class="list">${xs.map(x => `<div class="item"><span class="nm">${esc(x.name)}</span>
+      <span class="row2"><span class="hint${x.guess ? " gxc" : ""}"${x.guess ? ' title="Deutsch dieser Fassung nur aus der Region geschätzt"' : ""}>gesucht: ${esc(x.alt)}</span>
+        <button data-act="deign" data-k="${esc(x.key)}" data-v="1" title="Deine Fassung reicht; „DE fehlt“ verschwindet">ignorieren</button></span></div>`).join("")}</div>`; }).join("")}`;
   // Zahlen, die etwas zu tun bedeuten, violett und fett (0.7.4, wie im eShopKompass „offen“)
   const tn = n => `<b class="warnc">${n}</b>`;
   const sugCard = open ? box("todo", "Zu erledigen", `${tn(open)} offen`, `
@@ -2065,6 +2075,7 @@ function settingsView(){
     ${opTodo.length ? sub("optodo", "Meinung fehlt", tn(opTodo.length), opList) : ""}
     ${pcIds.length ? sub("pcids", "PC-Wunsch: Steam-ID", tn(pcIds.length), pcIdList) : ""}
     ${near.length ? sub("retronear", "Retro: ähnlicher Name", tn(near.length), nearList) : ""}
+    ${rde.length ? sub("retrode", "Retro: DE fehlt", tn(rde.length), deList) : ""}
     ${rown.length ? sub("retroown", "Retro: Genre weicht von deiner Liste ab", tn(rown.length), ownList) : ""}`) : "";
   const ll = lastLine(sy);
   const logInfo = sy.running ? "läuft" : !sy.started ? "noch keins" : `${when(sy.started)}${sy.ok === false ? `, <span class="err">mit Fehlern</span>` : ""}${ll.end ? " · " + esc(ll.end) : ""}`;
@@ -2649,6 +2660,19 @@ document.addEventListener("click", async ev => {
     const keys = el.dataset.keys.split(",").filter(Boolean);
     const res = await act("/api/wishes", {kind: v, keys});
     if(res) toast(`${res.changed} ${res.changed === 1 ? "Titel" : "Titel"} ${{keep: "behalten", drop: "von der Wunschliste genommen", wish: "wieder gewünscht"}[v]}`, undoTo(res));
+  }
+  else if(a === "deign"){
+    const k = el.dataset.k, ign = el.dataset.v === "1", sy = el.dataset.sys || "";
+    const x = (S.retro_de || []).find(y => y.key === k) || C?.games?.find?.(y => y.key === k) || {};
+    const keys = k ? [k] : (S.retro_de || []).filter(y => !sy || y.system === sy).map(y => y.key);
+    try{
+      const res = await api("/api/retro/de", Object.assign(k ? {key: k} : {all: true, system: sy}, {ign}));
+      C = res.collection; S.retro_de = res.retro_de;
+      toast(!ign ? `„${x.name || "Spiel"}“ zeigt wieder „DE fehlt“` : k ? `„DE fehlt“ bei „${x.name || "Spiel"}“ ignoriert`
+        : `${res.changed} ${res.changed === 1 ? "Spiel" : "Spiele"}${sy ? ` (${sy})` : ""} ignoriert`,
+        ign ? () => api("/api/retro/de", {keys, ign: false}).then(r => { C = r.collection; S.retro_de = r.retro_de; render(); }) : null);
+    }catch(e){ toast(e.message); }
+    render();
   }
   else if(a === "ownok"){
     const k = el.dataset.k;
