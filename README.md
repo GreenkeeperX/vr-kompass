@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.1:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.2:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -32,10 +32,21 @@ der übliche Rabatt immer, wenn genug Angebote da sind. Keine Vorhersage, nur di
 Crossplay (Partien über Plattformen hinweg) aus PCGamingWiki mit den Plattformen und aus der Steam-Kategorie
 „Plattformübergreifender Mehrspielermodus“: Zeichen ⇄ in der Spalte max. Spieler, Zeile „Crossplay“ in den
 Einzelheiten; Crossplay zwischen Quest und PC aus der Recherche bleibt in den Meinungen.
+Neu in 0.10.2: Mein Stand kennt „ignorieren“ (rotes ✕, Gegenstück zu Favorit): Ein ignoriertes Spiel kommt in keiner
+Mischung und in „Überrasch mich“ mehr vor, in der Liste bleibt es (Filter „ignoriert“). Backlog ○ ist pink, der Stern
+fett. Besitz mit zweiter Quelle: das Steam-Konto gegen Sharenite und die gg.deals-Sammlung, die Meta-Käufe gegen
+Sharenite (Oculus) und die gg.deals-Sammlung (Launcher Meta). Widersprüche stehen in „Zu erledigen“ als Meldung, der
+Besitz bleibt. „Wo kaufen“ zählt auch eine Meta-Version, die seit über einem Jahr unverändert ist, während Steam später
+ein Update bekam (abgeleitet, halb, violett; Meta nennt kein Update-Datum). Pakete: Liegen mindestens zwei deiner
+VR-Wünsche in einem Meta-Bundle oder Crossbuy-Paket, das das Tool kennt (Titel mit Inhalt und Meta-Preis), steht in den
+Einzelheiten Paketpreis gegen die Summe der Einzelpreise, dazu die Marke „im Paket günstiger“. In den Einzelheiten der
+Wünsche „Steam-Angebote“: wann zuletzt und wie oft bisher, aus dem eigenen Verlauf. Crossplay heißt nach der Quelle
+„Crossplay (Steam)“ oder „Crossplay (PCGW)“, die Recherche „Crossplay Quest/PC“. Kein „≈“ mehr in der Oberfläche:
+Abgeleitetes, Übernommenes und Werte aus nur einer Quelle stehen violett.
 Neu in 0.10.1: PC-Wünsche ohne Steam-ID (GOG, Epic …) bekommen Preise je Laden über die Titelsuche von
 IsThereAnyDeal (nur bei gleichem Namen oder Slug). Aktive Steam-Spieler in der Sammlung kommen zuerst für
 Mehrspieler-Spiele. Für VR-Titel fragt der Auftrag für die Meinungen auch die Höchstzahl der Spieler online und lokal;
-sie gilt nur, wo keine Datenbank eine Zahl nennt, und steht violett mit „≈“ da. Für Meta-Titel misst das Tool, wie
+sie gilt nur, wo keine Datenbank eine Zahl nennt, und steht violett da. Für Meta-Titel misst das Tool, wie
 viele neue Meta-Bewertungen je Monat dazukommen (Meta nennt keine Spielerzahlen): Zeile „Meta aktiv“ in den
 Einzelheiten und grau in der Spalte Aktiv, wenn Steam keine Zahl hat. Nur ein Hinweis.
 
@@ -61,7 +72,7 @@ selbst, Meta kommt per Lesezeichen, alles andere als Datei. Gelöscht wird beim 
 - **Steam:** SteamID (die Zahl oder der Link zum Profil) und ein Steam-Schlüssel
   (kostenlos unter steamcommunity.com/dev/apikey; im Profil müssen die Spieldetails öffentlich
   sein). Dann liest jeder Abgleich deinen Besitz und deine Wunschliste, mit genauen App-IDs;
-  „Steam-ID ≈“ entfällt für alles, was dort steht. Ohne Schlüssel nur die Wunschliste. Pflegst
+  „Steam-ID ungeprüft“ entfällt für alles, was dort steht. Ohne Schlüssel nur die Wunschliste. Pflegst
   du am PC nur die gg.deals-Wunschliste, schalte „Steam-Wunschliste lesen“ ab: Steam zählt dann
   nicht mehr als Quelle, Hinweise und Links zum Nachtragen nennen nur noch gg.deals, und ein
   Wunsch, der nur von Steam kam, bleibt und steht unter „Wunschliste abgleichen“. Apps,
@@ -141,7 +152,7 @@ still nichts zu übernehmen:
 - **Playnite (CSV):** Spiele mit Schlagwort oder Feature „VR“ und alle, deren Name schon in
   deiner Liste steht, als Besitz am PC. Mit einer Spalte `Quelle` oder `Bibliothek` ist die
   Steam-App-ID sicher (ebenso, wenn unter `Kategorien` ein bekannter Laden wie Steam, GOG oder
-  Epic steht), sonst gilt eine Spiel-ID unter 10 000 000 als vermutete Steam-ID („≈“). Dieselbe
+  Epic steht), sonst gilt eine Spiel-ID unter 10 000 000 als vermutete Steam-ID („ungeprüft“). Dieselbe
   Datei füllt außerdem die ganze **Sammlung** mit allen Spielen außer den
   versteckten, je Spiel mit System (PC, PS4, SNES …) aus der Spalte `Plattformen`; steht auch ein
   PC dabei, gilt PC, ohne die Spalte erkennt das Tool PlayStation an Kennungen wie
@@ -155,7 +166,7 @@ still nichts zu übernehmen:
 - **Datei des Meta-Lesezeichens** oder kopierter Text der Bestellseite.
 - **Meinungen (JSON)** aus einer Recherche auf Reddit und im Web: je Titel Kurzfazit, bessere
   Fassung, Mehrspieler, Pflege, Crossbuy, Crossplay, Komfort, Warnungen und Quellen. Sie stehen
-  unter dem Titel als zugeklappte Zeile „Recherche, Datum: …“; Crossbuy daraus trägt „≈“.
+  unter dem Titel als zugeklappte Zeile „Recherche, Datum: …“; Crossbuy daraus steht violett.
   Crossbuy heißt: ein Kauf im Meta Store gilt für Quest und PC-VR im Meta Store; Steam gehört
   nie dazu. Nennt die Begründung Steam, Crossplay oder nur deine Zuordnung, verwirft der Import
   den Wert und sagt es in der Vorschau. Aufbau
@@ -259,7 +270,7 @@ späterer Import den Titel wiederfindet; dasselbe gilt nach dem Umbenennen unter
 Jeder Titel weiß, woher er kommt: Vergleichstabelle mit Zeile, Playnite, Meta-Käufe,
 Meta-, Steam- oder gg.deals-Wunschliste, Steam-Besitz, Sharenite, von Hand oder ein Bundle.
 Das steht unter „bearbeiten“ und bei jedem Fall unter „Zu erledigen“. Titel aus der Zeit vor
-0.3.4 zeigen eine vermutete Herkunft („≈“), abgeleitet aus Besitz, Wunschquellen und dem
+0.3.4 zeigen eine vermutete Herkunft („vermutet“), abgeleitet aus Besitz, Wunschquellen und dem
 Zeitpunkt der Importe.
 
 Bei einem Bundle trägst du unter „bearbeiten“ die Spiele darin ein, je Feld ein Name oder Link,
@@ -274,7 +285,7 @@ Jeder Abgleich ordnet auch Titel zu, die nicht auf der Wunschliste stehen, etwa 
 - **Meta-ID:** Titel ohne Meta-ID sucht das Tool bei QuestStoreDB unter all ihren Namen
   (15 Anfragen je Abgleich, Meta-Käufe zuerst). Es gilt nur ein Treffer mit genau passendem
   Namen. Trägt schon ein anderer Titel diese Meta-ID, gehen beide in einem auf.
-- **Steam-ID „≈“:** Eine Steam-ID, die nur aus einem Namen stammt (Playnite, Suche), fragt das
+- **Steam-ID „ungeprüft“:** Eine Steam-ID, die nur aus einem Namen stammt (Playnite, Suche), fragt das
   Tool im Steam-Store nach. Passt der Name und kann die App VR, gilt sie als sicher.
 - **Namen lernen:** Die Namen, die Meta und Steam für einen Titel führen, merkt sich das Tool
   als weitere Namen. Spätere Importe und Suchen finden den Titel so auch unter dem anderen
@@ -446,7 +457,7 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
   Steam-Suche nach genau gleichem Namen (30 je Abgleich); ohne gg.deals-Schlüssel gibt es keine Preise.
   Ab 0.8.24 60 Suchen je Abgleich, gesucht ohne Emoji und „[Studio]“ vorn, sonst mit der Grundform des Namens (vor
   „ / “, ohne „Definitive Edition“ und Ähnliches). Passt ein Treffer nur in der Grundform, übernimmt das Tool die ID, zeigt
-  „Steam-ID ≈“ und fragt unter Einstellungen, Zu erledigen, „PC-Wunsch: Steam-ID“ nach („passt“, „falsch“). Mehrere
+  „Steam-ID ungeprüft“ und fragt unter Einstellungen, Zu erledigen, „PC-Wunsch: Steam-ID“ nach („passt“, „falsch“). Mehrere
   ähnliche Treffer stehen dort zur Wahl („dieses“, „keins“); Verworfenes schlägt das Tool nicht wieder vor.
   Ab 0.8.11 mit Spielinfos wie in der Sammlung: Spalten Wertung (Steam-Rezensionen ab 50, sonst IGDB grau und
   kursiv), Spielzeit (IGDB) und Genre (Steam und IGDB, violett nur eine Quelle); ein Klick auf den Namen zeigt
@@ -465,14 +476,14 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
   Ein Klick auf den Namen klappt darunter die bisherige Karte als Einzelheiten auf. Jetzt zeigt die
   VR-Angebote in derselben Tabelle.
   Je Titel eine Karte mit festem Aufbau (ab 0.8.22 die Einzelheiten einer Zeile):
-  - **Kopf:** Name, „wo kaufen“, Crossbuy-Marke mit Herkunft (siehe unten), Besitz, Bundle, „Steam-ID ≈“.
+  - **Kopf:** Name, „wo kaufen“, Crossbuy-Marke mit Herkunft (siehe unten), Besitz, Bundle, „Steam-ID ungeprüft“.
   - **Wo kaufen** (ab 0.8.15): für jeden Wunschtitel, den du noch nicht hast, der Laden, für den mehr
     spricht, und dahinter das Preisurteil dort („Meta kaufen“, „Steam warten“, „Laden egal, gut“). Gezählt
     wird nur Gemessenes: nur ein Laden führt ihn (entscheidet), Crossbuy (2 für Meta), ein großer
     Preisabstand von mindestens 40 % und 8 € (2), je 1 für Mehrspieler mit weniger als 20 Spielern auf
     Steam (Spitze; spricht für Meta), 8 Punkte bessere Wertung, eine um ein Jahr jüngere Pflege (letztes
     Steam-Update gegen die Meta-Version), spürbar günstiger (Steam 20 % und 3 €, Meta ab 1 €). Die
-    Recherche („Quest-“ oder „PC-Fassung besser“) zählt halb und steht violett mit „≈“. Ab 0.8.26 zählt auch der Trend
+    Recherche („Quest-“ oder „PC-Fassung besser“) zählt halb und steht violett. Ab 0.8.26 zählt auch der Trend
     halb, wenn es beide Läden gibt: fällt die Steam-Wertung der letzten 30 Tage deutlich, für Meta, steigt sie, für Steam. Wer mindestens
     einen Punkt vorn liegt, gewinnt, sonst ist der Laden egal. Die Gründe stehen in der Zeile „Wo“, die
     für den anderen Laden grau.
@@ -486,15 +497,15 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
     aus, wenn Meta einmal günstiger war. Dazu „übliches Angebot“ (so tief wie in mindestens zwei
     getrennten Angeboten). Für Meta reicht der Verlauf von QuestStoreDB Jahre
     zurück, für Steam zählt der eigene Verlauf; ohne jede Preisänderung steht „Bestpreis noch
-    offen“. Ist der eigene Verlauf noch zu kurz, gilt das Allzeit-Tief einer anderen Quelle, mit
-    „≈“: bei Meta von QuestStoreDB, bei Steam das niedrigste Angebot laut gg.deals, Händler und
+    offen“. Ist der eigene Verlauf noch zu kurz, gilt das Allzeit-Tief einer anderen Quelle, violett:
+    bei Meta von QuestStoreDB, bei Steam das niedrigste Angebot laut gg.deals, Händler und
     Keyshops. Ist ein Angebot bei gg.deals günstiger als Steam, steht es im Steam-Feld. Der günstigere Laden
     (gegen das günstigste PC-Angebot, Keyshops eingeschlossen) bekommt ab 1 € Unterschied einen grünen
     Rahmen und den Betrag („5 € günstiger“). Der Abrufzeitpunkt steht nur da, wenn ein Preis älter
     als zwei Tage ist.
   - **Fakten** in einem festen Raster (Name links, Wert rechts, in jeder Karte gleich): Wertung beider Läden auf einer Skala (Steam: Anteil positiver
     Rezensionen ab 50, darunter nur die Zahl; Meta: Anteil der 4- und 5-Sterne-Bewertungen laut
-    VRDB, sonst Sterne × 20 über QuestStoreDB mit „≈“; ab 5 Punkten Abstand der bessere grün mit
+    VRDB, sonst Sterne × 20 über QuestStoreDB violett; ab 5 Punkten Abstand der bessere grün mit
     „Meta +8“), Steam-Spieler gerade jetzt mit der Spitze aus den eigenen Messungen der letzten
     30 Tage, das letzte Steam-Update laut Entwickler-Meldungen und die Meta-Version mit dem Tag,
     an dem das Tool sie zuerst sah.
@@ -504,7 +515,7 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
     Wunschliste PC und im Reiter VR der Sammlung (Spalten Steam und Update). Ab 0.8.21 frischt der Abgleich den Trend
     wöchentlich auf, je Lauf bis zu 60 Titel und 60 PC-Wünsche. Woher die Zahlen kommen, steht in
     `docs/abrufe.md` (Trend und Pflege).
-  - **Recherche** violett gestrichelt mit „≈“, weil sie nicht vom Tool gemessen ist; die Notiz.
+  - **Recherche** violett gestrichelt, weil sie nicht vom Tool gemessen ist; die Notiz.
   - **Klappe** (zugeklappt), ihre Zeile nennt den Inhalt, etwa „Bestpreise · gg.deals · Links ·
     bearbeiten“: Bestpreise je Laden mit Datum und Quelle, gg.deals (Händler, Keyshop,
     Allzeit-Tief), die Werte deiner Tabelle, Links (Meta, VRDB, QuestStoreDB, Steam, fertige
@@ -518,7 +529,7 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
   Zeichen. Gewählte Filter stehen darunter als Marken mit ×.
 - **Crossbuy und Herkunft:** Crossbuy kommt von Hand, von VRDB (Angabe im Meta Store), aus deiner
   Tabelle oder aus der Recherche, in dieser Rangfolge. Die Marke zeigt die Herkunft: ohne
-  Zeichen von Hand oder VRDB, „Crossbuy · Tabelle“ aus der Tabelle, „Crossbuy ≈“ aus der
+  Zeichen von Hand oder VRDB, „Crossbuy · Tabelle“ aus der Tabelle, violettes „Crossbuy“ aus der
   Recherche; „ohne Crossbuy“ ist grau. Widersprechen sich Quellen, gilt die stärkere und die
   andere steht violett daneben („Tabelle: nein“). Unter „bearbeiten“ heißt „automatisch“: keine
   eigene Angabe. Titel aus der Zeit vor 0.4.8 ohne gespeicherte Herkunft gelten als „Tabelle“,

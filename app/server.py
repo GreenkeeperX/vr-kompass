@@ -12,7 +12,7 @@ import traceback
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import collection, imports, library, lists, muster, pcwish, retro, sources, store, sync, titles, verlauf, wheel
+from . import besitz, collection, imports, library, lists, muster, pcwish, retro, sources, store, sync, titles, verlauf, wheel
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 
@@ -189,8 +189,8 @@ def state():
     hist, pw = store.load_json("history.json", {}), store.load_json(pcwish.FILE, pcwish.EMPTY)
     view, pcv = library.view(data, hist=hist, settings=sync.load_settings()), pcwish.view(data)
     st = price_stats(data, pw, hist)
-    muster.annotate(view, pcv, data, pw.get("items") or {}, st)
-    return dict(view, muster=st,
+    muster.annotate(view, pcv, data, pw.get("items") or {}, st, hist)
+    return dict(view, muster=st, own_check=besitz.check(data),
                 marks=data["marks"], version=sources.VERSION, pcwish=pcv,
                 pcwish_ids=pcwish.id_todo(store.load_json(pcwish.FILE, pcwish.EMPTY)),
                 retro_near=near, retro_own=own, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
@@ -207,14 +207,14 @@ def collection_body():
 
 
 # Mein Stand (0.6.0, wie im eShopKompass): je Spiel der Sammlung von Hand Backlog, angefangen oder
-# durchgespielt und Favorit. Steht in data.json und damit in der Sicherung
+# durchgespielt, Favorit oder ab 0.10.2 ignorieren. Steht in data.json und damit in der Sicherung
 MARK_ST = ("backlog", "started", "done")
 
 
 def set_mark(data, body):
     key = _text(body.get("key"), 300)
     k, v = body.get("k"), body.get("v")
-    if not key or k not in ("s", "fav"):
+    if not key or k not in ("s", "fav", "ign"):
         raise ValueError("Mein Stand: Spiel und Art fehlen")
     if k == "s" and v not in (None, "", *MARK_ST):
         raise ValueError("Mein Stand: unbekannter Stand")
@@ -224,9 +224,11 @@ def set_mark(data, body):
         if v:
             m["s"] = v
     else:
-        m.pop("fav", None)
+        # Favorit und ignorieren (0.10.2, nie wieder vorschlagen) schließen sich aus
+        m.pop(k, None)
         if v:
-            m["fav"] = True
+            m.pop("ign" if k == "fav" else "fav", None)
+            m[k] = True
     if m:
         data["marks"][key] = m
     else:

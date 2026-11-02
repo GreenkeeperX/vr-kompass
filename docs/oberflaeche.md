@@ -15,7 +15,7 @@ müssen beide lesbar sein; jede Farbänderung wird in beiden geprüft.
 | Gold | `--best` | am Tief (niedrigster Preis beider Läden in 18 Monaten, bis 2 % darüber; ab 0.9.4 heißt es überall „Tief“, nicht mehr „Bestpreis“) | „★ am Tief“ im Preisfeld (`.bl.at`, `.star`) |
 | Grün | `--go` | spricht für dich, gelingt | Urteil „kaufen“ (gefüllt, `.vd.buy`) und „gut“ (umrandet, `.vd.good`) wie im eShopKompass, günstigerer Laden (Rahmen `.shop.win`, „5 € günstiger“ ab 1 €), besser bewerteter Laden (`.rate.win`, „Meta +8“), Quelle „ok“ |
 | Rot | `--stop` | spricht gegen dich, misslingt | Aufpreis über dem Tief (`.over`, „+7 €“), Fehler einer Quelle |
-| Violett | `--warn` | prüfen, veraltet, geschätzt, unsicher | „Steam-ID ≈“ (Wunschliste; Sammlung „Steam-ID prüfen“), Wert aus nur einer Quelle in der Sammlung (`.gxc`), Stand älter als zwei Tage, Hinweise oben, widersprechende Quelle („Tabelle: nein“), Recherche (gestrichelte Linie links, „≈ Recherche“) |
+| Violett | `--warn` | prüfen, veraltet, geschätzt, unsicher | „Steam-ID ungeprüft“ (Wunschliste; Sammlung „Steam-ID prüfen“), Wert aus nur einer Quelle, abgeleitet oder übernommen (`.gxc`, ab 0.10.2 überall statt „≈“), Stand älter als zwei Tage, Hinweise oben, widersprechende Quelle („Tabelle: nein“), Recherche (gestrichelte Linie links, „Recherche“), ignoriert ✕ ist rot (`--stop`, `.gign`) |
 | Grau | `--chip`, `--muted` | Information ohne Wertung | Meta, PC, „Wunsch“, „Wunsch · Tabelle“, „ohne Crossbuy“, Feld ohne Preis (gestrichelt) |
 
 Ausnahme, nur für die Reiter je System in der Sammlung (Entscheidung 27.10.2026): der gewählte
@@ -40,8 +40,10 @@ offiziellen Laden laut IsThereAnyDeal (`r.cut`, Laden im Tooltip). Ohne IsThereA
 Weitere Ausnahmen in der Sammlung, übernommen aus „Spiele“ im eShopKompass (0.6.0, Entscheidung
 27.10.2026): Die Wertung ist ein Farbton von Rot über Gelb nach Grün (`.gsc`, `--sh` aus 50 bis
 95 %), Genres stehen als Blasen im Farbton ihrer Verwandtschaft (`.chip.gg`, `G_HUE`; violett
-bleibt frei). Mein Stand: Backlog ○ rot, angefangen ▷ blau, durchgespielt ✓ grün, Favorit ★
-gold; nur als Zeichen, nie als Fläche. Die Marke „VR“ hinter dem Namen ist türkis gefüllt
+bleibt frei). Mein Stand: Backlog ○ pink (`--pink`, ab 0.10.2), angefangen ▷ blau, durchgespielt ✓ grün, Favorit ★
+gold und fett (Kontur `-webkit-text-stroke`, die Größe bleibt), ignoriert ✕ rot (Tooltip „Nie wieder
+vorschlagen“; Gegenstück zu Favorit, nie in Mischungen und Vorschlägen, nur mit dem Filter „ignoriert“);
+nur als Zeichen, nie als Fläche. Die Marke „VR“ hinter dem Namen ist türkis gefüllt
 (`.b.vrb`). Der gewählte System-Reiter: Linie in der Familienfarbe, Schrift in `--ink`
 (Nintendo-Rot `#e60012`, dunkel `#ff3d48`).
 
@@ -60,9 +62,9 @@ der eShopKompass); die Wertung ist Metacritic, sonst OpenCritic, ohne „%“. M
 Einzelheiten nur als Text („ändern im eShopKompass“), Knöpfe gibt es dafür nicht. Die Spalte
 Spielzeit erscheint nur, wo ein Spiel eine hat.
 
-Herkunft am Wert: ohne Zeichen gemessen oder von Hand; „≈“ abgeleitet oder aus fremder Quelle
-(in der Sammlung seit 0.6.1 kein „≈“ mehr: unbestätigt steht violett, `.gxc`, der Tooltip nennt die
-Quelle; das gilt nach und nach überall);
+Herkunft am Wert: ohne Farbe gemessen oder von Hand; violett (`.gxc`) abgeleitet, übernommen oder nur aus einer
+Quelle, der Tooltip nennt die Quelle. Kein „≈“ (Entscheidung 02.11.2026, seit 0.10.2 überall; in der Sammlung seit
+0.6.1). Auf Marken mit eigener Farbe gilt Violett über `.b.gxc`, `.shop .bl.gxc`, `.g-buy.gxc`;
 „Tabelle“ (samt Datum, wo Platz ist) aus der Vergleichstabelle; violett gestrichelt Recherche.
 Links stehen in Textfarbe, unterstrichen. Erklärungen stehen einmal in der Legende („?“), nicht
 über jeder Liste; über einer Liste höchstens eine Zeile.
@@ -84,7 +86,7 @@ Jetzt und Wunschliste (`.item.wi`), immer in dieser Reihenfolge:
    (ab 0.9.4, `.pr .vlr`).
 3. Fakten (`.facts`): festes Raster mit zwei Spalten, links der kleine graue Name (`.fl`),
    rechts der Wert (`.fv`): zuerst „Wo“ mit den Gründen je Laden (`.wbl`; der gewählte Laden zuerst,
-   der andere grau, Recherche violett mit „≈“), dann Wertung, Spieler, Update, Meta-Version; nur was es gibt.
+   der andere grau, Abgeleitetes und Recherche violett), dann Wertung, Spieler, Update, Meta-Version; nur was es gibt.
 4. Recherche, Notiz.
 5. Klappe (`details.more`, nicht gemerkt, nicht bei „alle aufklappen“); die Zeile nennt den
    Inhalt („Bestpreise · gg.deals · Tabelle · Links · bearbeiten“): Bestpreise je Laden,
@@ -272,12 +274,20 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Legende und aufklappbar unter dem Preisverlauf; dort je Laden die Spalte „Rhythmus“ (`gapText`). Eine Sache, mehrere
   Orte: Name in der Wunschliste VR (`badges`), Wunschliste PC, Jetzt PC und Alle, Einzelheiten VR (`factsHtml`) und PC
   (`pcDetail`).
-- Spieler aus der Recherche (ab 0.10.1): violett mit „≈“ (`gMaxPl0`, `plParts`), Tooltip „Aus der Recherche“.
+- Spieler aus der Recherche (ab 0.10.1): violett (`gMaxPl0`, `plParts`), Tooltip „Aus der Recherche“.
 - Meta aktiv (ab 0.10.1): neue Meta-Bewertungen je 30 Tage, grau „+n/Mon.“ in der Spalte Aktiv des Reiters VR, wenn
   Steam keine Spielerzahl hat, und Zeile „Meta aktiv“ in den Fakten (`growTip`); nur ein Hinweis.
 - Crossplay (ab 0.10.0): „⇄“ grau hinter der Zahl in der Spalte max. Spieler (`xpMark`), violett, wenn nur eine Quelle
-  es sagt oder PCGamingWiki widerspricht; Zeile „Crossplay“ in den Einzelheiten (`plRows`, VR in `factsHtml`) mit den
-  Plattformen. Crossplay Quest/PC aus der Recherche steht weiter bei den Meinungen.
+  es sagt oder PCGamingWiki widerspricht; Zeile „Crossplay (Quelle)“ in den Einzelheiten (`xpLabel`, `plRows`, VR in
+  `factsHtml`) mit den Plattformen, etwa „Crossplay (Steam)“ oder „Crossplay (PCGW/Steam)“. Die Steam-Kategorie nennt
+  keine Plattformen (Tooltip). „Crossplay Quest/PC“ aus der Recherche steht bei den Meinungen (ab 0.10.2 so benannt,
+  auch „kein Crossplay Quest/PC“). Nicht verwechseln mit Crossbuy (Kauf bei Meta gilt für Quest und PC).
+- Besitz mit zweiter Quelle (ab 0.10.2, `besitz.check`, `own_check`): „Zu erledigen“, Gruppe „Besitz: Quellen
+  widersprechen sich“, nur Meldungen ohne Knöpfe, oben die Zahl der bestätigten Käufe je Laden.
+- Pakete (ab 0.10.2, `bundles` am Wunsch): Zeile „Paket“ in den Einzelheiten VR, „statt“ mit der Summe grün, wenn das
+  Paket günstiger ist; Marke „im Paket günstiger“ (`.b.go`) am Namen. Tooltip `bundleTip`.
+- Steam-Angebote (ab 0.10.2, `rhythm`): Zeile in den Einzelheiten VR und PC, „zuletzt vor n Wochen (bisher etwa alle
+  m Wo.)“ oder „läuft gerade“ (`rhythmText`, `rhythmTip`), keine Vorhersage.
 - Lenkrad (0.8.3): Marke „Lenkrad“ (`.b`), wenn das Spiel in einer Liste der Rennspiele steht (SimHub,
   Simucube-Forum; Tooltip nennt beide); nur Steam-Schlagwörter: „Lenkrad?“ violett (`.b.gxc`), `wheelBadge`.
   Ab 0.8.5 auch an VR-Titeln (Reiter VR, Wunschliste, Karten). Filter „Lenkrad“ (`d.wh`), wenn ein Spiel im Reiter eins
@@ -285,7 +295,7 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - Über der Liste nur „Alle n Spiele (Reiter).“ mit Aufklappdreieck; die Herkunft klappt darunter auf (`details.gnote`, 0.7.5).
 - „Zu erledigen“, Gruppe „PC-Wunsch: Steam-ID“ (0.8.24, `pcwish_ids`): übernommene ID nach der Grundform mit Link zur
   Steam-Seite und „passt“, „falsch“; sonst Vorschläge mit Link und „dieses“, dazu „keins“. In der Wunschliste PC am
-  Namen „Steam-ID ≈“ (`.b.warn`, Steam-Name im Tooltip), solange nicht bestätigt.
+  Namen „Steam-ID ungeprüft“ (`.b.warn`, Steam-Name im Tooltip), solange nicht bestätigt.
 - „Zu erledigen“, Gruppe „Meinung fehlt“ (0.9.2, `todo` mit kind `opinion`): VR-Wünsche ohne Recherche, die zuletzt gewünschten oben (in dieser Reihenfolge nimmt sie der Auftrag), je Titel
   welche Kennungen da sind und Links zu Reddit und Google; oben „Auftrag kopieren“ (`opcopy`, Text aus `opinion_task`).
 - „Zu erledigen“, Gruppe „Retro: ähnlicher Name“ (0.8.4): je Spiel System, ähnlicher Titel der Fassungsliste,
@@ -346,7 +356,7 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Steam, überm Tief, Wo, Wertung (mit Trend), Rezensionen, Genre, Aktiv, Update. Genre und Spielerzahl aus den
   VR-Spielinfos (`library.info`, wie bei den PC-Wünschen). Der Trendpfeil hinter der Wertung steht frei
   (`.gr .tr` absolut ab 761 px) und verschiebt die Wertung nicht. Preise mit Rabattmarke (`vrPrice`, `.b.deal` klein) als Link zum Laden,
-  Tief und Shop im Tooltip. „am Tief“ grün (`.g-buy`, ≈ bei übernommenem Tief), sonst rot der
+  Tief und Shop im Tooltip. „am Tief“ grün (`.g-buy`, violett bei übernommenem Tief), sonst rot der
   Abstand (`.over`). Am Namen kurze Marken (`badges(r, true)`: ohne „ohne Crossbuy“, Liste als „keine Liste“ oder
   „fehlt: Meta“). Klick auf den Namen (`V.vwOpen`) zeigt die Karte (`wishRow(r, true)`, ohne Namenskopf) als
   Einzelheiten. Eine Sache, mehrere Orte: Zeilen der VR-Wünsche ändern sich in `vrRow` für Wunschliste und Jetzt; Zellen

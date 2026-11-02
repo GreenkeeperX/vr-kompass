@@ -364,7 +364,7 @@ def from_eshop(items):
             "langs": [str(x)[:20] for x in e.get("langs") or [] if isinstance(x, str)][:40],
             "added": txt("bought", 10),
             "kv": {k: _plain_json(v) for k, v in (e.get("kv") if isinstance(e.get("kv"), dict) else {}).items() if k in ESHOP_KV},
-            "ext_mine": {k: v for k, v in mine.items() if k in ("s", "fav") and isinstance(v, (str, bool))}}
+            "ext_mine": {k: v for k, v in mine.items() if k in ("s", "fav", "ign") and isinstance(v, (str, bool))}}
     return out
 
 

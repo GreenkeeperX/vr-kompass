@@ -48,9 +48,9 @@ kennt (Meta-ID, Steam-App-ID oder Name). Gespeichert wird nur im Datenordner, ni
 | `fassung`, `fassung_grund` | `quest`, `pc` oder `gleich`, mit Grund (Grafik, Inhalte, Updates) |
 | `mehrspieler`, `mehrspieler_stand` | `lebendig`, `ruhig`, `tot` oder `keiner`, mit Stand |
 | `pflege` | letzte größere Updates, Entwickler aktiv |
-| `crossbuy`, `crossbuy_grund` | `true`, `false` oder weglassen; gilt nur, wo du Crossbuy nicht selbst gesetzt hast, und steht dann mit „≈“ da. Belegt durch Store-Seite, VRDB oder einen Test, nie durch die eigene Tabelle |
+| `crossbuy`, `crossbuy_grund` | `true`, `false` oder weglassen; gilt nur, wo du Crossbuy nicht selbst gesetzt hast, und steht dann violett da. Belegt durch Store-Seite, VRDB oder einen Test, nie durch die eigene Tabelle |
 | `crossplay`, `crossplay_grund` | `true`, `false` oder weglassen: spielen Quest und PC zusammen (gleiche Lobby), mit Grund |
-| `spieler_online`, `spieler_lokal` | ab 0.10.1: höchste Zahl der Spieler in einer Partie (2 bis 100) online bzw. lokal; gilt nur, wo IGDB und Steam keine Zahl nennen, und steht violett mit „≈“ da |
+| `spieler_online`, `spieler_lokal` | ab 0.10.1: höchste Zahl der Spieler in einer Partie (2 bis 100) online bzw. lokal; gilt nur, wo IGDB und Steam keine Zahl nennen, und steht violett da |
 | `komfort` | Bewegung, Sitzen oder Stehen, Spieldauer |
 | `warnungen` | Bugs, Abbruch der Entwicklung, Bezahlinhalte |
 | `quellen` | Links (nur http/https) mit Titel und Datum |

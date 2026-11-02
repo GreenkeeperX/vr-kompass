@@ -25,7 +25,7 @@ Weitere feste Regeln (wie im eShopKompass):
 - nur die Python-Standardbibliothek, keine neuen Abhängigkeiten,
 - Quellen schonend abrufen: Pausen, Abbruch bei 403 und 429, ehrliche Kennung,
 - die Härtung des Containers bleibt,
-- geschätzte oder übernommene Werte sind in der Oberfläche gekennzeichnet (≈, „Tabelle“),
+- geschätzte oder übernommene Werte sind in der Oberfläche gekennzeichnet (violett, „Tabelle“; kein „≈“, Entscheidung 02.11.2026),
 - jede Version mit Tests (`python3 -m unittest tests.test_all`), neuer Nummer in
   `app/sources.py`, aktueller README und aktueller ROADMAP.md,
 - alte Datendateien müssen nach einem Update weiter laden.
@@ -38,6 +38,8 @@ Weitere feste Regeln (wie im eShopKompass):
 - `app/prices.py`: Preise aus QuestStoreDB-Seiten, Steam- und gg.deals-Antworten lesen (ohne Netz)
 - `app/accounts.py`: Konten ohne Netz lesen und eintragen (Steam Web API, gg.deals-Wunschliste,
   Sharenite)
+- `app/besitz.py`: ab 0.10.2 Besitz mit zweiter Quelle (Steam-Konto, Sharenite, gg.deals-Sammlung, Meta-Käufe),
+  Widersprüche für „Zu erledigen“ (`check`), ohne Netz
 - `app/sync.py`: Abgleich je Quelle (erst Konten, dann Zuordnung, dann Preise), Zeitplan, Einstellungen, Verbindungstest (siehe
   `docs/abrufe.md`)
 - `app/titles.py`: Namen vergleichen, Kennungen aus Links, Titel finden, anlegen, zusammenführen,
@@ -59,13 +61,13 @@ Weitere feste Regeln (wie im eShopKompass):
   gg.deals-Sammlung (`sync_gg`),
   Merkmale (Mehrspieler, Spielerzahl, Genre-Gruppen, Wertung), Geheimtipp-Wert
 - `app/muster.py`: Preismuster aus dem eigenen Verlauf (üblicher Steam-Rabatt je Alter, Monate mit vielen Angeboten),
-  Marke „üblich −x %“ (`stats`, `usual`, `annotate`), ohne Netz und ohne feste Zahlen
+  Marke „üblich −x %“ (`stats`, `usual`, `annotate`), ab 0.10.2 Steam-Angebote je Spiel (`rhythm`), ohne Netz und ohne feste Zahlen
 - `app/wheel.py`: Sim-Racing ohne Netz: Steam-Schlagwörter (Hinweis), Liste der Rennsimulationen (Bestätigung)
 - `app/pcwish.py`: PC-Wunschliste (`pcwish.json`), Spiegel der gg.deals-Wunschliste; Zeilen mit Preisen und ab 0.8.11
   Spielinfos nach den Regeln der Sammlung (`info`); abgerufen in `sync._pcwish` und `sync._pcwish_info`
 - `app/lists.py`: Wunschliste abgleichen (gekauft und noch gewünscht, im Tool entfernt, nur
   aus der Tabelle), Aktionen für ganze Gruppen, lange nicht gelesene Lesezeichen-Listen
-- `app/library.py`: Zeilen für Jetzt, Wunschliste und den Reiter VR der Sammlung
+- `app/library.py`: Zeilen für Jetzt, Wunschliste und den Reiter VR der Sammlung, ab 0.10.2 Pakete gegen Einzelpreise (`bundle_deals`)
 - `app/server.py`: Webserver und JSON-Schnittstelle
 - `app/static/`: Oberfläche, reines JavaScript ohne Build (`index.html`, `style.css`, `js/app.js`);
   Farben, Marken und Klappen nach `docs/oberflaeche.md`
