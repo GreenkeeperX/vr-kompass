@@ -485,11 +485,12 @@ class TestCollection(unittest.TestCase):
                 "Pixel Kart,,,Nintendo Super Nintendo Entertainment System,\n")
         stats = {}
         g = collection.parse(text, stats=stats)
-        self.assertEqual(sorted(g), ["name:ps4:orbit golf", "name:snes:pixel kart", "steam:3000040"])
-        self.assertEqual(stats["systems"], {"PC": 1, "PS4": 1, "SNES": 1})
+        # 0.10.11: PlayStation bleibt draußen (kommt später aus dem ROM-Ordner), gezählt unter „ps“
+        self.assertEqual(sorted(g), ["name:snes:pixel kart", "steam:3000040"])
+        self.assertEqual((stats["systems"], stats["ps"]), ({"PC": 1, "SNES": 1}, 1))
         self.assertNotIn("system", g["steam:3000040"])        # PC bleibt wie in alten Dateien ohne Feld
         # ohne Laden und mit kleiner Zahl als Kennung: Steam vermutet, aber nur am PC
-        self.assertEqual(collection.parse("Name,Spiel-ID,Plattformen\nDeep Dive,12345,Sony PlayStation 4\n")["name:ps4:deep dive"]["store"], "")
+        self.assertEqual(collection.parse("Name,Spiel-ID,Plattformen\nDeep Dive,12345,Nintendo Switch\n")["name:switch:deep dive"]["store"], "")
         # alte Datei ohne System: alles PC; Reiter in der Reihenfolge PC, dann Konsolen
         old = {"games": {"steam:3000001": {"name": "Sky Garden", "store": "Steam", "id": "3000001"}}}
         self.assertEqual(collection.view(old)["games"][0]["system"], "PC")
@@ -497,8 +498,13 @@ class TestCollection(unittest.TestCase):
         collection.replace(col, collection.parse("Name,Plattformen\nRetro Run,Nintendo Super Nintendo Entertainment System\n"))
         self.assertEqual(collection.view(col)["systems"], [["PC", 1], ["SNES", 1]])    # nur SNES dazu
         collection.replace(col, g)                             # ein Export mit PC ersetzt die PC-Spiele
-        self.assertEqual(collection.view(col)["systems"], [["PC", 1], ["PS4", 1], ["SNES", 1]])
-        self.assertEqual(sorted(col["games"]), ["name:ps4:orbit golf", "name:snes:pixel kart", "steam:3000040"])
+        self.assertEqual(collection.view(col)["systems"], [["PC", 1], ["SNES", 1]])
+        self.assertEqual(sorted(col["games"]), ["name:snes:pixel kart", "steam:3000040"])
+        # ein früherer Export mit PlayStation: fällt beim nächsten Abgleich weg, Retro-Einträge bleiben
+        col["games"]["name:ps4:orbit golf"] = {"name": "Orbit Golf", "system": "PS4"}
+        col["games"]["retro:ps1:star hop"] = {"name": "Star Hop", "system": "PS1", "src": "retro"}
+        self.assertEqual(collection.drop_ps(col), 1)
+        self.assertIn("retro:ps1:star hop", col["games"])
 
     def test_retro(self):
         """Retro-Liste: System aus Endung, sonst aus dem Ordner; Region und Sprache aus dem Namen;
@@ -753,7 +759,7 @@ class TestCollection(unittest.TestCase):
         store.DATA_DIR = tempfile.mkdtemp()
         data = store.load_data()
         res = server.import_collection(data, COLLECTION, dry=True)
-        self.assertEqual(res, {"n": 4, "new": 4, "console": 0, "systems": {"PC": 4}, "kept": 0})
+        self.assertEqual(res, {"n": 4, "new": 4, "console": 0, "systems": {"PC": 4}, "kept": 0, "ps": 0})
         self.assertNotIn("collection", data["imports"])
         server.import_collection(data, COLLECTION, dry=False)
         self.assertEqual(data["imports"]["collection"]["n"], 4)
@@ -3404,22 +3410,22 @@ class TestAccounts(unittest.TestCase):
                     "Sky Garden,3000001,VR,\"PC (Windows), Sony PlayStation 4\"\n")
         self.assertEqual([e["name"] for e in imports.parse_playnite(csv_text)], ["Sky Garden"])
         self.assertEqual(sorted((g["name"], g.get("system", "PC")) for g in collection.parse(csv_text).values()),
-                         [("Deep Dive", "PS4"), ("Sky Garden", "PC")])
+                         [("Sky Garden", "PC")])           # 0.10.11: PlayStation nicht mehr aus Playnite
         # Export der PlayStation-Bibliothek ohne Plattformen: an den Kennungen erkannt (CUSA… ist
         # PS4, NPWR… eine Trophäenliste von PS3 oder Vita, sonst nur PS); er ersetzt nur die Konsolenspiele, die PC-Sammlung bleibt stehen
         ps = "Name,Spiel-ID,Schlagwörter\nDeep Dive,CUSA00001_00,VR\nComet Chase,NPWR00002_00,\nStar Hop,XXXX00003_00,\n"
         self.assertEqual(imports.parse_playnite(ps), [])
         stats = {}
-        self.assertEqual({g["name"]: g["system"] for g in collection.parse(ps, stats=stats).values()},
-                         {"Deep Dive": "PS4", "Comet Chase": "PS3 / Vita", "Star Hop": "PS"})
-        self.assertEqual(stats, {"console": 3, "systems": {"PS4": 1, "PS3 / Vita": 1, "PS": 1}})
+        self.assertEqual(collection.parse(ps, stats=stats), {})          # 0.10.11: PlayStation bleibt draußen
+        self.assertEqual(stats, {"ps": 3})
+        self.assertEqual([collection.system_of([], "", i) for i in ("CUSA00001_00", "NPWR00002_00", "XXXX00003_00")], ["PS4", "PS3 / Vita", "PS"])
         self.assertLess(collection.system_order("PS3 / Vita"), collection.system_order("PS2"))
         store.DATA_DIR = tempfile.mkdtemp()
         data = store.load_data()
         server.import_collection(data, COLLECTION, dry=False)
         self.assertEqual(server.import_collection(data, ps, dry=False),
-                         {"n": 3, "new": 3, "console": 3, "systems": {"PS4": 1, "PS3 / Vita": 1, "PS": 1}, "kept": 4})
-        self.assertEqual(len(store.load_json(collection.FILE, {})["games"]), 7)
+                         {"n": 0, "new": 0, "console": 0, "systems": {}, "kept": 4, "ps": 3})
+        self.assertEqual(len(store.load_json(collection.FILE, {})["games"]), 4)
 
     def test_wishes_from_sources(self):
         d = empty()

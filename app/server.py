@@ -97,21 +97,21 @@ def import_collection(data, text, dry):
     stats = {}
     games = collection.parse(text, stats=stats)
     col = store.load_json(collection.FILE, collection.EMPTY)
-    console, systems = stats.get("console", 0), stats.get("systems", {})
+    console, systems, ps = stats.get("console", 0), stats.get("systems", {}), stats.get("ps", 0)
     if not games:
-        return {"n": 0, "new": 0, "console": console, "systems": systems, "kept": len(col.get("games") or {})}
+        return {"n": 0, "new": 0, "console": console, "systems": systems, "kept": len(col.get("games") or {}), "ps": ps}
     old = col.get("games") or {}
     kept = sum(1 for k, g in old.items() if ((g.get("system") or "PC") not in systems or g.get("src") == retro.SRC)
                and k not in games)
     if dry:
-        return {"n": len(games), "new": sum(k not in old for k in games), "console": console, "systems": systems, "kept": kept}
+        return {"n": len(games), "new": sum(k not in old for k in games), "console": console, "systems": systems, "kept": kept, "ps": ps}
     new = collection.replace(col, games)
     collection.sync_pcvr(col, data)          # 0.8.9: kennt Playnite einen VR-Titel jetzt, fällt sein Eintrag weg
     collection.sync_steam(col, data)         # 0.9.7: ebenso Spiele aus dem Steam-Konto
     collection.sync_gg(col, data)            # 0.9.9: und aus der gg.deals-Sammlung
     store.save_json(collection.FILE, col)
     data["imports"]["collection"] = {"at": col["at"], "n": len(col["games"]), "new": new}
-    return {"n": len(games), "new": new, "console": console, "systems": systems, "kept": kept}
+    return {"n": len(games), "new": new, "console": console, "systems": systems, "kept": kept, "ps": ps}
 
 
 def import_retro(data, text, dry, lists=()):

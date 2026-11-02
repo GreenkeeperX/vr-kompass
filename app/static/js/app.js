@@ -2348,7 +2348,8 @@ function previewHtml(p){
   const pc = p.collection, sy = Object.entries(pc?.systems || {});
   const per = sy.length > 1 ? ` (${sy.map(([n, c]) => `${esc(n)} ${num(c)}`).join(", ")})` : sy.length ? ` (${esc(sy[0][0])})` : "";
   const col = !pc ? "" : (pc.n ? ` Für die Sammlung: ${num(pc.n)} Spiele${per}, ${pc.new === pc.n ? "alle neu" : `davon ${num(pc.new)} neu`}.${pc.kept ? ` Deine anderen ${num(pc.kept)} Spiele bleiben, wie sie sind.` : ""}`
-    : ` Die Sammlung bleibt, wie sie ist${pc.kept ? ` (${num(pc.kept)} Spiele)` : ""}.`);
+    : ` Die Sammlung bleibt, wie sie ist${pc.kept ? ` (${num(pc.kept)} Spiele)` : ""}.`) +
+    (pc?.ps ? ` ${num(pc.ps)} PlayStation-Spiele bleiben draußen (sie kommen später aus dem ROM-Ordner).` : "");
   // Playnite: die erste Zahl zählt nur VR-Titel für Sammlung (VR) und Wunschliste
   const found = pc ? (p.n ? ` VR-Titel: ${p.n}, davon ${p.new} neu.` : " VR-Titel: keine darin.") : `${p.n} erkannt, davon ${p.new} neu.`;
   // gg.deals (0.8.7): erst die ganze PC-Wunschliste, dann wie viele davon VR-Titel im Tool sind

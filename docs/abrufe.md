@@ -474,3 +474,5 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
   gibt je Karte nur die erkannten Launcher-Namen weiter, nicht mehr den Text der Karte.
   Ab 0.10.10 bleiben Konsolenspiele (Zusatz wie „(PS4)“ hinter dem Namen, `collection.gg_console`) draußen, beim
   Einlesen und bei jedem Abgleich.
+  Ab 0.10.11 nimmt `collection.json` auch aus Playnite keine PlayStation-Spiele (`collection.is_ps`); frühere
+  fallen bei jedem Abgleich weg (`collection.drop_ps`), Einträge der Retro-Liste bleiben.
