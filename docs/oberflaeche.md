@@ -27,7 +27,8 @@ Ausnahme für die Marke „Wo“ (ab 0.9.4, Entscheidung 28.10.2026): Laden als 
 Fläche in der Farbe des Ladens, Meta `--wo-meta`, Steam und Händler `--wo-steam`, Keyshop `--wo-key`, „egal“
 grau gestrichelt (`.wo`, `woChip`). Das Preisurteil steht nur im Tooltip. Ein Klick öffnet den Preisverlauf.
 Diese Töne stehen nur in `.wo-*` (Test). Ab 0.9.8 (Entscheidung 02.11.2026, vom dunklen Modus aus) je Laden
-die Farbe seiner Marke (`shopCls`): Steam im Steam-Blau `--wo-steam`, Microsoft/Xbox grün `--wo-ms`, Humble grau
+die Farbe seiner Marke (`shopCls`): Steam im dunklen Blau des Steam-Logos `--wo-steam`, Meta im helleren Meta-Blau
+`--wo-meta` (ab 0.10.5, Entscheidung 02.11.2026; vorher war Steam im dunklen Modus heller als Meta), Microsoft/Xbox grün `--wo-ms`, Humble grau
 `--wo-humble`, Fanatical orange `--wo-fan`, Green Man Gaming grünlich `--wo-gmg`, Keyshop gelb wie Kinguin
 `--wo-key` (0.9.7 graublau); Epic, GOG, „Händler“ und alle übrigen in der Schriftfarbe.
 
