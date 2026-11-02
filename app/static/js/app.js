@@ -304,8 +304,15 @@ const byRating = r => -(r.rating?.score ?? -1), byAdded = r => -(Date.parse(r.ad
    aufklappendes Menü mit Häkchen, „?“ für die Legende. Gewählte Filter stehen darunter als
    Marken mit ×. Menüs schließen bei einem Klick daneben (V.menu merkt, welches offen ist). */
 const menuAttr = k => `data-menu="${k}"${V.menu === k ? " open" : ""}`;
+/* Sortieren als Auswahl und Klick auf einen Spaltenkopf (0.10.8, wie in der Sammlung): sortiert eine Spalte, steht in
+   der Auswahl „nach Spalte“; eine andere Wahl hebt die Spaltensortierung der Tabelle auf */
+const sortTable = k => k === "wish" ? "vrw" : k === "pc" ? "pcw" : V.nowKind === "pc" ? "pcw" : V.nowKind === "vr" ? "vrw" : "all";
+function sortSel(key, sorts, cur){
+  const col = !!V.sorts[sortTable(key)];
+  return `<label class="kind">Sortieren <select data-sort="${key}">${col ? `<option value="" selected>nach Spalte</option>` : ""}${sorts.map(([v, l]) => `<option value="${v}"${!col && cur === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+}
 function listBar(o){
-  const sel = `<label class="kind">Sortieren <select data-sort="${o.sortKey}">${o.sorts.map(([v, l]) => `<option value="${v}"${o.sort === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const sel = sortSel(o.sortKey, o.sorts, o.sort);
   const fs = LF.filter(([k]) => o.filters.includes(k)), on = fs.filter(([k]) => V.lf[k]);
   const menu = fs.length ? `<details class="menu" ${menuAttr("lf")}><summary>Filter${on.length ? ` <span class="cnt">${on.length}</span>` : ""}</summary>
     <div class="pop">${fs.map(([k, l]) => `<label><input type="checkbox" data-lf="${k}"${V.lf[k] ? " checked" : ""}> ${l}</label>`).join("")}</div></details>` : "";
@@ -370,7 +377,7 @@ function pcWishView(pw){
   const mpMenu = mpIn.length ? `<details class="menu" ${menuAttr("pmp")}><summary>Mehrspieler${V.pcMp.length ? ` <span class="cnt">${V.pcMp.length}</span>` : ""}</summary><div class="pop">
     <p class="hint">Mehrere gewählt: alle müssen passen.</p>
     ${mpIn.map(k => `<label><input type="checkbox" data-pmp="${esc(k)}"${V.pcMp.includes(k) ? " checked" : ""}> ${esc(MPL()[k])} <span class="n">${all.filter(r => (r.mp || []).includes(k)).length}</span></label>`).join("")}</div></details>` : "";
-  const sel = `<label class="kind">Sortieren <select data-sort="pc">${PC_SORTS.map(([v, l]) => `<option value="${v}"${V.pcSort === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
+  const sel = sortSel("pc", PC_SORTS, V.pcSort);
   const bar = `<div class="bar"><span class="sbox"><input type="search" id="q" placeholder="Titel suchen" aria-label="Titel suchen" value="${esc(V.q)}" data-in="q">${V.q ? `<button class="sx" data-act="qclear" title="Suche leeren (Esc)" aria-label="Suche leeren">×</button>` : ""}</span><span class="tools">${mpMenu}${sel}</span></div>`;
   const src = {Server: "über den Teilen-Link", Lesezeichen: "per Lesezeichen", Datei: "aus einer Datei"}[pw.via] || "";
   const games = all.filter(r => !r.kind).length, info = all.filter(r => r.srcs?.length).length;
@@ -479,7 +486,8 @@ function pcRow(r){
 }
 // Einzelheiten eines PC-Wunschs: was die Zeile nicht zeigt, rechts die Beschreibung, darunter Herkunft und Links
 // 0.10.3 (Entscheidung 02.11.2026): die Beschreibung beginnt unter der Spalte „Wo“ (gc: deren Nummer)
-function pcDetail(r, gc = 5){
+// 0.10.8: die Genres stehen unter der Spalte Genre (gg: deren Nummer), wie in den VR-Einzelheiten
+function pcDetail(r, gc = 5, gg = 8){
   const row = (l, v, tip) => v ? `<span class="fl">${l}</span><span class="fv"${tip ? ` title="${esc(tip)}"` : ""}>${v}</span>` : "";
   const g = Object.assign({mp: [], genres: []}, r);
   const steamTip = [r.rdesc && (RDESC[r.rdesc] || r.rdesc), r.reviews != null && `${num(r.reviews)} Rezensionen`].filter(Boolean).join(", ");
@@ -499,7 +507,7 @@ function pcDetail(r, gc = 5){
     // 0.9.4: Preisverlauf unter den Preisen, nicht in der Fußzeile
     row("", r.kind ? "" : `<button class="link" data-act="verlauf" data-pc="${esc(r.key)}" title="Kurve je Laden, Tief, Angebote der letzten 18 Monate">Preisverlauf</button>`);
   const dtip = r.desc_src === "IGDB" ? "Beschreibung laut IGDB, nur auf Englisch" : "Kurzbeschreibung laut Steam";
-  const side = `<div class="gdm"><span class="gmarks"></span><span class="gtags ggen"></span>${r.desc ? `<p class="gdesc${V.gDesc === r.key ? " full" : ""}" data-act="gdesc" data-s="${esc(r.key)}" title="${dtip}${V.gDesc === r.key ? "" : ". Klick zeigt alles"}">${esc(r.desc)}</p>` : `<span class="hint">${r.kind ? "Pakete und DLC bekommen keine Spielinfos." : r.appid ? "Noch keine Spielinfos; der Abgleich holt sie." : "Ohne Steam-ID gibt es keine Spielinfos."}</span>`}</div>`;
+  const side = `<div class="gdm vdd" style="--gc2:${gc};--gg:${gg - gc + 1}"><span class="gmarks"></span><span class="gtags ggen"></span>${r.desc ? `<p class="gdesc${V.gDesc === r.key ? " full" : ""}" data-act="gdesc" data-s="${esc(r.key)}" title="${dtip}${V.gDesc === r.key ? "" : ". Klick zeigt alles"}">${esc(r.desc)}</p>` : `<span class="hint">${r.kind ? "Pakete und DLC bekommen keine Spielinfos." : r.appid ? "Noch keine Spielinfos; der Abgleich holt sie." : "Ohne Steam-ID gibt es keine Spielinfos."}</span>`}</div>`;
   const links = [r.url && `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">bei gg.deals</a>`, r.appid && `<a href="https://store.steampowered.com/app/${esc(r.appid)}/" target="_blank" rel="noopener noreferrer">bei Steam</a>`].filter(Boolean);
   const small = [r.since && `auf der Liste seit ${day(r.since)}`, r.srcs?.length && `Spielinfos von ${srcList(r)}`, r.price_at && `Preis von ${when(r.price_at)}`, ...links].filter(Boolean).join(" · ");
   return `<div class="gd" style="--gc:${gc}"><div class="gdf">${facts}</div>${side}<p class="hint gds">${small}</p></div>`;
@@ -789,7 +797,7 @@ function allPcRow(r){
     cellOf("Art", `<span class="b pcb" title="PC-Wunsch von gg.deals">PC</span>`) + cellOf("Wo", pcWo(r)) +
     cellOf("Wertung", gSc(r) + (r.score_src === "Steam" ? trendMark(r.trend) : ""), "r") + cellOf("Rezensionen", gRev(g), "r") +
     `<span class="c-gen${r.genres?.length ? "" : " nil"}" data-l="Genre">${r.genres?.length ? gGenres(g, false) : G_NIL}</span>` + cellOf("Aktiv", gActive(g), "r") + `</div>` +
-    (open ? pcDetail(r, 6) : "");
+    (open ? pcDetail(r, 6, 9) : "");
 }
 
 /* ---------------------------------------------------------------- Sammlung
@@ -1612,6 +1620,19 @@ function fitAll(){
     const seen = new Set([...row.querySelectorAll(".t .b")].map(b => b.textContent.trim()));
     d.querySelectorAll(".gbadges > .b").forEach(b => { if(seen.has(b.textContent.trim())) b.remove(); });
   }
+}
+/* Aufklappen (0.10.8): die angeklickte Zeile bleibt an ihrer Stelle im Fenster, auch wenn darüber eine andere Zeile
+   zuklappt; sonst sprang die Tabelle um die Höhe der alten Einzelheiten nach oben */
+function keepRow(el, draw){
+  const act = el.dataset.act, key = el.dataset.s, top = el.getBoundingClientRect().top;
+  draw();
+  const n = [...document.querySelectorAll(`[data-act="${act}"]`)].find(x => x.dataset.s === key);
+  if(n) scrollBy(0, n.getBoundingClientRect().top - top);
+}
+// Danach rückt das Fenster nach, bis die Einzelheiten ganz zu sehen sind (wie im eShopKompass)
+function showOpen(open){
+  const gd = open && document.querySelector(".gr.open + .gd");
+  if(gd){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
 }
 function patchMarks(g){
   const btn = [...document.querySelectorAll(".gmark button[data-s]")].filter(b => b.dataset.s === g.key);
@@ -2471,18 +2492,17 @@ document.addEventListener("click", async ev => {
   else if(a === "gopen"){
     // Aufgeklappt rückt das Fenster nach, bis die Einzelheiten ganz zu sehen sind (wie im eShopKompass)
     const k = el.dataset.s;
-    if(V.gAll){ if(V.gShut.has(k)) V.gShut.delete(k); else V.gShut.add(k); render(); return; }
-    V.gOpen = V.gOpen === k ? null : k; render();
-    const gd = V.gOpen && document.querySelector(".gd");
-    if(gd){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
+    if(V.gAll){ if(V.gShut.has(k)) V.gShut.delete(k); else V.gShut.add(k); keepRow(el, render); return; }
+    V.gOpen = V.gOpen === k ? null : k; keepRow(el, render);
+    showOpen(V.gOpen);
   }
   else if(a === "verlauf") openVerlauf(el.dataset.vr ? "vr" : "pc", el.dataset.vr || el.dataset.pc);
   else if(a === "vlclose") $("verlauf").close();
   else if(a === "vlall"){ V.vl.hide = new Set(el.dataset.v === "off" ? V.vl.data.series.map(s => s.name) : []); drawVerlauf(); }
   else if(a === "vltoggle"){ const n = el.dataset.n; V.vl.hide.has(n) ? V.vl.hide.delete(n) : V.vl.hide.add(n); drawVerlauf(); }
   // 0.9.8: immer nur ein Eintrag offen, auch in „Jetzt, Alle“ mit PC und VR in einer Tabelle
-  else if(a === "pwopen"){ V.pwOpen = V.pwOpen === el.dataset.s ? null : el.dataset.s; V.vwOpen = null; render(); }
-  else if(a === "vwopen"){ V.vwOpen = V.vwOpen === el.dataset.s ? null : el.dataset.s; V.pwOpen = null; render(); }
+  else if(a === "pwopen"){ V.pwOpen = V.pwOpen === el.dataset.s ? null : el.dataset.s; V.vwOpen = null; keepRow(el, render); showOpen(V.pwOpen); }
+  else if(a === "vwopen"){ V.vwOpen = V.vwOpen === el.dataset.s ? null : el.dataset.s; V.pwOpen = null; keepRow(el, render); showOpen(V.vwOpen); }
   else if(a === "nowk"){ V.nowKind = v || ""; render(); }
   else if(a === "gdesc"){ if(String(getSelection() || "").trim()) return; V.gDesc = V.gDesc === el.dataset.s ? null : el.dataset.s; render(); }
   else if(a === "gall"){ V.gAll = !!v; V.gShut.clear(); V.gOpen = null; render(); }
@@ -2659,7 +2679,7 @@ document.addEventListener("input", ev => {
 document.addEventListener("change", async ev => {
   const t = ev.target, dt = t.dataset;
   // Sortieren, Filter-Häkchen, Genre und Mehrspieler in Entdecken; ein offenes Menü bleibt offen
-  if(dt.sort){ V[{wish: "sort", now: "nowSort", pc: "pcSort"}[dt.sort]] = t.value; render(); return; }
+  if(dt.sort){ delete V.sorts[sortTable(dt.sort)]; if(t.value) V[{wish: "sort", now: "nowSort", pc: "pcSort"}[dt.sort]] = t.value; render(); return; }
   if("shop" in dt){ V.nowShop = t.value; render(); return; }
   if(dt.lf){ V.lf[dt.lf] = t.checked; V.menu = "lf"; render(); return; }
   if(dt.pmp){ V.pcMp = t.checked ? V.pcMp.concat(dt.pmp) : V.pcMp.filter(y => y !== dt.pmp); V.menu = "pmp"; render(); return; }

@@ -12,7 +12,7 @@
   /* Wo kaufen (0.9.4): Marken je Laden, nur Rahmen und Schrift */
   --wo-meta:#0866ff; --wo-steam:#1b3a5c; --wo-key:#8a6500; --wo-ms:#107c10; --wo-humble:#6b6b6b; --wo-fan:#b45f00; --wo-gmg:#0b7a4b; --cb:#7a5a00; --cb-bg:#f7ecc4;
   /* Sammlung (wie im eShopKompass): offene Zeile, Genre-Blasen und Wertung als Farbton */
-  --open:#f8f6f0; --gg-s:52%; --gg-bl:90%; --gg-ts:40%; --gg-tl:28%; --sc-s:70%; --sc-l:34%;
+  --open:#f8f6f0; --hov:color-mix(in srgb,var(--ink) 6%,var(--card)); --gg-s:52%; --gg-bl:90%; --gg-ts:40%; --gg-tl:28%; --sc-s:70%; --sc-l:34%;
 }
 /* Ansicht: data-theme am html-Element (hell/dunkel), ohne Angabe wie das Gerät */
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]){
@@ -22,7 +22,7 @@
   --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19; --warn:#c3abff; --warn-bg:#2b2342; --pink:#f48fc4;
   --sys-nin:#ff3d48; --sys-ps:#6aa8ff; --sys-pc:#8fd61a;
   --wo-meta:#1a8cff; --wo-steam:#4a78b0; --wo-key:#f7b500; --wo-ms:#5dc21e; --wo-humble:#b5b5b5; --wo-fan:#ff9a1f; --wo-gmg:#3ddc97; --cb:#e8c45a; --cb-bg:#33290f;
-  --open:var(--bg); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
+  --open:var(--bg); --hov:color-mix(in srgb,var(--bg) 70%,var(--card)); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }}
 :root[data-theme=dark]{color-scheme:dark;
   --bg:#121617; --card:#1a2022; --ink:#cdd5d4; --ink-hi:#e5ebea; --muted:#94a3a1; --line:#2c3537;
@@ -31,7 +31,7 @@
   --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19; --warn:#c3abff; --warn-bg:#2b2342; --pink:#f48fc4;
   --sys-nin:#ff3d48; --sys-ps:#6aa8ff; --sys-pc:#8fd61a;
   --wo-meta:#1a8cff; --wo-steam:#4a78b0; --wo-key:#f7b500; --wo-ms:#5dc21e; --wo-humble:#b5b5b5; --wo-fan:#ff9a1f; --wo-gmg:#3ddc97; --cb:#e8c45a; --cb-bg:#33290f;
-  --open:var(--bg); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
+  --open:var(--bg); --hov:color-mix(in srgb,var(--bg) 70%,var(--card)); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }
 :root[data-theme=light]{color-scheme:light}
 *{box-sizing:border-box}
@@ -320,11 +320,12 @@ details.op .ux{color:var(--warn)}
 .glist.box{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
 .gr{display:grid;grid-template-columns:var(--gcols);gap:0 10px;align-items:start;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
 .glist>.gr:first-child,.gr.nph+.gr{border-top:0}
-/* 0.10.7 (Entscheidung 02.11.2026): die Zeile unter der Maus leicht hinterlegt, über den Rand der Liste hinaus wie
+/* 0.10.7 (Entscheidung 02.11.2026): die Zeile unter der Maus leicht hinterlegt (--hov; ab 0.10.8 im Darkmode
+   dunkler statt heller), über den Rand der Liste hinaus wie
    die offene Zeile; nur mit Maus (hover:hover), am Handy nicht */
 @media (hover:hover){
-  .gr:not(.nph):not(.open):hover{--hov:color-mix(in srgb,var(--ink) 6%,var(--card));background:var(--hov);box-shadow:-10px 0 0 var(--hov),10px 0 0 var(--hov)}
-  .vl tbody tr:hover,.mini-t tbody tr:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+  .gr:not(.nph):not(.open):hover{background:var(--hov);box-shadow:-10px 0 0 var(--hov),10px 0 0 var(--hov)}
+  .vl tbody tr:hover,.mini-t tbody tr:hover{background:var(--hov)}
 }
 .gr.nph{padding-top:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);align-items:end;border-bottom:1px solid var(--line)}
 .gr.nph .sth{cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
