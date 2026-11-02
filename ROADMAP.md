@@ -151,7 +151,11 @@ Bestätigen und Einlesen von Hand. Als Nächstes:
 - Freie Abrufe für die PC-Sammlung: Sind alle VR-Titel aktuell, holt der Abgleich mit dem Rest
   seines Kontingents Spielerzahlen für die Sammlung (zuerst gut bewertete Mehrspieler-Spiele) und
   hält sie dann ebenso aktuell
-- Wunschliste am Desktop als Tabelle mit sortierbaren Spalten
+- Preismuster: aus dem eigenen Verlauf und dem Verlauf je Laden (IsThereAnyDeal) ablesen, ob Rabatte an
+  Wochentage, Monate oder einen Abstand zum Erscheinen gebunden sind; zuerst einmal von Hand auswerten,
+  dann entscheiden, ob das Tool es selbst rechnet
+- Pflege je Laden vergleichen: Steam-Update-Datum gegen den Tag, an dem die Meta-Version zuletzt wechselte
+  (`meta_ver.since`), als weiterer Grund im Urteil „wo kaufen“
 
 - Bundles und Cross-Buy-Pakete im Preisvergleich
 - Benachrichtigung bei neuem Tief eines Wunschtitels

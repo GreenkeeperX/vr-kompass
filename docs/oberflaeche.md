@@ -12,8 +12,8 @@ müssen beide lesbar sein; jede Farbänderung wird in beiden geprüft.
 | Farbe | Token | Bedeutung | Beispiele |
 |---|---|---|---|
 | Blau | `--deal` | Rabatt | `−67 %`, `−40 % Gutschein` (`.b.deal`, ab 0.9.4 nur blaue Schrift ohne Fläche, Ton wie im eShopKompass) |
-| Gold | `--best` | am Tief (niedrigster Preis beider Läden in 24 Monaten, bis 2 % darüber; ab 0.9.4 heißt es überall „Tief“, nicht mehr „Bestpreis“) | „★ am Tief“ im Preisfeld (`.bl.at`, `.star`) |
-| Grün | `--go` | spricht für dich, gelingt | Urteil „kaufen“ (gefüllt, `.vd.buy`) und „gut“ (umrandet, `.vd.good`) wie im eShopKompass, günstigerer Laden (Rahmen `.shop.win`, „5 € günstiger“ ab 1 €), Crossbuy, besser bewerteter Laden (`.rate.win`, „Meta +8“), Quelle „ok“ |
+| Gold | `--best` | am Tief (niedrigster Preis beider Läden in 18 Monaten, bis 2 % darüber; ab 0.9.4 heißt es überall „Tief“, nicht mehr „Bestpreis“) | „★ am Tief“ im Preisfeld (`.bl.at`, `.star`) |
+| Grün | `--go` | spricht für dich, gelingt | Urteil „kaufen“ (gefüllt, `.vd.buy`) und „gut“ (umrandet, `.vd.good`) wie im eShopKompass, günstigerer Laden (Rahmen `.shop.win`, „5 € günstiger“ ab 1 €), besser bewerteter Laden (`.rate.win`, „Meta +8“), Quelle „ok“ |
 | Rot | `--stop` | spricht gegen dich, misslingt | Aufpreis über dem Tief (`.over`, „+7 €“), Fehler einer Quelle |
 | Violett | `--warn` | prüfen, veraltet, geschätzt, unsicher | „Steam-ID ≈“ (Wunschliste; Sammlung „Steam-ID prüfen“), Wert aus nur einer Quelle in der Sammlung (`.gxc`), Stand älter als zwei Tage, Hinweise oben, widersprechende Quelle („Tabelle: nein“), Recherche (gestrichelte Linie links, „≈ Recherche“) |
 | Grau | `--chip`, `--muted` | Information ohne Wertung | Meta, PC, „Wunsch“, „Wunsch · Tabelle“, „ohne Crossbuy“, Feld ohne Preis (gestrichelt) |
@@ -26,7 +26,14 @@ eigene Tokens und stehen nirgends sonst.
 Ausnahme für die Marke „Wo“ (ab 0.9.4, Entscheidung 28.10.2026): Laden als dünn umrandete Marke ohne
 Fläche in der Farbe des Ladens, Meta `--wo-meta`, Steam und Händler `--wo-steam`, Keyshop `--wo-key`, „egal“
 grau gestrichelt (`.wo`, `woChip`). Das Preisurteil steht nur im Tooltip. Ein Klick öffnet den Preisverlauf.
-Diese Töne stehen nur in `.wo-meta`, `.wo-steam`, `.wo-key` (Test).
+Diese Töne stehen nur in `.wo-meta`, `.wo-steam`, `.wo-key` (Test). Keyshop ab 0.9.7 ein gedecktes
+Graublau zwischen Meta und Steam statt Pink (Entscheidung 01.11.2026).
+
+Ausnahme für die Marke „Crossbuy“ (ab 0.9.7, Entscheidung 01.11.2026): Goldgelb in eigenen Tokens
+`--cb`/`--cb-bg` (`.b.cb`), damit sie sich neben dem grünen „Preissturz“ abhebt. Nur diese Marke.
+
+Rabatt bei PC-Wünschen (ab 0.9.7): blaue Marke `−40 %` vor dem Preis wie bei VR, vom günstigsten
+offiziellen Laden laut IsThereAnyDeal (`r.cut`, Laden im Tooltip). Ohne IsThereAnyDeal keine Marke.
 
 Weitere Ausnahmen in der Sammlung, übernommen aus „Spiele“ im eShopKompass (0.6.0, Entscheidung
 27.10.2026): Die Wertung ist ein Farbton von Rot über Gelb nach Grün (`.gsc`, `--sh` aus 50 bis
@@ -215,11 +222,21 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Block; Reiter VR: Wertung, Rezensionen, Aktiv, Update, Crossbuy, Besitz, Recherche. Breiten überall gleich: Spiel
   `minmax(180px,1.5fr)`, Wertung 70, Rezensionen 98, Spielzeit 66, max. Spieler 96, Aktiv 56, Update 62, Jahr 44 px;
   den Rest nimmt Genre, sonst Recherche oder Wo.
-- „max. Spieler“ (`gMaxPl`, Switch `kMaxCell`): die Zahl; ohne Zahl grau „–“ bei bekanntem Mehrspieler (ab 0.9.5, vorher
-  „2+“), grau „1“, wenn Steam keinen nennt. Die Arten im Tooltip, in den Einzelheiten ab 0.9.5 überall die Zeile
-  „Spieler“ (`gPlayers`, `plKinds`, vorher „Mehrspieler“): je Art die höchste Zahl, „Online bis 8 · Koop online bis 4 ·
-  Lokal bis 4 · LAN“; ohne Zahl nur die Art, violett, was nur eine Quelle nennt; Quelle der Zahl im Tooltip (IGDB,
-  PCGamingWiki, beide einig). Nur „Mehrspieler“ ohne Art: „mehrere, Art unbekannt“; laut Steam ohne: „allein“.
+- „max. Spieler“ (`gMaxPl`, Switch `kMaxCell`): die Zahl; ohne Zahl grau „2+“ bei bekanntem Mehrspieler (ab 0.9.7
+  wieder, 0.9.5 und 0.9.6 „–“; Entscheidung 01.11.2026), grau „1“ für Einzelspieler (laut Steam oder IGDB ohne
+  Mehrspieler, `plSolo`). Sortiert zählt „2+“ als 2 (`plSort`). Die Arten im Tooltip.
+- Spieler in den Einzelheiten (ab 0.9.7, `plKinds`, `plRows`): die Zeile „Spieler“ an dritter Stelle, die Zahl fett vorn,
+  „**8** online · **2+** lokal · **8** LAN“ (ohne Zahl „2+“, MMO ohne Zahl), darunter die Zeile „Koop“ nach demselben
+  Schema („**4** online · **2** lokal“, Koop ohne Art „**2+**“). Violett, was nur eine Quelle nennt; Quelle der Zahl im
+  Tooltip (IGDB, PCGamingWiki, beide einig). Einzelspieler bekommen keine Zeile. Switch (`kDetail`): „**1–4** an einer
+  Konsole · **2–8** lokal drahtlos · **2–12** online“, Koop laut IGDB darunter.
+- Reihenfolge der Einzelheiten (ab 0.9.7, Entscheidung 01.11.2026), überall, soweit die Zeile vorkommt: Wertung, Trend,
+  Spieler, Koop, Spielzeit, Aktiv, Meta, Update, USK, Erschienen (Entwickler und Verlag im Tooltip, keine eigene Zeile),
+  VR per Mod, Sim-Racing, Mods (Nexus Mods). Danach, was es nur dort gibt: bei PC-Wünschen die Preise (Preissturz,
+  Jetzt, Tief, Läden, Preisverlauf), bei Retro-Spielen Gesucht, Dateien und die Ordner-Liste, bei Switch Online und
+  GameShare vor USK. Rechts „Gespielt“ über „Mein Stand“, dann die Beschreibung; reine Meta-Titel: „Gespielt:
+  unbekannt“, der Meta Store nennt keine Spielzeit. Marken eines VR-Titels nebeneinander (`.gbadges`), in der
+  Reihenfolge Steam (Launcher), Meta, Bundle, Crossbuy oder ohne Crossbuy, SimRacing.
 - Sprachen (ab 0.9.5, Entscheidung 28.10.2026): nur, wenn Deutsch fehlt, als rotes „ohne Deutsch“ (`.gno`) klein in
   der Zeile unten der Einzelheiten, die Sprachen im Tooltip; gilt für PC, Retro, Switch und die eShopKompass-Zeilen.
 - Reiter VR der Sammlung (ab 0.9.5): Spiel, max. Spieler, Wertung, Rezensionen, Genre, Aktiv, Update, Crossbuy, Besitz,
@@ -280,10 +297,12 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Stelle wie in Wunschliste und Sammlung, mit Zahl je Seite; PC grün, VR türkis wie dort. Bei „Alle“ zwei
   Klappen „VR“ und „PC“; die PC-Liste ist dieselbe Tabelle wie unter Wunschliste, PC (`pcTable`), nur Wünsche nah am
   Tief und ohne die schon in der Sammlung. Bei „PC“ keine VR-Filter. Ab 0.8.27 bei „Alle“ eine Tabelle
-  (`allTable`, `allVrRow`, `allPcRow`, Spalten `ALL_COLS`): ab 0.9.4 Spiel, max. Spieler, Art (`.b.pcb` PC grün
-  umrandet, VR türkis), Preis, überm Tief, Wo, Wertung, Rezensionen, Genre, Aktiv; sortiert nach Nähe, Rabatt
+  (`allTable`, `allVrRow`, `allPcRow`, Spalten `ALL_COLS`): ab 0.9.4 Spiel, max. Spieler, Preis, überm Tief, Art (`.b.pcb` PC grün
+  umrandet, VR türkis; ab 0.9.7 hinter „überm Tief“), Wo, Wertung, Rezensionen, Genre, Aktiv; sortiert nach Nähe, Rabatt
   (`_saleOf`) oder Wertung. Die Gruppe „VR: reduziert, aber noch weit über dem Tief“ fiel mit 0.9.4 weg (keine
-  Kaufempfehlung). „max. Spieler“ ist in allen Tabellen die erste Spalte nach „Spiel“, auch in der Sammlung. Ab 0.9.0 im Reiter PC das Menü „Laden“ (`select
+  Kaufempfehlung). „max. Spieler“ ist in allen Tabellen die erste Spalte nach „Spiel“, auch in der Sammlung. Ab 0.9.7 sortieren alle
+  Tabellen in Jetzt und Wunschliste per Klick auf den Spaltenkopf wie in der Sammlung (`gTh` mit Tabelle, `sortRows`,
+  `V.sorts.all`, `.pcw`, `.vrw`; Schlüssel `ALL_KEYS`, `PC_KEYS`, `VR_KEYS`), dritter Klick zurück zur Sortierung im Menü. Ab 0.9.0 im Reiter PC das Menü „Laden“ (`select
   data-shop`, `V.nowShop`, Zählung `shopCounts`): je Laden die PC-Wünsche nah am Tief der Händler; nach Wahl dieselbe
   Tabelle (`pcTable`) mit dem Preis dort (`atShop` ersetzt `best`, `url`, `over`), Hinweis darüber nennt den Laden.
 - Läden einzeln (0.9.0, `pcShopsHtml`): in den Einzelheiten der PC-Wünsche die Zeile „Läden“, bis sechs Läden nach

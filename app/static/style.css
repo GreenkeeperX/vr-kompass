@@ -8,7 +8,7 @@
   /* Nur für die Reiter je System in der Sammlung: Nintendo, PlayStation, PC */
   --sys-nin:#e60012; --sys-ps:#0060c0; --sys-pc:#4a7a00;
   /* Wo kaufen (0.9.4): Marken je Laden, nur Rahmen und Schrift */
-  --wo-meta:#0866ff; --wo-steam:#2a475e; --wo-key:#a3247a;
+  --wo-meta:#0866ff; --wo-steam:#2a475e; --wo-key:#4a5f8a; --cb:#7a5a00; --cb-bg:#f7ecc4;
   /* Sammlung (wie im eShopKompass): offene Zeile, Genre-Blasen und Wertung als Farbton */
   --open:#f8f6f0; --gg-s:52%; --gg-bl:90%; --gg-ts:40%; --gg-tl:28%; --sc-s:70%; --sc-l:34%;
 }
@@ -19,7 +19,7 @@
   --deal:#8cc0e8; --deal-bg:#1c2b44; --best:#f2c14e; --best-bg:#3a2e12;
   --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19; --warn:#c3abff; --warn-bg:#2b2342;
   --sys-nin:#ff3d48; --sys-ps:#6aa8ff; --sys-pc:#8fd61a;
-  --wo-meta:#6ea8ff; --wo-steam:#c7d5e0; --wo-key:#e98bc9;
+  --wo-meta:#6ea8ff; --wo-steam:#c7d5e0; --wo-key:#9ab0d6; --cb:#e8c45a; --cb-bg:#33290f;
   --open:var(--bg); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }}
 :root[data-theme=dark]{color-scheme:dark;
@@ -28,7 +28,7 @@
   --deal:#8cc0e8; --deal-bg:#1c2b44; --best:#f2c14e; --best-bg:#3a2e12;
   --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19; --warn:#c3abff; --warn-bg:#2b2342;
   --sys-nin:#ff3d48; --sys-ps:#6aa8ff; --sys-pc:#8fd61a;
-  --wo-meta:#6ea8ff; --wo-steam:#c7d5e0; --wo-key:#e98bc9;
+  --wo-meta:#6ea8ff; --wo-steam:#c7d5e0; --wo-key:#9ab0d6; --cb:#e8c45a; --cb-bg:#33290f;
   --open:var(--bg); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }
 :root[data-theme=light]{color-scheme:light}
@@ -93,6 +93,7 @@ nav .cnt{font-size:11px;margin-left:4px;color:var(--muted)}
 .b.best{background:var(--best-bg);color:var(--best)}
 .star{color:var(--best)}
 .b.go{background:var(--go-bg);color:var(--go)}
+.b.cb{background:var(--cb-bg);color:var(--cb)}
 .b.stop{background:var(--stop-bg);color:var(--stop)}
 .b.warn{background:var(--warn-bg);color:var(--warn)}
 a.add{font-size:12px;font-weight:600;white-space:nowrap}
@@ -377,6 +378,8 @@ a.eshl:hover{text-decoration:underline}
 .gd .gds{grid-column:1/-1;font-size:12px;padding-left:14px;margin:0}
 .gdv{display:flex;flex-direction:column;gap:6px;min-width:0;padding-left:14px}
 .gdv>.b{align-self:flex-start}
+.gbadges{display:flex;flex-wrap:wrap;gap:4px}
+.gbadges:empty{display:none}
 .gdv .note{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;border-left:3px solid var(--line);padding-left:8px}
 .gpick .glist{padding:0}
 details.menu .opts .chip{font-size:12px}
