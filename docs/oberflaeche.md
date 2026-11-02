@@ -265,6 +265,16 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   (Fakten), Reiter VR der Sammlung (Spalten Steam, Update), Wunschliste PC (Wertung, Name, Einzelheiten), Jetzt PC.
 - Preissturz (ab 0.8.18): grüne Marke „Preissturz“ (`.b.go`, `dropMark`) am Namen in der Wunschliste PC und unter
   Jetzt, ab 0.8.25 auch an VR-Wünschen (`badges`, Laden im Tooltip, nur ohne Besitz), Prozent und üblicher Preis im Tooltip, in den Einzelheiten die Zeile „Preissturz“.
+- Üblicher Rabatt (ab 0.10.0): grau gestrichelte Marke „üblich −x %“ (`.b.usq`, `usualMark`), nur wenn ein laufendes
+  Steam-Angebot mindestens 10 Punkte unter dem für das Alter üblichen Rabatt liegt; keine Empfehlung, der Tooltip
+  nennt Altersstufe, Zahl der Angebote und „Keine Vorhersage“. In den Einzelheiten die Zeile „Üblich“ (`usualText`),
+  sobald die Stufe genug Angebote hat. Kasten „Was dein Preisverlauf zeigt“ (`.muster`, `musterHtml`) unten in der
+  Legende und aufklappbar unter dem Preisverlauf; dort je Laden die Spalte „Rhythmus“ (`gapText`). Eine Sache, mehrere
+  Orte: Name in der Wunschliste VR (`badges`), Wunschliste PC, Jetzt PC und Alle, Einzelheiten VR (`factsHtml`) und PC
+  (`pcDetail`).
+- Crossplay (ab 0.10.0): „⇄“ grau hinter der Zahl in der Spalte max. Spieler (`xpMark`), violett, wenn nur eine Quelle
+  es sagt oder PCGamingWiki widerspricht; Zeile „Crossplay“ in den Einzelheiten (`plRows`, VR in `factsHtml`) mit den
+  Plattformen. Crossplay Quest/PC aus der Recherche steht weiter bei den Meinungen.
 - Lenkrad (0.8.3): Marke „Lenkrad“ (`.b`), wenn das Spiel in einer Liste der Rennspiele steht (SimHub,
   Simucube-Forum; Tooltip nennt beide); nur Steam-Schlagwörter: „Lenkrad?“ violett (`.b.gxc`), `wheelBadge`.
   Ab 0.8.5 auch an VR-Titeln (Reiter VR, Wunschliste, Karten). Filter „Lenkrad“ (`d.wh`), wenn ein Spiel im Reiter eins

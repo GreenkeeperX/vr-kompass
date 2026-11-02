@@ -205,7 +205,8 @@ STEAM_MP = {"multi": {1, 9, 20, 24, 27, 36, 37, 38, 39, 44, 47, 48, 49}, "online
 STEAM_VR = {31, 53, 54}
 
 
-DETAILS_V = 2
+DETAILS_V = 3                  # 3 (0.10.0): Crossplay aus der Kategorie „Plattformübergreifender Mehrspielermodus“
+STEAM_XP = 27
 
 
 def steam_details(text, appid):
@@ -243,7 +244,7 @@ def steam_details(text, appid):
             "recs": int(((d.get("recommendations") or {}).get("total")) or 0),
             "mc": mc, "desc": desc[:400], "date": str((d.get("release_date") or {}).get("date") or "")[:30],
             "devs": names("developers"), "pubs": names("publishers"), "langs": len(langs),
-            "de": any(x.strip().casefold() in ("deutsch", "german") for x in langs), "v": DETAILS_V}
+            "de": any(x.strip().casefold() in ("deutsch", "german") for x in langs), "xp": STEAM_XP in cats, "v": DETAILS_V}
 
 
 def steam_search(text):

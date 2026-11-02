@@ -1,11 +1,13 @@
 """Preisverlauf je Titel (0.9.1), nach dem Vorbild des eShopKompass: je Laden die Kurve und daraus Normalpreis,
-Tief mit Tag, Angebote der letzten 18 Monate, ihre übliche Dauer, Anteil der Zeit im Angebot und das letzte Angebot.
+Tief mit Tag, Angebote der letzten 18 Monate, ihre übliche Dauer, Anteil der Zeit im Angebot, ab 0.10.0 der übliche
+Abstand zwischen zwei Angeboten (gap) und das letzte Angebot.
 
 Ein Verlauf ist eine Liste [[Tag, Preis]], je Eintrag der Preis ab diesem Tag (nur Änderungen). Ein Angebot ist
 jede Strecke mindestens SALE_TOL unter dem Normalpreis; Normalpreis ist der Preis, der im Zeitraum am längsten galt
 (oder der Normalpreis, den der Laden jetzt nennt). Typischer Angebotspreis: der Median der Tiefstwerte je Angebot,
 ab zwei Angeboten; war das letzte tiefer, gilt dieses. Ohne Netz, nichts wird gespeichert.
 """
+import statistics
 from datetime import date, timedelta
 
 MONTHS = 18
@@ -65,11 +67,15 @@ def series(name, points, today, regular=None, kind=""):
         m = len(lows) // 2
         typical = lows[m] if len(lows) % 2 else round((lows[m - 1] + lows[m]) / 2, 2)
         typical = min(typical, sales[-1]["low"])
+    # Rhythmus (0.10.0): üblicher Abstand zwischen zwei Angebotsbeginnen, ab drei Angeboten
+    starts = [date.fromisoformat(x["start"]) for x in sales]
+    gaps = sorted((b - a).days for a, b in zip(starts, starts[1:]))
+    gap = round(statistics.median(gaps)) if len(gaps) >= 2 else None
     low = min(p for _, p in win)
     return {"name": name, "kind": kind, "points": [list(r) for r in win], "regular": regular, "now": win[-1][1],
             "low": low, "low_at": max(d for d, p in win if p == low), "since": win[0][0], "full": bool(before),
             "sales": sales[-12:], "sale_count": len(sales), "typical_days": done[len(done) // 2] if done else None,
-            "on_sale_pct": round(100 * sum(s["days"] for s in sales) / total), "typical": typical}
+            "on_sale_pct": round(100 * sum(s["days"] for s in sales) / total), "typical": typical, "gap": gap}
 
 
 def _pack(name, out, today):

@@ -58,6 +58,8 @@ Weitere feste Regeln (wie im eShopKompass):
   und ab 0.8.9 deinen VR-Titeln am PC ohne Playnite-Eintrag (`sync_pcvr`), Steam-Konto (`sync_steam`),
   gg.deals-Sammlung (`sync_gg`),
   Merkmale (Mehrspieler, Spielerzahl, Genre-Gruppen, Wertung), Geheimtipp-Wert
+- `app/muster.py`: Preismuster aus dem eigenen Verlauf (üblicher Steam-Rabatt je Alter, Monate mit vielen Angeboten),
+  Marke „üblich −x %“ (`stats`, `usual`, `annotate`), ohne Netz und ohne feste Zahlen
 - `app/wheel.py`: Sim-Racing ohne Netz: Steam-Schlagwörter (Hinweis), Liste der Rennsimulationen (Bestätigung)
 - `app/pcwish.py`: PC-Wunschliste (`pcwish.json`), Spiegel der gg.deals-Wunschliste; Zeilen mit Preisen und ab 0.8.11
   Spielinfos nach den Regeln der Sammlung (`info`); abgerufen in `sync._pcwish` und `sync._pcwish_info`

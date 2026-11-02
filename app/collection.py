@@ -425,6 +425,8 @@ def check(r, st):
     r["mpc"] = [x for x in r["mp"] if x in sm]
     r["mp"] = r["mp"] + [x for x in MP_LABEL if x in sm and x not in r["mp"]]
     # Einzelheiten (0.7.1): Steam vor Playnite bei Entwickler und Verlag
+    if st.get("xp"):
+        r["xp"] = {"on": True, "with": [], "src": "Steam"}       # 0.10.0: Kategorie „Plattformübergreifender Mehrspielermodus“
     r.update(mc=st.get("mc"), desc=st.get("desc") or "", sdate=st.get("date") or "",
              slangs=st.get("langs") or 0, sde=st.get("de"))
     if st.get("devs"):
@@ -443,6 +445,12 @@ def merge_pcgw(r, pc):
     bleibt als dritter Wert für den Tooltip. Die Arten zählen wie bei Steam und IGDB zum Abgleich."""
     if not pc.get("page"):
         return
+    # Crossplay (0.10.0): PCGamingWiki nennt auch die Plattformen; sagt Steam ja und PCGamingWiki nein, steht der Widerspruch da
+    sx = r.get("xp")
+    if pc.get("xp") is True:
+        r["xp"] = {"on": True, "with": pc.get("xpw") or [], "src": "PCGamingWiki, Steam" if sx else "PCGamingWiki"}
+    elif pc.get("xp") is False:
+        r["xp"] = dict(sx, doubt="PCGamingWiki: kein Crossplay") if sx else {"on": False, "with": [], "src": "PCGamingWiki"}
     kinds = list(pc.get("mp") or []) + (["coop"] if pc.get("coop") else [])
     if kinds:
         r["srcs"] = r.get("srcs", []) + ["PCGamingWiki"]

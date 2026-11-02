@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.9.9:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.0:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -23,6 +23,15 @@ Neu in 0.9.9: Das Lesezeichen „Seite lesen“ liest auch deine Sammlung bei gg
 GOG, Epic, Ubisoft, EA, Battle.net, Xbox, Amazon, itch, Humble, Rockstar). Spiele, die weder Playnite noch das
 Steam-Konto noch deine VR-Titel am PC unter demselben Namen führen, stehen damit in der Sammlung PC (Herkunft
 „gg.deals-Sammlung“). Das Lesezeichen neu anlegen (Fassung 9).
+Neu in 0.10.0: Preismuster aus dem eigenen Verlauf. Aus allen Steam-Angeboten (VR-Titel und PC-Wünsche) rechnet das
+Tool den üblichen Rabatt je Alter des Spiels, die Monate mit vielen Angeboten und die übliche Dauer eines Angebots
+(Kasten „Was dein Preisverlauf zeigt“ in der Legende und im Preisverlauf). Liegt ein laufendes Steam-Angebot deutlich
+(10 Punkte) unter dem für das Alter üblichen Rabatt, steht neben dem Namen „üblich −x %“; in den Einzelheiten steht
+der übliche Rabatt immer, wenn genug Angebote da sind. Keine Vorhersage, nur die Zahl, auf der eine beruhen würde
+(Entscheidung 02.11.2026). Im Preisverlauf je Laden der Rhythmus (üblicher Abstand zwischen zwei Angeboten).
+Crossplay (Partien über Plattformen hinweg) aus PCGamingWiki mit den Plattformen und aus der Steam-Kategorie
+„Plattformübergreifender Mehrspielermodus“: Zeichen ⇄ in der Spalte max. Spieler, Zeile „Crossplay“ in den
+Einzelheiten; Crossplay zwischen Quest und PC aus der Recherche bleibt in den Meinungen.
 
 ## Starten
 

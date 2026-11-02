@@ -416,6 +416,10 @@ a.pl:hover{text-decoration:underline}
 /* Hinweise mit „?“ (0.8.17): in der Farbe ihrer Marke, nur gestrichelt umrandet statt gefüllt */
 .b.simq{background:transparent;border:1px dashed var(--sim);color:var(--sim)}
 .b.vrq{background:transparent;border:1px dashed var(--brand);color:var(--brand)}
+.b.usq{background:transparent;border:1px dashed var(--muted);color:var(--muted)}
+.muster{font-size:13px;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.muster ul{margin:4px 0 6px;padding-left:18px}
+.muster li{margin:2px 0}
 .gr .mut{color:var(--muted)}
 .gr .valt{font-size:11px;margin-left:3px;white-space:nowrap}
 /* Preisverlauf (0.9.1), wie im eShopKompass */
@@ -456,3 +460,4 @@ span.wo{cursor:default}
 @media (min-width:761px){.gr .tr{position:absolute;margin-left:2px}}
 /* 0.9.4: der Name geht vor den Marken dahinter; erst ab drei Vierteln der Spalte wird er gekürzt, die Marken zuerst */
 @media (min-width:761px){.gr .t>.g-n.link,.gr .t>a.g-n{flex:0 0 auto;max-width:75%}}
+.xpm{color:var(--muted);font-size:12px;cursor:help}

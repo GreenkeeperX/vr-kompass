@@ -197,7 +197,7 @@ Nur mit einer Sammlung. Ohne Schlüssel, nach den Rezensionen.
 
 | Abruf | Adresse | Wie oft | Liefert |
 |---|---|---|---|
-| Details | `https://store.steampowered.com/api/appdetails?appids=<App-ID>&l=german&cc=de` | je Lauf höchstens 120 Steam-Spiele der Sammlung, zuerst die ohne Wert, dann die ältesten; jedes nach 90 Tagen neu, Einträge von vor 0.7.1 (ohne `v` 2) sofort | Genres, Kategorien (Mehrspieler-Arten, VR), Erscheinungsjahr; seit 0.7.1 auch Metacritic, Kurzbeschreibung (deutsch, ohne HTML, bis 400 Zeichen), Erscheinungsdatum, Entwickler, Verlag, Zahl der Sprachen und ob Deutsch dabei ist. Genres und Kategorien werden über ihre Kennungen gelesen, die Sprache der Antwort ändert daran nichts |
+| Details | `https://store.steampowered.com/api/appdetails?appids=<App-ID>&l=german&cc=de` | je Lauf höchstens 120 Steam-Spiele der Sammlung, zuerst die ohne Wert, dann die ältesten; jedes nach 90 Tagen neu, Einträge von vor 0.7.1 (ohne `v` 2) sofort, ab 0.10.0 auch die ohne `v` 3 (Crossplay `xp` aus der Kategorie 27) | Genres, Kategorien (Mehrspieler-Arten, VR), Erscheinungsjahr; seit 0.7.1 auch Metacritic, Kurzbeschreibung (deutsch, ohne HTML, bis 400 Zeichen), Erscheinungsdatum, Entwickler, Verlag, Zahl der Sprachen und ob Deutsch dabei ist. Genres und Kategorien werden über ihre Kennungen gelesen, die Sprache der Antwort ändert daran nichts |
 
 Steam-Genres werden auf die Genre-Gruppen der Sammlung abgebildet (Action, Strategie, Rollenspiel,
 Casual, Rennen, Sport, Abenteuer, Simulation), Kategorien auf die Mehrspieler-Arten. Was Playnite
@@ -298,7 +298,7 @@ Abgleich nach und nach neu, 60 je Lauf.
 | Abruf | Adresse | Wie oft | Liefert |
 |---|---|---|---|
 | PCGamingWiki, Seite | `https://www.pcgamingwiki.com/api/appid.php?appid=<App-ID>` | je Steam-Spiel, 60 je Lauf (`PCGW_MAX`), nach 90 Tagen neu | Seitenname (Umleitung) |
-| PCGamingWiki, Wikitext | `…/w/api.php?action=parse&page=<Seite>&prop=wikitext&format=json` | je Seite einmal | Vorlage „VR support“: Brillen mit „hackable“ (VR per Mod), „true“ (eingebaut), vorpX; ab 0.9.5 „Network/Multiplayer“: lokal, LAN, online mit Spielerzahl und ob Koop (abgelegt unter `pcgw.mp`, `pl`, `coop`) |
+| PCGamingWiki, Wikitext | `…/w/api.php?action=parse&page=<Seite>&prop=wikitext&format=json` | je Seite einmal | Vorlage „VR support“: Brillen mit „hackable“ (VR per Mod), „true“ (eingebaut), vorpX; ab 0.9.5 „Network/Multiplayer“: lokal, LAN, online mit Spielerzahl und ob Koop (abgelegt unter `pcgw.mp`, `pl`, `coop`); ab 0.10.0 Crossplay und Plattformen (`xp`, `xpw`; Einträge mit `v` 2 liest der Abgleich neu) |
 | Nexus Mods, Spieleliste | `https://api.nexusmods.com/v2/graphql` (POST, `games(count:100, offset)`; Nexus liefert höchstens 80 je Seite, ab 0.8.5 weiter um so viele, wie kamen) | höchstens wöchentlich (`NEXUS_LIST_DAYS`), bis 150 Seiten mit einer Sekunde Pause; abgelegt in `nexus_games.json` | Kürzel, Name und Zahl der Mods je Spiel; Zuordnung lokal über den Namen (auch IGDB-Name, ohne Zusätze wie „Legacy“) |
 | Nexus Mods, Mods | dieselbe Adresse (POST, `mods` nach Kürzel) | je zugeordnetem Spiel, 60 je Lauf (`NEXUS_MAX`), nach 30 Tagen neu | die drei beliebtesten Mods, bis drei Mods mit VR im Namen (ganzes Wort, UEVR, vorpX) |
 
@@ -436,6 +436,10 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
   Ansicht den Bestpreis der letzten 18 Monate je Shop (`prices.best_of`); gespeichert wird er
   nicht. Ab 0.9.7 kürzt jeder Abgleich ältere Einträge (`sync._trim_history`, 18 Monate, der letzte Wert davor
   bleibt als Ausgangspunkt); `ph` und `sh` in `pcwish.json` ebenso (`PH_DAYS`). So wächst die Datei nicht ohne Grenze.
+- Preismuster (0.10.0, `app/muster.py`, ohne Abruf): aus `history.json` (Steam je VR-Titel) und `sh.Steam` in
+  `pcwish.json` je Altersstufe der übliche Rabatt, die Monate mit vielen Angeboten und die übliche Dauer; mitgeschickt
+  im Zustand unter `muster`, je Wunsch `usual`. Zwischengespeichert, bis sich eine der Dateien oder der Tag ändert;
+  gespeichert wird nichts.
 - Preisverlauf (0.9.1): `GET /api/verlauf?vr=<Schlüssel>` liest `history.json`, `?pc=<Schlüssel>` die Felder `ph` und
   `sh` in `pcwish.json`; nichts wird gespeichert.
 - `sync.json`: Beginn und Ende des letzten Laufs, Ergebnis je Quelle, Ruhezeiten (`rest`),

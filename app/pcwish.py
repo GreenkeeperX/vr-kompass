@@ -223,7 +223,7 @@ def _vr_keys(data, col=None):
 
 INFO = ("genres", "gc", "gx", "mp", "mpc", "players", "pl_src", "plm", "score", "score_src", "score_alt", "score_n", "hours_n", "reviews", "rdesc", "spct",
         "hours", "hours_all", "hours_src", "year", "year_src", "desc", "desc_lang", "dev", "pub", "gem", "gem_guess", "srcs",
-        "src", "ig", "year_ok", "syear", "iyear", "icrit", "sdate", "desc_src", "iname")
+        "src", "ig", "year_ok", "syear", "iyear", "icrit", "sdate", "desc_src", "iname", "xp")
 
 
 def info(e):

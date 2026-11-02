@@ -1,5 +1,6 @@
 """Kleiner Webserver: liefert die Oberfläche und eine JSON-Schnittstelle."""
 import copy
+import datetime
 import gzip
 import ipaddress
 import json
@@ -11,7 +12,7 @@ import traceback
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import collection, imports, library, lists, pcwish, retro, sources, store, sync, titles, verlauf, wheel
+from . import collection, imports, library, lists, muster, pcwish, retro, sources, store, sync, titles, verlauf, wheel
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 
@@ -173,11 +174,24 @@ def _retro_lists():
     return retro.near_list(col), retro.own_list(col)
 
 
+def price_stats(data=None, pw=None, hist=None):
+    """Preismuster aus dem eigenen Verlauf (0.10.0), zwischengespeichert bis sich eine der Dateien oder der Tag ändert."""
+    def make():
+        return muster.stats(data if data is not None else store.load_data(),
+                            (pw if pw is not None else store.load_json(pcwish.FILE, pcwish.EMPTY)).get("items") or {},
+                            hist if hist is not None else store.load_json("history.json", {}))
+    return memo("muster:" + datetime.date.today().isoformat(), ("data.json", pcwish.FILE, "history.json"), make)
+
+
 def state():
     data = store.load_data()
     near, own = memo("retro", (collection.FILE,), _retro_lists)
-    return dict(library.view(data, hist=store.load_json("history.json", {}), settings=sync.load_settings()),
-                marks=data["marks"], version=sources.VERSION, pcwish=pcwish.view(data),
+    hist, pw = store.load_json("history.json", {}), store.load_json(pcwish.FILE, pcwish.EMPTY)
+    view, pcv = library.view(data, hist=hist, settings=sync.load_settings()), pcwish.view(data)
+    st = price_stats(data, pw, hist)
+    muster.annotate(view, pcv, data, pw.get("items") or {}, st)
+    return dict(view, muster=st,
+                marks=data["marks"], version=sources.VERSION, pcwish=pcv,
                 pcwish_ids=pcwish.id_todo(store.load_json(pcwish.FILE, pcwish.EMPTY)),
                 retro_near=near, retro_own=own, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
                 sync=sync.status(), settings=settings_view())
@@ -482,7 +496,10 @@ class Handler(BaseHTTPRequestHandler):
                     pw = store.load_json(pcwish.FILE, pcwish.EMPTY)
                     pcwish.settle_id(pw, _text(body.get("key"), 300), _text(body.get("appid"), 20))
                     store.save_json(pcwish.FILE, pw)
-                self._send(200, {"pcwish": pcwish.view(store.load_data()), "pcwish_ids": pcwish.id_todo(pw)})
+                data = store.load_data()
+                pcv = pcwish.view(data)
+                muster.annotate({}, pcv, data, pw.get("items") or {}, price_stats(data, pw))
+                self._send(200, {"pcwish": pcv, "pcwish_ids": pcwish.id_todo(pw)})
             elif path == "/api/title":
                 self._send(200, edit_title(body))
             elif path == "/api/mark":

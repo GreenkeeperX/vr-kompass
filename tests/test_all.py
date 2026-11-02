@@ -2436,7 +2436,8 @@ class TestSync(unittest.TestCase):
         wiki = {"3000101": ("Harbor_Heist", "{{VR support\n|htc vive = hackable\n|oculus rift = hackable\n|vorpx = true\n|steamvr = false\n}}\n"),
                 "3000102": ("Rally_Moth", "{{VR support\n|htc vive = false\n}}\n{{Network/Multiplayer\n|local play = true\n"
                             "|local play players = 2-4\n|local play modes = Co-op\n|local play notes = \n|lan play = false\n"
-                            "|lan play players = \n|online play = true\n|online play players = 8\n|online play modes = Versus\n}}\n")}
+                            "|lan play players = \n|online play = true\n|online play players = 8\n|online play modes = Versus\n"
+                            "|crossplay = true\n|crossplay platforms = Xbox, PlayStation\n}}\n")}
         calls = []
 
         def fake(url, timeout=25, ua=None, headers=None, data=None):
@@ -2488,7 +2489,19 @@ class TestSync(unittest.TestCase):
         collection.merge_pcgw(r, {"page": True, "mp": ["couch", "online"], "pl": {"couch": 4, "online": 8}})
         self.assertEqual(r["plm"], {"online": [8, "PCGamingWiki", 16], "couch": [4, "IGDB, PCGamingWiki"]})
         self.assertEqual((r["players"], r["pl_src"], r["mpc"]), (8, "PCGamingWiki", ["multi", "online"]))
-        self.assertEqual(mods.V, 2)
+        self.assertEqual(mods.V, 3)
+        # Crossplay (0.10.0): PCGamingWiki mit Plattformen; mit Steam bestätigt, Widerspruch bleibt sichtbar
+        self.assertEqual(m["xp"], {"on": True, "with": ["Xbox", "PlayStation"], "src": "PCGamingWiki"})
+        self.assertEqual(mods.xp_platforms("PlayStation<br>Xbox; Mac OS"), ["PlayStation", "Xbox", "Mac OS"])
+        r = {"mp": [], "mpc": [], "xp": {"on": True, "with": [], "src": "Steam"}}
+        collection.merge_pcgw(r, {"page": True, "xp": True, "xpw": ["Xbox"]})
+        self.assertEqual(r["xp"]["src"], "PCGamingWiki, Steam")
+        r = {"mp": [], "mpc": [], "xp": {"on": True, "with": [], "src": "Steam"}}
+        collection.merge_pcgw(r, {"page": True, "xp": False})
+        self.assertEqual(r["xp"], {"on": True, "with": [], "src": "Steam", "doubt": "PCGamingWiki: kein Crossplay"})
+        r = {"mp": [], "mpc": []}
+        collection.merge_pcgw(r, {"page": True, "xp": None})
+        self.assertNotIn("xp", r)
         # Alte Einträge (v 1) liest der Abgleich neu
         calls.clear()
         c = store.load_json(collection.FILE, collection.EMPTY)
@@ -3296,6 +3309,61 @@ class TestUi(unittest.TestCase):
         self.assertIn('row("Koop", k.coop', js)
         for part in ('function pcTable(rows, t = "pcw")', 'function vrTable(rows, t = "vrw")', 'sortRows("all", items, ALL_KEYS)'):
             self.assertIn(part, js)
+
+    def test_price_patterns(self):
+        """Preismuster (0.10.0) aus erfundenen Verläufen: üblicher Rabatt je Alter, Monate mit vielen Angeboten,
+        Marke nur bei einem laufenden, flachen Angebot; Rhythmus im Preisverlauf."""
+        from app import muster, pcwish, verlauf
+        self.assertEqual(muster.steam_date("30. Apr. 2018"), "2018-04-30")
+        self.assertEqual(muster.steam_date("3. März 2021"), "2021-03-03")
+        self.assertEqual(muster.steam_date("27. Mrz. 2025"), "2025-03-27")
+        self.assertEqual(muster.steam_date("Apr 30, 2018"), "2018-04-30")
+        self.assertEqual(muster.steam_date("Bald verfügbar"), "")
+        self.assertEqual(muster.band_of(muster.months_between("2024-01-15", "2026-01-14")), 3)      # 23 Monate
+        # 8 Spiele, erschienen Anfang 2020, je Angebot −50 % im März und Juni 2025, dazu eins im Januar
+        items = {}
+        for i in range(8):
+            pts = [["2025-01-01", 20.0], ["2025-03-10", 10.0], ["2025-03-24", 20.0], ["2025-06-05", 10.0], ["2025-06-19", 20.0]]
+            if i == 0:
+                pts += [["2025-08-01", 15.0], ["2025-08-08", 20.0]]
+            items[f"g{i}"] = {"name": f"Night Tram {i}", "appid": str(3000200 + i), "steam": {"date": "15. Jan. 2020"},
+                              "sh": {"Steam": pts}, "itad": {"shops": [{"s": "Steam", "p": 18.0, "r": 20.0, "c": 10}]}}
+        st = muster.stats({"titles": {}}, items, {}, "2025-11-02")
+        self.assertEqual((st["games"], st["sales"], st["days"]), (8, 17, 14))
+        self.assertEqual(st["bands"][5], {"label": "ab 48 Monaten", "n": 17, "pct": 50})
+        self.assertIsNone(st["bands"][0]["pct"])
+        self.assertEqual(st["peak"], [3, 6])
+        self.assertEqual(muster.next_peak(st, "2025-11-02"), 3)
+        u = muster.usual(st, "2020-01-15", 10, "2025-11-02")
+        self.assertEqual((u["pct"], u["now"], u["mark"], u["peak"]), (50, 10, True, "März"))
+        self.assertFalse(muster.usual(st, "2020-01-15", 0, "2025-11-02")["mark"])      # kein Angebot: nur Einzelheiten
+        self.assertFalse(muster.usual(st, "2020-01-15", 45, "2025-11-02")["mark"])
+        self.assertIsNone(muster.usual(st, "2025-09-01", 10, "2025-11-02"))           # Stufe ohne genug Angebote
+        pv = {"rows": [{"key": "g1", "owned": False}, {"key": "g2", "owned": True}]}
+        muster.annotate({}, pv, {"titles": {}}, items, st)
+        self.assertTrue(pv["rows"][0]["usual"]["mark"])
+        self.assertNotIn("usual", pv["rows"][1])
+        # Rhythmus: Abstand zwischen den Angebotsbeginnen
+        s = verlauf.series("Steam", items["g0"]["sh"]["Steam"], "2025-11-02", 20.0)
+        self.assertEqual(s["gap"], 72)
+        self.assertIsNone(verlauf.series("Steam", items["g1"]["sh"]["Steam"], "2025-11-02", 20.0)["gap"])
+        # Crossplay aus der Steam-Kategorie 27, für die Einzelheiten
+        det = prices.steam_details(json.dumps({"7": {"success": True, "data": {"type": "game", "name": "Orbit Golf",
+                                                                                "categories": [{"id": 1}, {"id": 27}]}}}), "7")
+        self.assertTrue(det["xp"])
+        r = {"name": "Orbit Golf", "genres": [], "mp": [], "year": ""}
+        collection.check(r, dict(det, ok=True))
+        self.assertEqual(r["xp"], {"on": True, "with": [], "src": "Steam"})
+        self.assertNotIn("xp", pcwish.info({"name": "x", "steam": {"ok": True, "xp": False}}))
+        self.assertIn("xp", pcwish.info({"name": "x", "steam": dict(det, ok=True)}))
+
+    def test_ui_100(self):
+        """0.10.0: Marke „üblich −x %“, Kasten „Was dein Preisverlauf zeigt“, Rhythmus im Preisverlauf, Crossplay."""
+        js, css = self.read("js/app.js"), self.read("style.css")
+        for name in ("usualMark(r.usual)", "function musterHtml", "gapText(s.gap)", "xpMark(g.xp)", 'row("Crossplay"', 'fact("Üblich"'):
+            self.assertIn(name, js)
+        self.assertIn(".b.usq{", css)
+        self.assertIn("Keine Vorhersage", js)
 
     def test_ui_099(self):
         """0.9.9: das Lesezeichen liest auch die gg.deals-Sammlung, mit Launcher je Karte; die Vorschau zählt je Launcher."""
