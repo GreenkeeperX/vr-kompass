@@ -276,6 +276,7 @@ Quelle wie überall.
 | Abruf | Adresse | Wie oft | Liefert |
 |---|---|---|---|
 | Zuordnung | `https://api.isthereanydeal.com/lookup/id/shop/61/v1` (POST, Liste `app/<Steam-ID>`) | je Spiel mit Steam-ID einmal, ohne Treffer nach 7 Tagen neu (`MISS_DAYS`), 200 je Abruf | ITAD-Kennung, abgelegt unter `itad_id` (ohne Treffer `itad_tried`) |
+| Titelsuche (0.10.1) | `https://api.isthereanydeal.com/games/lookup/v1?title=<Name>` (GET) | PC-Wünsche ohne Steam-ID (nur Spiele), 40 je Lauf (`ITAD_TITLES`), ohne Treffer nach 7 Tagen neu | ITAD-Kennung, nur wenn Name (nach `titles.norm`) oder Slug zu gg.deals passen; abgelegt wie oben |
 | Preise je Laden | `https://api.isthereanydeal.com/games/prices/v3?country=DE&deals=false` (POST, Liste der Kennungen) | jeder Lauf, 200 Spiele je Abruf | je offiziellem Laden Preis, Normalpreis, Rabatt, Tief dort, Link, Angebotsende; Tief über alle Läden und der letzten zwölf Monate; abgelegt unter `itad` |
 
 Ab 0.9.1 dazu der Verlauf je Laden:
@@ -365,7 +366,9 @@ Für Titel mit Meta-ID, ohne Schlüssel, nach den Steam-Spielern.
 |---|---|---|---|
 | Titelseite | gespeicherter VRDB-Link, sonst `https://vrdb.app/game/<Slug>/<Meta-ID>` (Slug aus der QuestStoreDB-Seite) | je Lauf höchstens 30 Titel; jeder nach 14 Tagen neu, auch nach einem Fehlschlag | Crossbuy, Version, Spielmodi, Meta-Wertung mit Anteil der 4- und 5-Sterne-Bewertungen |
 
-Abgelegt je Titel unter `vrdb`; ändert sich die Version, steht unter `meta_ver` der Tag, an dem
+Abgelegt je Titel unter `vrdb`. Ab 0.10.1 vermerkt das Tool die Zahl der Meta-Bewertungen bei jeder Änderung unter
+`mrh` (`{"vrdb": [[Tag, Zahl]], "qsdb": [[Tag, Zahl]]}`, je Quelle bis 40 Messungen, `trend.note_meta_n`); daraus
+die neuen Bewertungen je 30 Tage (`trend.meta_growth`, ab 14 Tagen Abstand). Ändert sich die Version, steht unter `meta_ver` der Tag, an dem
 das Tool sie zuerst sah (bei der ersten Sicht leer).
 
 ## Steam-Spieler und Updates (Wunschliste, Sammlung VR)
@@ -386,7 +389,8 @@ wieder gefragt.
 ## Aktive Spieler PC (Wunschliste PC, Sammlung, ab 0.8.23)
 
 Dieselbe Adresse (`GetNumberOfCurrentPlayers`) für PC-Spiele mit Steam-ID, ohne Schlüssel: je Lauf höchstens 100
-(`ACTIVE_MAX`), zuerst die PC-Wunschliste, mit dem Rest die Steam-Spiele der Sammlung; jedes Spiel nach 7 Tagen
+(`ACTIVE_MAX`), zuerst die PC-Wunschliste, mit dem Rest die Steam-Spiele der Sammlung (ab 0.10.1 zuerst Mehrspieler-Spiele,
+darunter nach Zahl der Rezensionen, `sync._mp_first`); jedes Spiel nach 7 Tagen
 (`ACTIVE_DAYS`) neu. Abgelegt je Spiel unter `play` (`now`, `at`) in `pcwish.json` und `collection.json`, ohne Spitze.
 404 gilt wie oben als gefragt. VR-Titel am PC nehmen die Messung ihres VR-Titels.
 

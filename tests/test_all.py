@@ -2314,6 +2314,35 @@ class TestSync(unittest.TestCase):
         # ein anderer Name allein reicht ohne alt nicht
         self.assertIsNone(igdb.pick([{"name": "Star Hunters", "alternative_names": [{"name": "Die Sternenjäger"}]}], "Die Sternenjäger"))
 
+    def test_meta_growth_and_research_players(self):
+        """0.10.1: Wachstum der Meta-Bewertungen je Quelle aus eigenen Messungen; Spielerzahl aus der Recherche nur, wo
+        keine Datenbank eine nennt, gekennzeichnet."""
+        from app import trend
+        t = {}
+        trend.note_meta_n(t, "vrdb", 1000, "2026-09-01")
+        trend.note_meta_n(t, "vrdb", 1000, "2026-09-05")                 # unverändert: kein neuer Punkt
+        self.assertIsNone(trend.meta_growth(t["mrh"], "2026-09-10"))
+        trend.note_meta_n(t, "vrdb", 1060, "2026-10-01")
+        trend.note_meta_n(t, "qsdb", 300, "2026-09-25")
+        trend.note_meta_n(t, "qsdb", 310, "2026-10-01")                 # nur 6 Tage: zählt nicht
+        trend.note_meta_n(t, "vrdb", True, "2026-10-02")                 # kein Zähler
+        self.assertEqual(t["mrh"]["vrdb"], [["2026-09-01", 1000], ["2026-10-01", 1060]])
+        self.assertEqual(trend.meta_growth(t["mrh"], "2026-10-02"), {"per30": 60, "days": 30, "since": "2026-09-01", "src": "vrdb"})
+        t2 = {"name": "Star Ride", "vrdb": {"stars": 4.2, "pos": 81, "n": 1060}, "mrh": t["mrh"]}
+        self.assertEqual(library.rating(t2)["meta"]["grow"]["per30"], 60)
+        # Recherche: Spieler online, wo IGDB nichts nennt
+        o = imports.parse_opinions({"app": imports.OPINION_MARK, "titles": [{"name": "Star Ride", "spieler_online": 8, "spieler_lokal": "4"}]})[0]
+        self.assertEqual((o["spieler_online"], o["spieler_lokal"]), (8, None))
+        inf = library.info({"name": "Star Ride", "opinion": {"spieler_online": 8}})
+        self.assertEqual((inf["players"], inf["pl_src"], inf["plm"]), (8, "Recherche", {"online": [8, "Recherche"]}))
+        self.assertIn("online", inf["mp"])
+        self.assertIn("spieler_online", imports.opinion_task.__globals__["OPINION_FIELDS"][6])
+
+    def test_active_order(self):
+        """0.10.1: Aktiv in der Sammlung zuerst für Mehrspieler-Spiele, darunter nach Rezensionen."""
+        games = [{"mp": [], "rev": {"n": 900}}, {"mp": ["online"], "rev": {"n": 5}}, {"steam": {"mp": ["coop"]}, "rev": {"n": 50}}, {}]
+        self.assertEqual(sorted(range(4), key=lambda i: sync._mp_first(games[i])), [2, 1, 0, 3])
+
     def test_active(self):
         """Aktiv für PC (0.8.23): Steam-Spieler gerade eben, erst für die PC-Wunschliste, mit dem Rest für die Steam-Spiele
         der Sammlung; nach ACTIVE_DAYS neu, 404 gilt als gefragt; die Zeilen beider Ansichten bekommen active."""
@@ -2708,6 +2737,36 @@ class TestSync(unittest.TestCase):
             itad.prices(json.dumps({"error": "x"}))
         with self.assertRaises(ValueError):
             sync.save_settings({"itad_key": "kein Schlüssel!"})
+        sync.save_settings({"itad_key": ""})
+
+    def test_itad_title(self):
+        """0.10.1: PC-Wünsche ohne Steam-ID sucht IsThereAnyDeal nach dem Namen; nur ein passender Name zählt."""
+        from app import itad, pcwish
+        self.assertEqual(itad.title_match(json.dumps({"found": True, "game": {"id": "u1", "slug": "lantern-keep", "title": "Lantern Keep"}}), "Lantern Keep"), "u1")
+        self.assertEqual(itad.title_match(json.dumps({"found": True, "game": {"id": "u2", "slug": "lantern-keep-2", "title": "Lantern Keep 2"}}), "Lantern Keep"), "")
+        self.assertEqual(itad.title_match(json.dumps({"found": True, "game": {"id": "u3", "slug": "lantern-keep", "title": "LANTERN KEEP™"}}), "Lantern Keep", "lantern-keep"), "u3")
+        self.assertEqual(itad.title_match(json.dumps({"found": False}), "Lantern Keep"), "")
+        self.assertIn("title=Lantern+Keep", itad.title_url("Lantern Keep"))
+        sync.save_settings({"itad_key": "ErfundenItad0123456789abcdef", "gg_key": ""})
+        pcwish.replace([{"slug": "lantern-keep", "name": "Lantern Keep"}, {"slug": "sky-garden", "name": "Sky Garden"},
+                        {"slug": "sky-garden-dlc", "name": "Sky Garden DLC", "kind": "dlc"}], "Lesezeichen")
+        eur = lambda v: {"amount": v, "amountInt": int(v * 100), "currency": "EUR"}
+        prices = [{"id": "uuid-lantern", "deals": [{"shop": {"id": 35, "name": "GOG"}, "price": eur(7.99), "regular": eur(15.99), "cut": 50}]}]
+        net = FakeNet({"lookup/v1?title=Lantern": json.dumps({"found": True, "game": {"id": "uuid-lantern", "slug": "lantern-keep", "title": "Lantern Keep"}}),
+                       "lookup/v1?title=Sky": json.dumps({"found": False}),
+                       "games/prices/v3": json.dumps(prices), "games/history/v2": json.dumps([])})
+        sources.fetch = net
+        logs = []
+        sync._itad(sync.load_settings(), logs.append)
+        self.assertIn("ohne Steam-ID nach dem Namen 1 von 2 gefunden", "\n".join(logs))
+        self.assertFalse(any("DLC" in u for u in net.calls))
+        items = store.load_json(pcwish.FILE, pcwish.EMPTY)["items"]
+        self.assertEqual(items["lantern-keep"]["itad_id"], "uuid-lantern")
+        self.assertEqual(items["lantern-keep"]["itad"]["shops"][0]["s"], "GOG")
+        self.assertTrue(items["sky-garden"]["itad_tried"])
+        net.calls.clear()
+        sync._itad(sync.load_settings(), logs.append)
+        self.assertEqual([u for u in net.calls if "title=" in u], [])        # nicht gefunden: erst nach MISS_DAYS
         sync.save_settings({"itad_key": ""})
 
     def test_verlauf(self):

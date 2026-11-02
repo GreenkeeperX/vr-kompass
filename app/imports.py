@@ -651,6 +651,7 @@ OPINION_ENUM = {"fassung": ("quest", "pc", "gleich", ""), "mehrspieler": ("leben
 # Crossbuy heißt: ein Kauf im Meta Store gilt für Quest und für PC-VR (Meta Link, Air Link) im
 # Meta Store. Steam gehört nie dazu, gemeinsames Spielen über Plattformen ist Crossplay. Eine
 # Begründung, die Steam nennt oder nur deine Zuordnung wiederholt, ist kein Beleg (Entscheidung 22.10.2026).
+OPINION_PLAYERS = ("spieler_online", "spieler_lokal")
 CROSSBUY_NOT_EVIDENCE = re.compile(r"steam|zuordnung|tabelle|crossplay", re.I)
 
 
@@ -679,6 +680,10 @@ def parse_opinions(obj):
             o["crossbuy"], o["crossbuy_dropped"] = None, True
         cp = e.get("crossplay")
         o["crossplay"] = cp if cp in (True, False) else None
+        # 0.10.1: Höchstzahl der Spieler je Art, wo IGDB und PCGamingWiki für VR-Titel nichts nennen
+        for f in OPINION_PLAYERS:
+            v = e.get(f)
+            o[f] = v if isinstance(v, int) and not isinstance(v, bool) and 2 <= v <= 100 else None
         o["quellen"] = [{"url": str(q["url"])[:500], "titel": str(q.get("titel") or "")[:200], "datum": str(q.get("datum") or "")[:10]}
                         for q in (e.get("quellen") or [])[:12]
                         if isinstance(q, dict) and re.match(r"https?://", str(q.get("url") or ""))]
@@ -760,6 +765,7 @@ OPINION_FIELDS = (
     "pflege: letzte größere Updates, ist der Entwickler aktiv",
     "crossbuy: true oder false, nur mit Beleg (Store-Seite, Test); crossbuy_grund: der Beleg",
     "crossplay: true oder false; crossplay_grund: warum",
+    "spieler_online, spieler_lokal: höchste Zahl der Spieler in einer Partie online bzw. an einem Gerät oder im selben Raum, als Zahl (leer, wenn es die Art nicht gibt oder keine Quelle es nennt)",
     "komfort: Bewegung, Sitzen oder Stehen, Spieldauer",
     "warnungen: Bugs, Abbruch der Entwicklung, Bezahlinhalte (sonst leer)",
     "quellen: Liste von {\"url\", \"titel\", \"datum\"}, nur https-Links, die du gelesen hast",

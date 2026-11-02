@@ -272,6 +272,9 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Legende und aufklappbar unter dem Preisverlauf; dort je Laden die Spalte „Rhythmus“ (`gapText`). Eine Sache, mehrere
   Orte: Name in der Wunschliste VR (`badges`), Wunschliste PC, Jetzt PC und Alle, Einzelheiten VR (`factsHtml`) und PC
   (`pcDetail`).
+- Spieler aus der Recherche (ab 0.10.1): violett mit „≈“ (`gMaxPl0`, `plParts`), Tooltip „Aus der Recherche“.
+- Meta aktiv (ab 0.10.1): neue Meta-Bewertungen je 30 Tage, grau „+n/Mon.“ in der Spalte Aktiv des Reiters VR, wenn
+  Steam keine Spielerzahl hat, und Zeile „Meta aktiv“ in den Fakten (`growTip`); nur ein Hinweis.
 - Crossplay (ab 0.10.0): „⇄“ grau hinter der Zahl in der Spalte max. Spieler (`xpMark`), violett, wenn nur eine Quelle
   es sagt oder PCGamingWiki widerspricht; Zeile „Crossplay“ in den Einzelheiten (`plRows`, VR in `factsHtml`) mit den
   Plattformen. Crossplay Quest/PC aus der Recherche steht weiter bei den Meinungen.

@@ -141,6 +141,18 @@ def info(t):
     sid = str(t.get("steam_appid") or "")
     ok = lambda f: (t.get(f) or {}) if (t.get(f) or {}).get("app", sid) == sid else {}     # nach einer neuen Steam-ID nicht mehr
     inf = pcwish.info({"name": t["name"], "steam": ok("sdet"), "rev": t.get("rev"), "igdb": ok("igdb")})
+    # 0.10.1: Spielerzahl aus der Recherche, nur wo keine Datenbank eine Zahl für diese Art nennt; gekennzeichnet
+    op = t.get("opinion") or {}
+    for f, mode in (("spieler_online", "online"), ("spieler_lokal", "couch")):
+        n = op.get(f)
+        if isinstance(n, int) and n >= 2 and mode not in (inf.get("plm") or {}):
+            inf.setdefault("plm", {})[mode] = [n, "Recherche"]
+            inf["mp"] = list(dict.fromkeys((inf.get("mp") or []) + ["multi", mode]))
+    plm = inf.get("plm") or {}
+    if plm and any(v[1] == "Recherche" for v in plm.values()):
+        top = max(v[0] for v in plm.values())
+        if top > (inf.get("players") or 0) or not inf.get("players"):
+            inf["players"], inf["pl_src"] = top, ", ".join(sorted({x for v in plm.values() if v[0] == top for x in v[1].split(", ")}))
     return {f: inf[f] for f in INFO if f in inf}
 
 
@@ -249,6 +261,10 @@ def rating(t):
     if isinstance(vd.get("pos"), (int, float)) and vd.get("stars"):
         # Anteil 4 und 5 Sterne laut VRDB: passt zu Steams Anteil positiver Rezensionen
         meta = {"stars": vd["stars"], "n": vd.get("n") or (meta or {}).get("n"), "pos": round(vd["pos"])}
+    if meta:
+        g = trend.meta_growth(t.get("mrh"))
+        if g:
+            meta["grow"] = g                # 0.10.1: neue Meta-Bewertungen je 30 Tage, Hinweis auf Aktivität
     rev = t.get("rev") or {}
     steam = None
     if isinstance(rev.get("n"), int) and rev["n"] > 0:

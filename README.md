@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.0:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.1:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -32,6 +32,12 @@ der übliche Rabatt immer, wenn genug Angebote da sind. Keine Vorhersage, nur di
 Crossplay (Partien über Plattformen hinweg) aus PCGamingWiki mit den Plattformen und aus der Steam-Kategorie
 „Plattformübergreifender Mehrspielermodus“: Zeichen ⇄ in der Spalte max. Spieler, Zeile „Crossplay“ in den
 Einzelheiten; Crossplay zwischen Quest und PC aus der Recherche bleibt in den Meinungen.
+Neu in 0.10.1: PC-Wünsche ohne Steam-ID (GOG, Epic …) bekommen Preise je Laden über die Titelsuche von
+IsThereAnyDeal (nur bei gleichem Namen oder Slug). Aktive Steam-Spieler in der Sammlung kommen zuerst für
+Mehrspieler-Spiele. Für VR-Titel fragt der Auftrag für die Meinungen auch die Höchstzahl der Spieler online und lokal;
+sie gilt nur, wo keine Datenbank eine Zahl nennt, und steht violett mit „≈“ da. Für Meta-Titel misst das Tool, wie
+viele neue Meta-Bewertungen je Monat dazukommen (Meta nennt keine Spielerzahlen): Zeile „Meta aktiv“ in den
+Einzelheiten und grau in der Spalte Aktiv, wenn Steam keine Zahl hat. Nur ein Hinweis.
 
 ## Starten
 

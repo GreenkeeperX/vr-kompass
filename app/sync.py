@@ -95,6 +95,7 @@ VRINFO_NAMES = 40           # VR-Titel ohne Steam-ID je Lauf mit IGDB-Namenssuch
 PCWISH_INFO = 60            # Spiele der PC-Wunschliste je Lauf mit Steam-Details und Rezensionen (0.8.11)
 ITAD_PAUSE = 1.0            # IsThereAnyDeal erlaubt 1000 Abrufe je 5 Minuten; ein Lauf braucht nur wenige
 ITAD_HIST = 40              # Spiele je Lauf, deren Verlauf je Laden einmal rückwirkend kommt (0.9.1)
+ITAD_TITLES = 40            # PC-Wünsche ohne Steam-ID je Lauf, die IsThereAnyDeal nach dem Namen sucht (0.10.1)
 IGDB_PAUSE = 0.3            # IGDB erlaubt 4 Anfragen je Sekunde
 # Beschleunigt auffüllen (0.8.6): ein Lauf von Hand mit FAST-fachen Grenzen für die langen Warteschlangen.
 # Pausen und der Abbruch bei 403 und 429 bleiben; der Lauf dauert dafür entsprechend länger.
@@ -643,6 +644,8 @@ def apply(upd):
                                 moves["low"].append(f"{t['name']} {_eur(v['price'])}")
                             v["low"], v["low_at"] = v["price"], day
                     live[src] = v
+                    if src == "meta":
+                        trend.note_meta_n(t, "qsdb", v.get("ratings"), day)      # 0.10.1: Wachstum der Meta-Bewertungen
             links = t.setdefault("links", {})
             if u.get("qsdb"):
                 links["qsdb"] = u["qsdb"]
@@ -1272,6 +1275,7 @@ def _vrdb(log):
             if t is None:
                 continue
             t["vrdb"] = r
+            trend.note_meta_n(t, "vrdb", r.get("n"), today)
             v = r.get("version") or ""
             mv = t.get("meta_ver") or {}
             if v and v != mv.get("v"):
@@ -1350,6 +1354,13 @@ def _players(log):
     return src.result()
 
 
+def _mp_first(g):
+    """Reihenfolge für Aktiv in der Sammlung: Mehrspieler vor Einzelspieler, dann nach Zahl der Rezensionen."""
+    mp = bool(g.get("mp") or (g.get("steam") or {}).get("mp"))
+    n = (g.get("rev") or {}).get("n")
+    return (0 if mp else 1, -(n if isinstance(n, int) else 0))
+
+
 def _active(log):
     """Aktive Steam-Spieler für PC-Spiele (0.8.23): gerade eben laut GetNumberOfCurrentPlayers, je Spiel unter play
     ({"now", "at"}), nach ACTIVE_DAYS Tagen neu. Erst die PC-Wunschliste (pcwish.json), mit dem Rest des Kontingents
@@ -1381,8 +1392,10 @@ def _active(log):
     cgot, cleft = {}, 0
     rest = ACTIVE_MAX - len(got)
     if rest > 0 and not src.stopped:
+        # 0.10.1: zuerst Mehrspieler-Spiele (laut Steam oder Playnite), darunter die mit mehr Rezensionen; nur dort sagt
+        # die Zahl, ob man Mitspieler findet
         _, cgot, cleft = _per_game(log, "Aktive Spieler PC", "play", ACTIVE_DAYS, rest, url,
-                                   lambda text, gid: {"now": prices.steam_players(text)}, get=get, src=src)
+                                   lambda text, gid: {"now": prices.steam_players(text)}, get=get, src=src, order=_mp_first)
         cgot = cgot or {}
     else:
         col = store.load_json(collection.FILE, collection.EMPTY)
@@ -1674,9 +1687,26 @@ def _itad(settings, log):
             tried[a] = stamp
             if got.get(a):
                 ids[a] = got[a]
+    # 0.10.1: PC-Wünsche ohne Steam-ID (GOG, Epic …) über den Namen; nur Spiele, nicht gefundene nach MISS_DAYS neu
+    titled, t_tried = {}, {}
+    for k in sorted(k for k, e in items.items() if not e.get("appid") and not e.get("kind") and not e.get("itad_id")
+                    and (e.get("itad_tried") or "") < old)[:ITAD_TITLES]:
+        if src.stopped:
+            break
+        text = src.get(itad.title_url(items[k]["name"]), shown="Suche nach dem Namen")
+        if text is None:
+            continue
+        try:
+            g = itad.title_match(text, items[k]["name"], items[k].get("slug") or "")
+        except ValueError as e:
+            log(str(e))
+            break
+        t_tried[k] = titles.now_iso()
+        if g:
+            titled[k] = g
     known = {}
-    for e in items.values():
-        g = e.get("itad_id") or ids.get(str(e.get("appid") or ""))
+    for k, e in items.items():
+        g = e.get("itad_id") or ids.get(str(e.get("appid") or "")) or titled.get(k)
         if g:
             known.setdefault(g, []).append(e)
     got, gl = {}, list(known)
@@ -1710,7 +1740,12 @@ def _itad(settings, log):
     day = now().strftime("%Y-%m-%d")
     with store.lock:
         pw = store.load_json(pcwish.FILE, pcwish.EMPTY)
-        for e in (pw.get("items") or {}).values():
+        for k, e in (pw.get("items") or {}).items():
+            if k in t_tried and not e.get("itad_id"):
+                e["itad_tried"] = t_tried[k]
+                if titled.get(k):
+                    e["itad_id"] = titled[k]
+                    e.pop("itad_tried", None)
             a = str(e.get("appid") or "")
             if a in tried and not e.get("itad_id"):
                 e["itad_tried"] = tried[a]
@@ -1726,7 +1761,8 @@ def _itad(settings, log):
                 verlauf.record_shops(e, got[g], day)
         store.save_json(pcwish.FILE, pw)
     shops = sum(len(v["shops"]) for v in got.values())
-    log(f"IsThereAnyDeal: {len(ids)} Spiele neu zugeordnet ({len(ask)} gefragt), Preise für {len(got)} Spiele"
+    log(f"IsThereAnyDeal: {len(ids)} Spiele neu zugeordnet ({len(ask)} gefragt)"
+        + (f", ohne Steam-ID nach dem Namen {len(titled)} von {len(t_tried)} gefunden" if t_tried else "") + f", Preise für {len(got)} Spiele"
         f" aus {shops} Angeboten der Läden" + (f", Verlauf je Laden für {len(back)} Spiele nachgeholt" if back else "") + f", {_took(start)}")
     src.stats = {"priced": len(got), "shops": shops}
     return src.result()
