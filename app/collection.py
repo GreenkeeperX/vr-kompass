@@ -322,7 +322,7 @@ def replace(col, games, src="playnite"):
         if o is None:
             new += 1
             continue
-        for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb"):
+        for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb", "deku"):
             if f in o:
                 g[f] = o[f]
     col["games"] = games
@@ -601,7 +601,7 @@ def sync_pcvr(col, data):
         if o is None:
             new += 1
         else:
-            for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb"):
+            for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb", "deku"):
                 if f in o:
                     g[f] = o[f]
         games[k] = g
@@ -836,9 +836,59 @@ def merge_tdb(r, t):
     if t.get("de_t") and titles.norm(t["de_t"]) != titles.norm(r["name"]):
         r["dtitle"] = t["de_t"]
     if t.get("rating"):
-        r["age"] = t["rating"]
+        r["age"], r["age_src"] = t["rating"], "GameTDB"
     if t.get("langs"):
         r["tdb_langs"] = t["langs"]
+
+
+def merge_deku(r, d):
+    """DekuDeals (0.10.14), zweite Quelle für PC und Konsolen:
+    - Spielzeit laut HowLongToBeat vor IGDB (wie im eShopKompass); IGDB bleibt im Tooltip (ihours)
+    - Metacritic, wo Steam keine nennt; OpenCritic neu (oc)
+    - Spieler, Genre, Erscheinen: bestätigt, was andere sagen (pl_deku, gc), sonst Ersatz; ein anderes Jahr nennt dyear
+    - USK, PEGI oder ESRB, wo GameTDB keine nennt; Deutsch, wo Steam nichts sagt (sde)"""
+    r["srcs"] = r["srcs"] + ["DekuDeals"]
+    r["deku_slug"] = d.get("slug") or ""
+    h = d.get("hltb") or {}
+    main = h.get("main") or h.get("solo")
+    if main:
+        if r.get("hours") and r.get("hours_src") == "IGDB":
+            r["ihours"] = r["hours"]
+        r.update(hours=main, hours_src="HowLongToBeat", hltb=h)
+    if d.get("mc") is not None:
+        if r.get("mc") is None:
+            r["mc"], r["mc_src"] = d["mc"], "DekuDeals"
+        elif r["mc"] == d["mc"]:
+            r["mc_ok"] = True
+    if d.get("oc") is not None:
+        r["oc"] = d["oc"]
+    pl = d.get("players") or {}
+    p = max([v[1] for v in pl.values() if isinstance(v, list) and len(v) == 2] or [0])
+    if p:
+        if r.get("players") == p:
+            r["pl_deku"] = True
+        elif not r.get("players"):
+            r["players"], r["pl_src"] = p, "DekuDeals"
+    dg = genres(d.get("genre") or [], [])
+    if dg:
+        r["gc"] = list(dict.fromkeys((r.get("gc") or []) + [x for x in r["genres"] if x in dg] + (dg if not r["genres"] else [])))
+        r["genres"] = r["genres"] + [x for x in dg if x not in r["genres"]]
+    rel = d.get("released") or ""
+    if rel:
+        if not r.get("year"):
+            r.update(year=rel[:4], year_src="DekuDeals")
+        elif r["year"] != rel[:4]:
+            r["dyear"] = rel[:4]
+        if not r.get("rel") and rel[:4] == r["year"]:
+            r["rel"] = rel
+    for f in ("dev", "pub"):
+        if d.get(f) and not r.get(f):
+            r[f] = d[f]
+    if d.get("age") and not r.get("age"):
+        r["age"], r["age_src"] = d["age"], "DekuDeals"
+    if d.get("langs") and r.get("sde") is None:
+        r["sde"] = any(x.lower().startswith("german") for x in d["langs"])
+        r["sde_src"] = "DekuDeals"
 
 
 def view(col, data=None):
@@ -910,6 +960,8 @@ def view(col, data=None):
             merge_retro(r, g)
         if (g.get("tdb") or {}).get("id"):
             merge_tdb(r, g["tdb"])
+        if (g.get("deku") or {}).get("slug"):
+            merge_deku(r, g["deku"])
         # VR per Mod (0.8.1): PCGamingWiki „hackable“, vorpX; Nexus Mods mit Spielseite und Mods
         pc, nx = g.get("pcgw") or {}, g.get("nexus") or {}
         merge_pcgw(r, pc)
