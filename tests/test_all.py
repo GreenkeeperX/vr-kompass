@@ -896,10 +896,24 @@ class TestLibrary(unittest.TestCase):
         self.assertEqual((s["typical"], s["typical_how"]), (12.0, "recent"))      # 49 Tage 12 €, 14 Tage 11 €
         self.assertEqual(verlauf.series("Steam", pts, "2025-11-02", 15.0, "steam")["typical_how"], "sales")
 
+    def test_0106_verlauf_links(self):
+        """0.10.6: je Reihe im Preisverlauf der Link zur Seite des Spiels im Laden."""
+        from app import verlauf
+        pts = [["2026-10-01", 20.0]]
+        t = {"name": "Harbor Heist", "meta_id": "123", "steam_appid": "456", "live": {"gg": {"url": "https://gg.deals/game/harbor-heist/"}}}
+        hist = {"meta": {"123": pts}, "steam": {"456": pts}, "gg": {"456": pts}}
+        v = verlauf.vr(t, hist, "2026-11-02")
+        self.assertEqual([s.get("url") for s in v["series"]], ["https://www.meta.com/experiences/123/",
+                         "https://store.steampowered.com/app/456/", "https://gg.deals/game/harbor-heist/"])
+        e = {"name": "Night Tram", "slug": "night-tram", "ph": pts, "sh": {"Laden A": pts, "Laden B": pts},
+             "itad": {"shops": [{"s": "Laden A", "p": 20.0, "u": "https://example.org/a"}, {"s": "Laden B", "p": 20.0, "u": "javascript:x"}]}}
+        v = verlauf.pc(e, "2026-11-02")
+        self.assertEqual([s.get("url") for s in v["series"]], ["https://gg.deals/game/night-tram/", "https://example.org/a", None])
+
     def test_ui_0103(self):
         """0.10.3: VR-Einzelheiten im Raster, ✕ und Klick daneben im Preisverlauf, Crossplay als Marke."""
         js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "app.js"), encoding="utf-8").read()
-        for name in ("function vrDetail", 'class="vlx"', "function pcPair", "PC_ALT = 0.08, PC_ALT_LOW = 0.1", "pcAlt(s.p, upto, r.low)", ">Crossplay</span>", 'querySelector(".gmarks")',
+        for name in ("function vrDetail", 'class="vlx"', "function pcPair", "PC_ALT = 0.08, PC_ALT_LOW = 0.1", "function cbOff", "const mIcon", 'data-dset="xp"', "überm Tief</th>", "pcAlt(s.p, upto, r.low)", ">Crossplay</span>", 'querySelector(".gmarks")',
                      "nSrc === 1"):
             self.assertIn(name, js)
         self.assertNotIn("⇄", js)
