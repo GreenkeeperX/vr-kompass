@@ -899,7 +899,7 @@ class TestLibrary(unittest.TestCase):
     def test_ui_0103(self):
         """0.10.3: VR-Einzelheiten im Raster, ✕ und Klick daneben im Preisverlauf, Crossplay als Marke."""
         js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "app.js"), encoding="utf-8").read()
-        for name in ("function vrDetail", 'class="vlx"', "function pcPair", ">Crossplay</span>", 'querySelector(".gmarks")',
+        for name in ("function vrDetail", 'class="vlx"', "function pcPair", "PC_ALT = 0.08, PC_ALT_LOW = 0.1", "pcAlt(s.p, upto, r.low)", ">Crossplay</span>", 'querySelector(".gmarks")',
                      "nSrc === 1"):
             self.assertIn(name, js)
         self.assertNotIn("⇄", js)

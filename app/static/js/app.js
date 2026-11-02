@@ -405,17 +405,26 @@ function pcPriceTip(r){
 const SHOPS_SHOWN = 6;
 // 0.10.3 (Entscheidung 02.11.2026): teurere Wege zeigen die Einzelheiten nur, wenn sie nah am günstigsten liegen;
 // beim Händler kauft man nicht, wenn der Keyshop deutlich günstiger ist
-const PC_ALT = 0.1;
-const pcAlt = (x, min) => x != null && min != null && x <= min * (1 + PC_ALT) + 0.005;
-function pcPair(ret, key){
+// 0.10.4 (Entscheidung 02.11.2026): gekauft wird fast immer zum günstigsten Preis; ein teurerer Weg zählt nur bis
+// 8 % darüber (etwa mit günstig gekauftem Guthaben) und nur, wenn er selbst nah am Tief liegt (bis 10 % darüber)
+const PC_ALT = 0.08, PC_ALT_LOW = 0.1;
+const pcAlt = (x, min, low) => x != null && min != null && x <= min * (1 + PC_ALT) + 0.005 &&
+  (x <= min + 0.005 || low == null || x <= low * (1 + PC_ALT_LOW) + 0.005);
+function pcPair(ret, key, low){
   const min = Math.min(...[ret, key].filter(x => x != null));
   if(!isFinite(min)) return "";
-  return [[ret, "Händler"], [key, "Keyshop"]].filter(([x]) => pcAlt(x, min)).map(([x, l]) => `${l} ${eur(x)}`).join(" · ");
+  return [[ret, "Händler"], [key, "Keyshop"]].filter(([x]) => pcAlt(x, min, low)).map(([x, l]) => `${l} ${eur(x)}`).join(" · ");
 }
-const pcPairTip = (ret, key) => ret != null && key != null && !(pcAlt(ret, Math.min(ret, key)) && pcAlt(key, Math.min(ret, key)))
-  ? `; ${ret > key ? `Händler ${eur(ret)}` : `Keyshop ${eur(key)}`} ist über ${Math.round(PC_ALT * 100)} % teurer` : "";
+function pcPairTip(ret, key, low){
+  if(ret == null || key == null) return "";
+  const min = Math.min(ret, key), hi = Math.max(ret, key);
+  if(pcAlt(hi, min, low)) return "";
+  const what = `${ret > key ? "Händler" : "Keyshop"} ${eur(hi)}`;
+  return hi > min * (1 + PC_ALT) + 0.005 ? `; ${what} ist über ${Math.round(PC_ALT * 100)} % teurer`
+    : `; ${what} ist mehr als ${Math.round(PC_ALT_LOW * 100)} % über dem Tief`;
+}
 function pcShopsHtml(r, upto){
-  const sh = (r.shops || []).filter(s => upto == null || pcAlt(s.p, upto));
+  const sh = (r.shops || []).filter(s => upto == null || pcAlt(s.p, upto, r.low));
   if(!sh.length) return "";
   const one = s => extLink(s.u, `<span class="${s.near ? "g-buy" : ""}">${esc(s.s)} ${eur(s.p)}</span>`,
     [s.r != null && s.r !== s.p && `normal ${eur(s.r)}`, s.lo != null && `Tief dort ${eur(s.lo)}`, s.x && `Angebot bis ${day(s.x)}`].filter(Boolean).join("\n")) +
@@ -475,9 +484,9 @@ function pcDetail(r, gc = 5){
     row("Preissturz", r.drop ? `${eur(r.best)} statt üblich ${eur(r.drop.usual)} (−${r.drop.pct} %)` : "", "Median der Preise der letzten Tage aus dem eigenen Verlauf") +
     row("Üblich", usualText(r.usual), r.usual ? usualTip(r.usual) : "") +
     row("Steam-Angebote", rhythmText(r.rhythm), rhythmTip(r.rhythm)) +
-    row("Jetzt", pcPair(r.retail, r.keyshops), "Preise jetzt laut gg.deals" + pcPairTip(r.retail, r.keyshops)) +
+    row("Jetzt", pcPair(r.retail, r.keyshops, r.low), "Preise jetzt laut gg.deals" + pcPairTip(r.retail, r.keyshops, r.low)) +
     row("Tief", pcPair(r.retail_low, r.keyshops_low), "Bisheriges Tief laut gg.deals" + pcPairTip(r.retail_low, r.keyshops_low)) +
-    row("Läden", pcShopsHtml(r, r.best), r.shops_at ? `Offizielle Läden laut IsThereAnyDeal, Stand ${when(r.shops_at)}, nur die bis ${Math.round(PC_ALT * 100)} % über dem günstigsten Preis jetzt; grün: höchstens 5 % über dem Tief der Händler` : "") +
+    row("Läden", pcShopsHtml(r, r.best), r.shops_at ? `Offizielle Läden laut IsThereAnyDeal, Stand ${when(r.shops_at)}, nur die bis ${Math.round(PC_ALT * 100)} % über dem günstigsten Preis jetzt und bis ${Math.round(PC_ALT_LOW * 100)} % über dem Tief; grün: höchstens 5 % über dem Tief der Händler` : "") +
     // 0.9.4: Preisverlauf unter den Preisen, nicht in der Fußzeile
     row("", r.kind ? "" : `<button class="link" data-act="verlauf" data-pc="${esc(r.key)}" title="Kurve je Laden, Tief, Angebote der letzten 18 Monate">Preisverlauf</button>`);
   const dtip = r.desc_src === "IGDB" ? "Beschreibung laut IGDB, nur auf Englisch" : "Kurzbeschreibung laut Steam";
