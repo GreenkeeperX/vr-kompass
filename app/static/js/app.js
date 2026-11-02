@@ -269,6 +269,7 @@ function factsHtml(r){
   if(vg.hours) out.push(fact("Spielzeit", hrs(vg.hours), "Laut IGDB"));
   if(g.players && g.players.now != null) out.push(fact("Aktiv", `${num(g.players.now)}${g.players.peak > g.players.now ? ` <span class="hint">(Spitze ${num(g.players.peak)})</span>` : ""}`,
     `Steam-Spieler gerade eben (${when(g.players.at)}); Spitze: höchster gemessener Wert seit ${day(g.players.since)}`));
+  if(m?.grow) out.push(fact("Meta aktiv", `+${num(m.grow.per30)} Bewertungen je Monat`, growTip(m.grow)));
   if(g.meta_ver) out.push(fact("Meta", `v${esc(g.meta_ver.v.split("_")[0])}${g.meta_ver.since ? ` seit ${agoDays(g.meta_ver.since).replace("vor ", "")}` : ""}`,
     `Version im Meta Store laut VRDB${g.meta_ver.since ? "; das Tool sah sie zuerst am " + day(g.meta_ver.since) : ", zuerst gesehen beim ersten Abruf"}`));
   if(r.usual && !r.where) out.push(fact("Üblich", usualText(r.usual), usualTip(r.usual)));
@@ -676,7 +677,10 @@ function vrCells(r){
     st && (st.pct != null ? `Steam: ${st.pct} % positiv (${num(st.n)})` : `Steam: erst ${num(st.n)} Rezensionen`), st?.trend && trendTip(st.trend)].filter(Boolean).join("\n");
   const score = rt.score != null ? gScore(rt.score, rtip) + trendMark(st?.trend) : "";
   const p = r.measured?.players, u = r.measured?.update;
-  const pl = p && p.now != null ? `<span title="${esc(`Gerade eben (${when(p.at)}); Spitze ${num(p.peak || p.now)} seit ${day(p.since)}`)}">${num(p.now)}</span>` : "";
+  // 0.10.1: ohne Steam-Zahl das Wachstum der Meta-Bewertungen als Hinweis (Meta nennt keine Spieler)
+  const mg = rt.meta?.grow;
+  const pl = p && p.now != null ? `<span title="${esc(`Gerade eben (${when(p.at)}); Spitze ${num(p.peak || p.now)} seit ${day(p.since)}`)}">${num(p.now)}</span>`
+    : mg ? `<span class="hint" title="${esc(growTip(mg))}">+${num(mg.per30)}/Mon.</span>` : "";
   const up = u ? `<span class="${u.care?.state === "stale" ? "hint" : ""}" title="${esc(`${day(u.date)}: ${u.title}${u.care?.state === "stale" ? "\nÜber ein Jahr ohne Update" : ""}`)}">${short(agoDays(u.date))}</span>` : "";
   return {now, gap, score, pl, up, rev: gRev({reviews: st?.n ?? null, lib: r})};
 }
@@ -957,6 +961,8 @@ const trendMark = t => !t || t.dir === "flat" ? "" : `<span class="tr ${t.dir}" 
 const trendText = t => !t ? "" : `<span title="${esc(trendTip(t))}">${t.dir === "up" ? "steigend" : t.dir === "down" ? "fallend" : "gleichbleibend"}${trendMark(t) ? " " + trendMark(t) : ""} <span class="hint">(${t.recent} % gegen ${t.all} %)</span></span>`;
 const CARE = {fresh: "gepflegt", ok: "", stale: "ruht"};
 const careMark = c => c?.state === "stale" ? `<span class="b care" title="${esc(`Letztes Update laut Steam-Neuigkeiten am ${day(c.date)}, über ein Jahr her`)}">ruht</span>` : "";
+// Wachstum der Meta-Bewertungen (0.10.1): neue Bewertungen je 30 Tage aus eigenen Messungen, nur ein Hinweis
+const growTip = g => `Meta nennt keine Spielerzahlen. Neue Meta-Bewertungen: etwa ${g.per30} je 30 Tage (gemessen seit ${day(g.since)}, ${g.src === "vrdb" ? "VRDB" : "QuestStoreDB"}). Viele neue Bewertungen sprechen dafür, dass das Spiel noch gekauft und gespielt wird; nur ein Hinweis`;
 // Üblicher Steam-Rabatt (0.10.0): aus dem eigenen Verlauf je Alter des Spiels; die Marke nur, wenn ein laufendes Angebot
 // deutlich darunter liegt. Keine Vorhersage, nur die Zahl, auf der sie beruht (Entscheidung 02.11.2026)
 const usualTip = u => `Bei Steam lag der Rabatt für Spiele im Alter von ${u.band} in deinem Preisverlauf meist bei ${u.pct} % (Median aus ${u.n} Angeboten); jetzt ${u.now ? u.now + " %" : "kein Angebot"}.${u.peak ? ` Nächster Monat, in dem es bisher viele Angebote gab: ${u.peak}.` : ""} Keine Vorhersage.`;
@@ -1020,7 +1026,7 @@ function gActive(g){
 }
 // max. Spieler (0.8.23): die Zahl, die Arten im Tooltip. Ab 0.9.7 wieder „2+“ für Mehrspieler ohne Zahl und „1“ für
 // Einzelspieler (laut Steam oder IGDB ohne Mehrspieler; Entscheidung 01.11.2026)
-const PL_SRC = s => ({"IGDB": "Laut IGDB", "PCGamingWiki": "Laut PCGamingWiki", "IGDB, PCGamingWiki": "IGDB und PCGamingWiki einig", "libretro": "Laut libretro-database", "Playnite": "Laut Playnite"})[s] || (s ? `Laut ${s}` : "");
+const PL_SRC = s => ({"IGDB": "Laut IGDB", "PCGamingWiki": "Laut PCGamingWiki", "IGDB, PCGamingWiki": "IGDB und PCGamingWiki einig", "libretro": "Laut libretro-database", "Playnite": "Laut Playnite", "Recherche": "Aus der Recherche (Meinungen), keine Datenbank nennt eine Zahl"})[s] || (s ? `Laut ${s}` : "");
 const plSolo = g => !g.players && !(g.mp || []).length && !Object.keys(g.plm || {}).length && (g.src === "steam" || !!g.ig);
 const plSort = g => g.players || ((g.mp || []).length ? 2 : plSolo(g) ? 1 : null);
 // Crossplay (0.10.0): Partien über Plattformen hinweg, laut PCGamingWiki (mit Plattformen) und Steam-Kategorie
@@ -1033,6 +1039,8 @@ function gMaxPl0(g){
   if(!g.players) return (g.mp || []).length ? `<span class="hint" title="${esc(`Mehrspieler, keine Quelle nennt eine Zahl${kinds ? `\n${kinds}` : ""}`)}">2+</span>`
     : plSolo(g) ? `<span class="hint" title="${g.src === "steam" ? "Laut Steam" : "Laut IGDB"} ohne Mehrspieler">1</span>` : "";
   const from = g.pl_src === "IGDB" ? `Laut IGDB${g.pl_ok ? " und libretro" : ""}` : g.pl_src === "libretro" ? `Laut libretro-database${g.ig ? ", IGDB nennt keine Zahl" : ""}` : g.pl_src === "Playnite" || !g.pl_src ? (g.ig ? "Nur laut Playnite, IGDB nennt keine Zahl" : "Laut Playnite") : PL_SRC(g.pl_src);
+  // 0.10.1: Zahl nur aus der Recherche: violett mit ≈
+  if(g.pl_src === "Recherche") return `<span class="gxc" title="${esc(from + (kinds ? `\n${kinds}` : ""))}">≈${g.players}</span>`;
   return `<span class="${g.pl_src && !g.pl_src.includes("IGDB") && !g.pl_src.includes("PCGamingWiki") && g.ig ? "gxc" : ""}" title="${esc(from + (kinds ? `\n${kinds}` : ""))}">${g.players}</span>`;
 }
 /* Spieler je Art, ab 0.9.7 die Zahl fett vorn: „8 online · 4 lokal · 2+ LAN“, Koop in einer eigenen Zeile darunter
@@ -1046,8 +1054,8 @@ function plParts(g, list, html){
     const p = plm[k], n = p ? String(p[0]) : k === "mmo" ? "" : "2+";
     if(!html) return n ? `${n} ${l}` : l;
     const tip = p ? `${PL_SRC(p[1])}${p[2] ? `; IGDB nennt ${p[2]}` : ""}` : "Mehrspieler, Zahl unbekannt";
-    const mark = !p && mp.includes(k) && one(g, g.mpc || [], k) ? "gxc" : "";
-    return `<span class="${mark}" title="${esc(tip)}">${n ? `<b>${n}</b> ` : ""}${esc(l)}</span>`;
+    const mark = (!p && mp.includes(k) && one(g, g.mpc || [], k)) || p?.[1] === "Recherche" ? "gxc" : "";
+    return `<span class="${mark}" title="${esc(tip)}">${n ? `<b>${p?.[1] === "Recherche" ? "≈" : ""}${n}</b> ` : ""}${esc(l)}</span>`;
   });
 }
 function plKinds(g, html){

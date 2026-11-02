@@ -12,6 +12,9 @@ MIN_ALL = 50            # Gesamtwertung erst ab so vielen Rezensionen (wie in En
 STEP = 8                # Punkte Abstand für steigend oder fallend
 GAP_MIN, GAP_MAX = 20, 120   # Abstand zweier eigener Messungen in Tagen
 FRESH_DAYS = 90         # Update jünger: gepflegt
+MRH_MAX = 40            # Messungen der Zahl der Meta-Bewertungen je Quelle (0.10.1)
+GROW_MIN_DAYS = 14      # so viele Tage muss der Vergleich mindestens umfassen
+GROW_WINDOW = 90        # Vergleich mit der ältesten Messung höchstens so weit zurück
 STALE_DAYS = 365        # Update älter: ruht
 
 
@@ -94,3 +97,37 @@ def care(day, today=None):
     if d is None:
         return None
     return {"state": "fresh" if d <= FRESH_DAYS else "stale" if d > STALE_DAYS else "ok", "days": max(0, d), "date": day[:10]}
+
+
+def note_meta_n(t, src, n, day):
+    """Zahl der Meta-Bewertungen je Quelle (vrdb, qsdb) mit Tag vermerken, nur bei Änderung (0.10.1). Meta nennt keine
+    Spielerzahlen; wie schnell neue Bewertungen kommen, ist ein grober Hinweis, ob ein Spiel noch gekauft und gespielt
+    wird. Die Quellen bleiben getrennt, weil sie verschieden zählen."""
+    if not isinstance(n, int) or isinstance(n, bool) or n <= 0 or not day:
+        return
+    mrh = t.setdefault("mrh", {})
+    h = [x for x in (mrh.get(src) or []) if isinstance(x, list) and len(x) == 2]
+    if h and h[-1][1] == n:
+        return
+    mrh[src] = ([x for x in h if x[0] != day] + [[day[:10], n]])[-MRH_MAX:]
+
+
+def meta_growth(mrh, today=None):
+    """Neue Meta-Bewertungen je 30 Tage aus der längsten Messreihe: {"per30", "days", "since", "src"} oder None,
+    solange die Messungen weniger als GROW_MIN_DAYS umfassen."""
+    today = (today or date.today().isoformat())[:10]
+    best = None
+    for src, h in (mrh or {}).items():
+        h = [x for x in h or [] if isinstance(x, list) and len(x) == 2 and _days(x[0], today) is not None]
+        if len(h) < 2:
+            continue
+        last = h[-1]
+        base = next((x for x in h if _days(x[0], today) <= GROW_WINDOW), None)
+        if base is None or base is last:
+            base = h[-2]
+        d = _days(base[0], last[0])
+        if d is None or d < GROW_MIN_DAYS:
+            continue
+        if best is None or d > best["days"]:
+            best = {"per30": max(0, round((last[1] - base[1]) * 30 / d)), "days": d, "since": base[0], "src": src}
+    return best

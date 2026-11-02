@@ -6,6 +6,7 @@ Schlüssel (isthereanydeal.com, My Apps): erst die ITAD-Kennung zur Steam-ID, da
 Deutschland. Der Schlüssel geht als Kopfzeile mit, nie in der Adresse.
 """
 import json
+import urllib.parse
 
 API = "https://api.isthereanydeal.com"
 STEAM_SHOP = 61
@@ -34,6 +35,25 @@ def lookup(text):
         if isinstance(k, str) and k.startswith("app/"):
             out[k[4:]] = v if isinstance(v, str) else ""
     return out
+
+
+def title_url(name):
+    """Suche nach dem Namen (0.10.1) für PC-Wünsche ohne Steam-ID (GOG, Epic …)."""
+    return f"{API}/games/lookup/v1?" + urllib.parse.urlencode({"title": name})
+
+
+def title_match(text, name, slug=""):
+    """Antwort auf title_url: die ITAD-Kennung, wenn der gefundene Titel zum Namen passt (gleicher Name nach
+    titles.norm oder gleicher Slug wie bei gg.deals), sonst ""."""
+    from . import titles
+    d = json.loads(text)
+    if not isinstance(d, dict):
+        raise ValueError("IsThereAnyDeal: Antwort der Titelsuche ist kein Objekt")
+    g = d.get("game") if d.get("found") else None
+    if not isinstance(g, dict) or not isinstance(g.get("id"), str):
+        return ""
+    same = titles.norm(str(g.get("title") or "")) == titles.norm(name) or (slug and str(g.get("slug") or "") == slug)
+    return g["id"] if same else ""
 
 
 def prices_url():
