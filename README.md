@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.6:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.7:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -36,6 +36,13 @@ Neu in 0.10.6: VR-Einzelheiten zeigen die Genres unter der Spalte Genre und kein
 Mein Stand sind Grafiken, die nicht von der Schrift abhängen; beim Klicken verschiebt sich nichts. Filter „Crossplay“
 in der Sammlung. Preisverlauf: Spalte „überm Tief“, unter „zuletzt“ Preis grün und Rabatt blau nur bei einem guten
 Preis, Läden und Preise als Links.
+Neu in 0.10.7: Tooltips zu „am Tief“, Tief, Rabatt, „kaufen“ und „gut“ nennen den tatsächlichen Tiefpreis mit Laden
+und Datum, den Preis jetzt und den Abstand. Im Preisverlauf steht „jetzt“ am Tief grün, beim Tiefstpreis mit ★.
+Wertungen in den Einzelheiten immer in der Farbe der Wertung (auch VR und der schwächere Laden), bei PC mit der Zahl der
+Rezensionen. Die Zeile unter der Maus hebt sich leicht ab. Mein Stand baut beim Klicken nur die eigene Zeile neu
+(kein Zucken der Tabelle), die Zeichen sind kräftiger und sitzen in der Namenszeile mittig. Genres der Einzelheiten
+stehen bündig und näher an der Zeile. Ein Tief von 0 € (Gratis-Aktion bei gg.deals) zählt bei PC-Wünschen nicht mehr
+als Tief; vorher stand dadurch jeder Preis „am Tief“.
 Neu in 0.10.5: Meta im Meta-Blau, Steam im dunkleren Blau des Steam-Logos (vorher war Steam im dunklen Modus
 heller als Meta).
 Neu in 0.10.4: ein teurerer Weg (Händler statt Keyshop, ein anderer Laden) steht in den Einzelheiten der PC-Wünsche nur

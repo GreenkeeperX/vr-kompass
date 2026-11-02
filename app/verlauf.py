@@ -111,7 +111,7 @@ def recent_median(spans, today, days=RECENT_DAYS):
 
 def _pack(name, out, today):
     out = [s for s in out if s]
-    lows = [s["low"] for s in out]
+    lows = [s["low"] for s in out if s["low"]]       # 0.10.7: 0 € (Gratis-Aktion) zählt nicht als Tief
     typ = [s["typical"] for s in out if s["typical"] is not None]
     return {"name": name, "today": today, "since": min((s["since"] for s in out), default=""),
             "series": out, "best": min(lows) if lows else None, "typical": min(typ) if typ else None}

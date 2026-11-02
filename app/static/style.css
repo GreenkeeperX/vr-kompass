@@ -218,6 +218,9 @@ label.kind{display:flex;gap:6px;align-items:center;max-width:100%}label.kind sel
 .gdm.vdd{grid-column:var(--gc2)/-1;display:grid;grid-template-columns:subgrid;row-gap:5px;align-content:start}
 .vdd>*{grid-column:1/-1;min-width:0}
 .vdd>.ggen{grid-column:var(--gg)/-1}
+.gdm.vdd{column-gap:10px}     /* 0.10.7: wie .gd, sonst rückten die Genres um den Unterschied nach links */
+/* 0.10.7: Genres aus der Zeile rücken näher an die Zeile, ohne dass der Rest der Einzelheiten mitrutscht */
+.vdd>.ggen,.gdm>.ggen:first-child,.gdm>.gmarks:empty+.ggen{position:relative;top:-10px}
 .vdm{grid-column:1/-1;border:0;background:transparent;padding:0 0 0 14px}
 .item.wi.vw{border:0;background:transparent;padding:0}
 .vwl .vd.wb{font-size:11px;white-space:nowrap}
@@ -295,6 +298,7 @@ details.menu input[type=search]{width:100%}
 .sched input[type=number]{width:64px}
 .rate{color:var(--ink)}
 .rate.win{color:var(--go);font-weight:600}
+.gxu{text-decoration:underline dotted var(--warn);text-underline-offset:3px}     /* 0.10.7: abgeleiteter Wert, der seine eigene Farbe behält */
 details.more{flex-basis:100%;font-size:13px;color:var(--muted)}
 details.more>summary{cursor:pointer;width:max-content}
 details.more>div{margin:4px 0 0 14px}
@@ -316,6 +320,12 @@ details.op .ux{color:var(--warn)}
 .glist.box{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
 .gr{display:grid;grid-template-columns:var(--gcols);gap:0 10px;align-items:start;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
 .glist>.gr:first-child,.gr.nph+.gr{border-top:0}
+/* 0.10.7 (Entscheidung 02.11.2026): die Zeile unter der Maus leicht hinterlegt, über den Rand der Liste hinaus wie
+   die offene Zeile; nur mit Maus (hover:hover), am Handy nicht */
+@media (hover:hover){
+  .gr:not(.nph):not(.open):hover{--hov:color-mix(in srgb,var(--ink) 6%,var(--card));background:var(--hov);box-shadow:-10px 0 0 var(--hov),10px 0 0 var(--hov)}
+  .vl tbody tr:hover,.mini-t tbody tr:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+}
 .gr.nph{padding-top:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);align-items:end;border-bottom:1px solid var(--line)}
 .gr.nph .sth{cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gr.nph .sth:hover,.gr.nph .sth.on{color:var(--ink)}
@@ -349,12 +359,14 @@ details.op .ux{color:var(--warn)}
 .gsc{color:hsl(var(--sh) var(--sc-s) var(--sc-l));font-weight:600}
 /* Mein Stand ab 0.10.6 als SVG (mIcon): feste Größe, gleiche Strichstärke, optisch mittig zum Text; ändert beim
    Umschalten weder Breite noch Höhe. Die Marken am Namen in fester Höhe, damit die Zeile nie höher wird */
-.mi{width:1em;height:1em;flex:none;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-.mi.gfav{fill:currentColor;stroke-width:1.2}
-.mi.gfav.off{fill:none;stroke-width:1.6}
-.mi.gign{stroke-width:2.2}
-.gme{flex:none;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;font-size:13px}
-.gme .mi{display:block}
+.mi{width:1em;height:1em;flex:none;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.mi.gfav{fill:currentColor;stroke-width:1.4}
+.mi.gfav.off{fill:none;stroke-width:1.8}
+.mi.gign{stroke-width:2.6}
+/* Am Namen in einem Kasten fester Höhe mittig zur Zeile, damit die Zeile nie höher wird; 0.10.7 etwas größer und
+   1,5 px tiefer (mittig wirkte zu hoch), beides ohne Einfluss auf das Layout */
+.gme{flex:none;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;font-size:14px}
+.gme .mi{display:block;width:15px;height:15px;position:relative;top:1.5px}
 .gmark .mi{margin-right:1px}
 .gst.backlog{color:var(--pink)}
 .gst.started{color:var(--deal)}

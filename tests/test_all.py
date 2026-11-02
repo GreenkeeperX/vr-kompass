@@ -918,6 +918,28 @@ class TestLibrary(unittest.TestCase):
             self.assertIn(name, js)
         self.assertNotIn("⇄", js)
 
+    def test_0107_free_low(self):
+        """0.10.7: ein Tief von 0 € (Gratis-Aktion) zählt nicht als Tief der PC-Wunschliste."""
+        from app import pcwish
+        store.save_json(pcwish.FILE, {"items": {"lantern-keep": {"name": "Lantern Keep", "slug": "lantern-keep", "gg": {
+            "retail": 3.59, "retail_low": 0.0, "keyshops": 4.0, "keyshops_low": 3.0}}}})
+        r = pcwish.view(empty(), {"games": {}})["rows"][0]
+        self.assertEqual((r["low"], r["over"]), (3.0, 0.197))
+        store.save_json(pcwish.FILE, {"items": {"lantern-keep": {"name": "Lantern Keep", "gg": {"retail": 3.59, "retail_low": 0.0}}}})
+        r = pcwish.view(empty(), {"games": {}})["rows"][0]
+        self.assertIsNone(r["low"])
+        self.assertNotIn("over", r)
+
+    def test_ui_0107(self):
+        """0.10.7: Tooltips mit tatsächlichem Tief, Mein Stand ohne Neuaufbau, Wertung farbig, Zeile unter der Maus."""
+        base = os.path.join(os.path.dirname(__file__), "..", "app", "static")
+        js = open(os.path.join(base, "js", "app.js"), encoding="utf-8").read()
+        css = open(os.path.join(base, "style.css"), encoding="utf-8").read()
+        for name in ("function lowTip", "function patchMarks", "const pcLowTip", "gxu", "Tief aller Läden"):
+            self.assertIn(name, js)
+        self.assertIn("@media (hover:hover)", css)
+        self.assertIn(".gxu", css)
+
     def test_grade_and_now(self):
         """Preisgüte wie im eShopKompass; Jetzt zeigt nur Angebote mit „kaufen“ oder „gut“."""
         g = library.grade
