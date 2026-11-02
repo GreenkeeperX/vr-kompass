@@ -95,7 +95,7 @@ bekommen. Eingetragen wird erst nach dem Lesen, unter der Sperre auf `data.json`
 | Abruf | Adresse | Wie oft | Liefert |
 |---|---|---|---|
 | Steam, Profilname auflösen | `api.steampowered.com/ISteamUser/ResolveVanityURL/v1/` (mit Schlüssel) | nur bei Profilnamen statt Zahl | SteamID |
-| Steam, Besitz | `api.steampowered.com/IPlayerService/GetOwnedGames/v1/` (mit Schlüssel) | jeder Lauf | App-ID und Name je Spiel, ab 0.9.3 Spielzeit (`playtime_forever`) und zuletzt gespielt (`rtime_last_played`), abgelegt unter `steam_play` in `data.json` (`{App-ID: [Minuten, Tag]}`, jeder Lauf ersetzt sie ganz) |
+| Steam, Besitz | `api.steampowered.com/IPlayerService/GetOwnedGames/v1/` (mit Schlüssel) | jeder Lauf | App-ID und Name je Spiel, ab 0.9.3 Spielzeit (`playtime_forever`) und zuletzt gespielt (`rtime_last_played`), abgelegt unter `steam_play` in `data.json` (`{App-ID: [Minuten, Tag, Name]}`, der Name ab 0.9.7; jeder Lauf ersetzt sie ganz). Ab 0.9.7 kommen daraus Spiele ohne Playnite-Eintrag in die Sammlung (`collection.sync_steam`, Herkunft `steamacct`) |
 | Steam, Wunschliste | `api.steampowered.com/IWishlistService/GetWishlist/v1/` | jeder Lauf | App-IDs |
 | Steam, VR-Prüfung | `store.steampowered.com/api/appdetails?appids=<ID>&cc=de&l=german` | je unbekannter App einmal, 40 je Lauf | Name, Kategorien (VR Support, VR Supported, VR Only) |
 | gg.deals-Wunschliste | der geteilte Link, `?page=N` | jeder Lauf, höchstens 10 Seiten; nach einer Sperre (Cloudflare) per Lesezeichen, nach 7 Tagen (`GG_RETRY_DAYS`) oder beim Speichern des Links ein neuer Versuch (`sync.json`, `manual`) | Links auf `/game/<name>/` mit Namen |
@@ -134,7 +134,7 @@ gelten als bestätigt. Ältere Daten ohne `dumps` bekommen ihn mit der nächsten
 |---|---|---|---|
 | Angebotsliste | `/on_sale/?sort=-sale_start_time&page=N` | jeder Lauf, alle Seiten (höchstens 15) | Preis, Normalpreis, Rabatt, Ende, Gutschein ja/nein |
 | Titelseite | `/game/<name>-<Meta-ID>/` | je Titel höchstens alle 20 Stunden, 60 je Lauf, die älteste zuerst | Preis, Normalpreis, Ende, Tiefstpreis samt Tag, Bewertung, App-Version |
-| Suche | `/all_apps/?release_status=all&q=<Name>` | nur ohne bekannten Pfad, 30 je Lauf | Pfad und Meta-ID |
+| Suche | `/all_apps/?release_status=all&q=<Name>` | nur ohne bekannten Pfad, 30 je Lauf; ab 0.9.7 gilt HTTP 404 als „nicht gefunden“, nicht als Fehler | Pfad und Meta-ID |
 
 Das Tool schickt das Cookie `currency=EUR`, damit Listen und Preisverlauf in Euro kommen. Die
 Titelseite trägt die Preise als strukturierte Daten (JSON-LD, ein Angebot je Währung) und den
@@ -282,9 +282,9 @@ Ab 0.9.1 dazu der Verlauf je Laden:
 
 | Abruf | Adresse | Wie oft | Liefert |
 |---|---|---|---|
-| Verlauf je Laden | `https://api.isthereanydeal.com/games/history/v2?id=<Kennung>&country=DE&since=<vor 24 Monaten>` (GET) | je Spiel einmal (`sh_at`), 40 Spiele je Lauf (`ITAD_HIST`, zählt beim beschleunigten Auffüllen mit) | jede Preisänderung je Laden; abgelegt unter `sh` als `{Laden: [[Tag, Preis]]}` |
+| Verlauf je Laden | `https://api.isthereanydeal.com/games/history/v2?id=<Kennung>&country=DE&since=<vor 18 Monaten>` (GET) | je Spiel einmal (`sh_at`), 40 Spiele je Lauf (`ITAD_HIST`, zählt beim beschleunigten Auffüllen mit) | jede Preisänderung je Laden; abgelegt unter `sh` als `{Laden: [[Tag, Preis]]}` |
 
-Danach schreibt jeder Lauf die Preise je Laden selbst in `sh` fort (nur Änderungen, 24 Monate). Daraus und aus `ph`
+Danach schreibt jeder Lauf die Preise je Laden selbst in `sh` fort (nur Änderungen, 18 Monate). Daraus und aus `ph`
 rechnet der Preisverlauf (`app/verlauf.py`, ohne Netz). Keyshops führt die Antwort nach der Doku nicht; sie kommen weiter von gg.deals. Eine andere Steam-ID (aus
 „Zu erledigen“) löscht `itad`, `itad_id` und `itad_tried`. Der Verbindungstest fragt Zuordnung und Preise an einer
 Steam-App der Wunschliste („IsThereAnyDeal, Zuordnung“, „IsThereAnyDeal, Preise“).
@@ -433,8 +433,9 @@ besten Fassung, gilt das der nächsten. Beta, Proto und Ähnliches zählen nicht
 - `history.json`: Preisverlauf, je Quelle und Kennung (Meta-ID, Steam-App-ID) eine
   Liste `[Tag, Preis]`; ein Eintrag nur, wenn sich der Preis ändert. Bei Meta kommt der
   Verlauf der QuestStoreDB-Titelseite dazu (je Tag gilt der eigene Wert). Daraus rechnet die
-  Ansicht den Bestpreis der letzten 24 Monate je Shop (`prices.best_of`); gespeichert wird er
-  nicht.
+  Ansicht den Bestpreis der letzten 18 Monate je Shop (`prices.best_of`); gespeichert wird er
+  nicht. Ab 0.9.7 kürzt jeder Abgleich ältere Einträge (`sync._trim_history`, 18 Monate, der letzte Wert davor
+  bleibt als Ausgangspunkt); `ph` und `sh` in `pcwish.json` ebenso (`PH_DAYS`). So wächst die Datei nicht ohne Grenze.
 - Preisverlauf (0.9.1): `GET /api/verlauf?vr=<Schlüssel>` liest `history.json`, `?pc=<Schlüssel>` die Felder `ph` und
   `sh` in `pcwish.json`; nichts wird gespeichert.
 - `sync.json`: Beginn und Ende des letzten Laufs, Ergebnis je Quelle, Ruhezeiten (`rest`),

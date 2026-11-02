@@ -1,7 +1,7 @@
 import gzip
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import os
 import sys
 import tempfile
@@ -938,8 +938,12 @@ class TestTrend(unittest.TestCase):
         self.assertIsNone(pcwish.drop([["2026-10-20", 24.5]], 12.0, "2026-10-28"))   # zu kurzer Verlauf
         pcwish.record(e, {"retail": None, "keyshops": None}, "2026-10-21")    # ohne Preis: nichts
         self.assertEqual(len(e["ph"]), 2)
-        pcwish.record(e, {"retail": 20.0}, "2027-06-01")                       # alte Einträge fallen weg
-        self.assertEqual(e["ph"], [["2026-10-20", 12.0], ["2027-06-01", 20.0]])
+        pcwish.record(e, {"retail": 20.0}, "2028-06-01")                       # älter als 18 Monate: fällt weg
+        self.assertEqual(e["ph"], [["2026-10-20", 12.0], ["2028-06-01", 20.0]])
+        # history.json (0.9.7): ebenso auf 18 Monate gekürzt, der letzte Preis davor bleibt
+        h = {"steam": {"3000001": [["2020-01-01", 9.0], ["2021-01-01", 8.0], ["2026-01-01", 7.0]]}, "meta": {"1": [["2026-02-01", 5.0]]}}
+        sync._trim_history(h, "2026-10-01")
+        self.assertEqual(h, {"steam": {"3000001": [["2021-01-01", 8.0], ["2026-01-01", 7.0]]}, "meta": {"1": [["2026-02-01", 5.0]]}})
         # 0.8.25: VR-Wünsche aus dem Preisverlauf je Laden (history.json), der deutlichere Sturz zählt
         at = datetime(2026, 10, 28, 12, tzinfo=timezone.utc)
         t = {"name": "Comet Chase", "meta_id": "1234567890123456", "steam_appid": "3000030", "wish": True,
@@ -1259,12 +1263,12 @@ def qsdb_list(*cards, pages=1):
 
 class TestPrices(unittest.TestCase):
     def test_best_of(self):
-        """Bestpreis aus 24 Monaten: ein einmaliges Tief und das übliche Angebot daneben."""
+        """Bestpreis aus 18 Monaten (bis 0.9.6: 24): ein einmaliges Tief und das übliche Angebot daneben."""
         hist = [["2023-01-01", 5.0], ["2024-01-01", 30.0], ["2025-03-01", 15.0], ["2025-03-10", 30.0],
                 ["2025-11-01", 12.0], ["2025-11-08", 30.0], ["2026-03-01", 15.2], ["2026-03-08", 30.0]]
         b = prices.best_of(hist, "2026-10-22")
-        self.assertEqual((b["best"], b["best_at"], b["once"], b["usual"]), (12.0, "2025-11-01", True, 15.0))
-        self.assertEqual(b["since"], "2024-10-22")         # das Tief von 2023 liegt davor
+        self.assertEqual((b["best"], b["best_at"], b["once"], b["usual"]), (12.0, "2025-11-01", True, 15.2))
+        self.assertEqual(b["since"], "2025-04-22")         # das Tief von 2023 und das Angebot im März 2025 liegen davor
         self.assertIsNone(prices.best_of([], "2026-10-22"))
         lvl = lambda p: library._best({"meta": {"1": hist}}, "meta", "1", p, "2026-10-22")
         self.assertEqual(lvl(12.2)["level"], "best")
@@ -1465,13 +1469,28 @@ class TestSync(unittest.TestCase):
         lt = next(r for r in v["wishlist"] if r["name"] == "Laser Tennis")
         self.assertEqual(lt["best"]["meta"]["best"], 9.0)
         self.assertEqual(lt["best"]["meta"]["level"], "best")
-        self.assertLess(lt["best"]["meta"]["since"], "2025-01-01")
+        self.assertLess(lt["best"]["meta"]["since"], (sync.now() - timedelta(days=500)).strftime("%Y-%m-%d"))
         dd2 = next(r for r in v["wishlist"] if r["name"] == "Deep Dive")
         self.assertEqual(dd2["best"]["steam"]["since"], sync.now().strftime("%Y-%m-%d"))
         # Zweiter Lauf: Titelseiten sind frisch, also nur Angebotsliste und Steam
         net.calls.clear()
         sync.run()
         self.assertFalse(any("queststoredb.com/game/" in u for u in net.calls))
+
+    def test_search_404_is_miss(self):
+        """0.9.7: 404 auf eine Suche heißt „nichts gefunden“. Es zählt nicht als Fehler, die nächste Schreibweise
+        wird gesucht, und viele seltsame Namen beenden die Quelle nicht."""
+        d = empty()
+        k, _ = titles.upsert(d, "Star Ride (Tabelle)")
+        t = d["titles"][k]
+        sources.fetch = FakeNet({"%28Tabelle%29": 404, "q=Star+Ride": qsdb_list(qsdb_card("Star Ride", "4444444444444444", 12.0, kind="base"))})
+        src = sync._Source("QuestStoreDB", lambda m: None, {})
+        url = lambda name: f"{prices.QSDB}/all_apps/?" + urllib.parse.urlencode({"q": name})
+        hit, n, miss = sync._search(src, t, url, lambda text: sync._pick(prices.qsdb_cards(text), t), 10)
+        self.assertEqual((hit["meta_id"], n, miss, src.errors, src.stopped), ("4444444444444444", 2, False, 0, ""))
+        for _ in range(sync.MAX_ERRORS + 1):
+            self.assertEqual(sync._search(src, {"name": "Lantern Keep", "links": {}}, url, lambda text: None, 10)[2], True)
+        self.assertEqual((src.errors, src.stopped), (0, ""))
 
     def test_search_by_link_name(self):
         """Tabellenname weicht vom Store ab: Suche unter dem Namen aus dem VRDB-Link, Treffer über
@@ -2662,6 +2681,8 @@ class TestSync(unittest.TestCase):
         sh = v["harbor-heist"]["shops"]
         self.assertEqual([(s["s"], s["p"], s["c"], s["near"]) for s in sh], [("GOG", 10.29, 74, True), ("Steam", 20.0, 50, False)])
         self.assertEqual(v["harbor-heist"]["shops_low"], 9.99)        # Tief der Händler, nicht der Keyshop
+        self.assertEqual((v["harbor-heist"]["cut"], v["harbor-heist"]["cut_shop"]), (74, "GOG"))   # 0.9.7: Rabattmarke
+        self.assertNotIn("cut", v["rally-moth"])
         self.assertNotIn("shops", v["rally-moth"])
         e = store.load_json(pcwish.FILE, pcwish.EMPTY)["items"]["rally-moth"]
         self.assertTrue(e["itad_tried"] and not e.get("itad_id"))
@@ -2687,9 +2708,9 @@ class TestSync(unittest.TestCase):
         self.assertEqual(s["sales"][0]["pct"], 50)
         self.assertEqual(verlauf.series("x", [["2026-01-01", 5.0]], "2026-01-10")["sale_count"], 0)
         self.assertIsNone(verlauf.series("x", [], "2026-01-10"))
-        # älter als 24 Monate: der letzte Wert davor beginnt den Zeitraum
+        # älter als 18 Monate: der letzte Wert davor beginnt den Zeitraum
         old = verlauf.series("x", [["2020-01-01", 7.0], ["2026-01-01", 20.0]], "2026-08-10")
-        self.assertEqual((old["since"], old["points"][0][1], old["full"]), ("2024-08-10", 7.0, True))
+        self.assertEqual((old["since"], old["points"][0][1], old["full"]), ("2025-02-10", 7.0, True))
         t = {"name": "Laser Tennis", "meta_id": "2222222222222222", "steam_appid": "3000001",
              "live": {"meta": {"base": 30.0}, "steam": {"base": 25.0}}}
         v = verlauf.vr(t, {"meta": {"2222222222222222": pts}, "steam": {"3000001": [["2026-07-01", 25.0]]}}, "2026-08-10")
@@ -3010,7 +3031,7 @@ class TestAccounts(unittest.TestCase):
             {"appid": 3000003, "name": "Night Tram"}]}})
         owned = accounts.steam_owned(text)
         self.assertEqual([(g["min"], g["last"]) for g in owned], [(754, "2026-01-01"), (0, ""), (None, "")])
-        self.assertEqual(accounts.steam_play(owned), {"3000001": [754, "2026-01-01"], "3000002": [0, ""]})
+        self.assertEqual(accounts.steam_play(owned), {"3000001": [754, "2026-01-01", "Harbor Heist"], "3000002": [0, "", "Rally Moth"]})
         d = empty()
         a, _ = titles.upsert(d, "Harbor Heist", steam_appid="3000001")
         d["steam_play"] = accounts.steam_play(owned)
@@ -3024,6 +3045,35 @@ class TestAccounts(unittest.TestCase):
         self.assertNotIn("pt", rows["Lantern Keep"])
         # Alte Daten ohne steam_play laden weiter
         self.assertNotIn("pt", collection.view(col, empty())["games"][0])
+
+    def test_sync_steam(self):
+        """Spiele aus dem Steam-Konto, die Playnite nicht kennt (0.9.7), kommen als „steam:<App-ID>“ in die Sammlung;
+        kennt Playnite sie später, fällt der Eintrag weg. Ein Eintrag ohne Launcher fällt weg, wenn es dasselbe Spiel
+        mit Launcher gibt."""
+        d = empty()
+        a, _ = titles.upsert(d, "Comet Chase", steam_appid="3000005")         # VR-Titel: kommt über pcvr, nicht hier
+        d["steam_play"] = {"3000001": [10, "2026-01-01", "Harbor Heist"], "3000002": [0, ""], "3000005": [3, "", "Comet Chase"],
+                           "3000006": [0, ""]}
+        d["steam_apps"] = {"3000002": {"name": "Rally Moth"}}
+        col = {"games": {"steam:3000001": {"name": "Harbor Heist", "system": "PC", "store": "Steam", "id": "3000001"},
+                         "name:night tram": {"name": "Night Tram", "store": "", "id": ""},
+                         "epic:abc": {"name": "Night Tram", "store": "Epic", "id": "abc"}}}
+        self.assertEqual(collection.sync_steam(col, d), (1, 0))           # 3000006 ohne Namen: nicht übernommen
+        g = col["games"]["steam:3000002"]
+        self.assertEqual((g["name"], g["src"], g["store"]), ("Rally Moth", "steamacct", "Steam"))
+        rows = {r["key"]: r for r in collection.view(col, d)["games"]}
+        self.assertEqual(rows["steam:3000002"]["srcs"][0], "Steam-Konto")
+        self.assertNotIn("name:night tram", rows)
+        self.assertIn("epic:abc", rows)
+        # Playnite kennt die App jetzt: der Eintrag aus dem Konto bleibt nicht doppelt
+        collection.replace(col, {"steam:3000002": {"name": "Rally Moth", "system": "PC", "store": "Steam", "id": "3000002"},
+                                 "steam:3000001": {"name": "Harbor Heist", "system": "PC", "store": "Steam", "id": "3000001"}})
+        self.assertNotIn("src", col["games"]["steam:3000002"])
+        self.assertEqual(collection.sync_steam(col, d), (0, 0))
+        # Nicht mehr im Konto: fällt weg; ohne gelesenes Konto bleibt alles
+        col["games"]["steam:3000009"] = {"name": "Sky Garden", "store": "Steam", "id": "3000009", "src": "steamacct"}
+        self.assertEqual(collection.sync_steam(col, empty()), (0, 0))
+        self.assertEqual(collection.sync_steam(col, d), (0, 1))
 
     def test_parsers(self):
         self.assertEqual(accounts.steam_id_input("https://steamcommunity.com/profiles/76561190000000001/"), ("id", "76561190000000001"))
@@ -3186,6 +3236,19 @@ class TestUi(unittest.TestCase):
             src = f.read()
         for p in paths:
             self.assertIn(f'"{p}"', src, f"{p} fehlt im Server")
+
+    def test_ui_097(self):
+        """0.9.7: Crossbuy goldgelb in eigenen Tokens, Keyshop ohne Pink, „2+“ für Mehrspieler ohne Zahl,
+        Spieler und Koop als eigene Zeilen, sortierbare Köpfe in Jetzt und Wunschliste."""
+        js, css = self.read("js/app.js"), self.read("style.css")
+        self.assertIn('class="b cb"', js)
+        self.assertIn(".b.cb{background:var(--cb-bg);color:var(--cb)}", css)
+        self.assertNotIn("#a3247a", css)
+        self.assertNotIn("#e98bc9", css)
+        self.assertIn('title="${esc(`Mehrspieler, keine Quelle nennt eine Zahl', js)
+        self.assertIn('row("Koop", k.coop', js)
+        for part in ('function pcTable(rows, t = "pcw")', 'function vrTable(rows, t = "vrw")', 'sortRows("all", items, ALL_KEYS)'):
+            self.assertIn(part, js)
 
     def test_dark_tokens_match(self):
         import re

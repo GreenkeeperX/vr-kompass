@@ -7,9 +7,13 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.9.6:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.9.7:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
+Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
+Preise werden 18 Monate behalten, die Tabellen in Jetzt und Wunschliste sortieren per Klick auf den Spaltenkopf,
+die Einzelheiten folgen einer festen Reihenfolge (Wertung, Trend, Spieler, Koop, Spielzeit, Aktiv, Meta, Update,
+USK, Erschienen, VR per Mod, Sim-Racing, Mods), PC-Wünsche zeigen den Rabatt des günstigsten Ladens.
 
 ## Starten
 
@@ -379,7 +383,7 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
   Der Rabatt („−40 %“) gilt dem gezeigten Preis gegenüber dem Normalpreis dieses Ladens und ist nur Information.
   VR-Wünsche haben ab 0.9.4 Genre und Spielerzahl aus Steam und IGDB (Quelle „VR-Titel, Spielinfos“).
 - **Preisverlauf** (ab 0.9.1, wie im eShopKompass): „Preisverlauf“ in den Einzelheiten eines Wunschs öffnet die Kurve
-  je Laden der letzten 24 Monate, bei VR Meta, Steam und gg.deals, bei PC gg.deals und jeder Laden von IsThereAnyDeal
+  je Laden der letzten 18 Monate, bei VR Meta, Steam und gg.deals, bei PC gg.deals und jeder Laden von IsThereAnyDeal
   (beim ersten Abgleich mit Schlüssel rückwirkend, danach führt das Tool ihn fort). Gestrichelt das Tief und
   der typische Angebotspreis. Darunter je Laden: Preis jetzt, Normalpreis (der am längsten galt), tiefster Preis mit
   Tag, Zahl der Angebote (jede Strecke mindestens 3 % unter normal), ihre übliche Dauer, Anteil der Zeit im Angebot,
@@ -447,7 +451,7 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
     für den anderen Laden grau.
   - **Preise:** zwei feste Felder, Meta links, Steam rechts; fehlt ein Laden, bleibt sein Feld grau
     mit „kein Preis“. Je Feld Preis, Rabatt und Ende, darunter der Abstand zum **Bestpreis**
-    beider Läden, dem niedrigsten Preis von Meta oder Steam der letzten 24 Monate: rot „+3,50 € über
+    beider Läden, dem niedrigsten Preis von Meta oder Steam der letzten 18 Monate: rot „+3,50 € über
     Bestpreis“ mit Betrag, Laden und Prozent (jeder Aufpreis rot), gold „★ Bestpreis“
     (bis 2 % darüber). Neben dem Laden steht das Urteil wie im eShopKompass: grün „kaufen“ (bis
     2 % oder 0,50 € über dem Bestpreis beider Läden), grün umrandet „gut“ (bis 15 % oder 2 €). Kommt der Bestpreis aus dem anderen Laden, steht klein darunter der

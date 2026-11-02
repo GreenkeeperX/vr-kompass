@@ -72,9 +72,10 @@ def steam_owned(text):
 
 
 def steam_play(owned):
-    """Spielzeit je Steam-App aus steam_owned, für data.json: {App-ID: [Minuten, zuletzt gespielt]}. Ohne
-    Minuten (Steam nennt sie nicht) fällt die App weg."""
-    return {g["appid"]: [g["min"], g["last"]] for g in owned if g.get("min") is not None}
+    """Spielzeit je Steam-App aus steam_owned, für data.json: {App-ID: [Minuten, zuletzt gespielt, Name]}. Ohne
+    Minuten (Steam nennt sie nicht) fällt die App weg. Ab 0.9.7 mit dem Namen: Spiele, die Playnite nicht kennt,
+    kommen damit in die Sammlung (collection.sync_steam); ältere Einträge ohne Namen laden wie bisher."""
+    return {g["appid"]: [g["min"], g["last"], g.get("name") or ""] for g in owned if g.get("min") is not None}
 
 
 def steam_wishlist(text):

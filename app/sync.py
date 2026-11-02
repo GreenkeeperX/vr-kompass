@@ -351,7 +351,8 @@ def _search(src, t, url, pick, budget):
         if n >= budget or src.stopped:
             return None, n, False
         n += 1
-        text = src.get(url(name))
+        # 0.9.7: 404 bei einer Suche heißt „nichts gefunden“, kein Fehler; sonst beendeten seltsame Namen die Quelle
+        text = src.get(url(name), absent=(404,))
         if text is None:
             return None, n, False
         hit = pick(text)
@@ -591,6 +592,21 @@ def _history(hist, src, ident, price, day):
         rows.append([day, price])
 
 
+def _trim_history(hist, day):
+    """Verlauf auf anderthalb Jahre kürzen (0.9.7, wie prices.BEST_MONTHS): älteres fällt weg, der letzte Preis davor
+    bleibt als Anfang, damit der Preis am Beginn des Zeitraums bekannt ist."""
+    cut = (datetime.fromisoformat(day) - timedelta(days=prices.BEST_MONTHS * 31)).date().isoformat()
+    for per_src in hist.values():
+        if not isinstance(per_src, dict):
+            continue
+        for ident, rows in per_src.items():
+            i = 0
+            while i + 1 < len(rows) and rows[i + 1][0] <= cut:
+                i += 1
+            if i:
+                per_src[ident] = rows[i:]
+
+
 def apply(upd):
     """Ergebnis eines Laufs in die aktuelle data.json eintragen und den Verlauf fortschreiben.
     Titel, die es inzwischen nicht mehr gibt, fallen weg."""
@@ -650,6 +666,7 @@ def apply(upd):
             g = live.get("gg") or {}
             best = min([x for x in (g.get("retail"), g.get("keyshops")) if x is not None], default=None)
             _history(hist, "gg", t.get("steam_appid"), best, day)
+        _trim_history(hist, day)
         store.save_data(data)
         store.save_json("history.json", hist)
     sale = sum(1 for t in _targets(data).values()
@@ -1674,7 +1691,7 @@ def _itad(settings, log):
         except ValueError as e:
             log(str(e))
             break
-    # 0.9.1: einmal je Spiel der Verlauf je Laden der letzten 24 Monate, danach führt das Tool ihn selbst fort
+    # 0.9.1: einmal je Spiel der Verlauf je Laden der letzten 18 Monate, danach führt das Tool ihn selbst fort
     since = (now() - timedelta(days=verlauf.MONTHS * 31)).date().isoformat()
     back = {}
     for g in [g for g, es in known.items() if not any(e.get("sh_at") for e in es)][:ITAD_HIST]:
@@ -2386,9 +2403,12 @@ def run(only=None, boot=False, by_hand=False, fast=False):
             with store.lock:
                 col = store.load_json(collection.FILE, collection.EMPTY)
                 new, gone = collection.sync_pcvr(col, store.load_data())
+                snew, sgone = collection.sync_steam(col, store.load_data())
                 store.save_json(collection.FILE, col)
             if new or gone:
                 log(f"Sammlung: VR-Titel am PC ohne Playnite-Eintrag {new} neu" + (f", {gone} entfallen" if gone else ""))
+            if snew or sgone:
+                log(f"Sammlung: Spiele aus dem Steam-Konto ohne Playnite-Eintrag {snew} neu" + (f", {sgone} entfallen" if sgone else ""))
         except Exception as e:
             log(f"Sammlung: VR-Titel am PC nicht abgeglichen ({type(e).__name__})")
         if not only or "reviews" in only:

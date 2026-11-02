@@ -1,5 +1,5 @@
 """Preisverlauf je Titel (0.9.1), nach dem Vorbild des eShopKompass: je Laden die Kurve und daraus Normalpreis,
-Tief mit Tag, Angebote der letzten 24 Monate, ihre übliche Dauer, Anteil der Zeit im Angebot und das letzte Angebot.
+Tief mit Tag, Angebote der letzten 18 Monate, ihre übliche Dauer, Anteil der Zeit im Angebot und das letzte Angebot.
 
 Ein Verlauf ist eine Liste [[Tag, Preis]], je Eintrag der Preis ab diesem Tag (nur Änderungen). Ein Angebot ist
 jede Strecke mindestens SALE_TOL unter dem Normalpreis; Normalpreis ist der Preis, der im Zeitraum am längsten galt
@@ -8,7 +8,7 @@ ab zwei Angeboten; war das letzte tiefer, gilt dieses. Ohne Netz, nichts wird ge
 """
 from datetime import date, timedelta
 
-MONTHS = 24
+MONTHS = 18
 SALE_TOL = 0.03
 
 

@@ -78,7 +78,7 @@ def qsdb_game(text):
     return out
 
 
-BEST_MONTHS = 24
+BEST_MONTHS = 18          # 0.9.7: anderthalb Jahre (Entscheidung 01.11.2026), vorher 24
 BEST_TOL = 0.02         # bis 2 % darüber zählt als „am Bestpreis“ oder „am üblichen Angebot“
 
 
@@ -86,7 +86,7 @@ def best_of(hist, today, months=BEST_MONTHS):
     """Bestpreis aus einem Verlauf [[Tag, Preis]] (je Eintrag der Preis ab diesem Tag) über die
     letzten `months` Monate. Liefert {best, best_at, since, once, usual} oder None:
     best ist der niedrigste Preis (best_at der letzte Tag damit), since der Beginn des
-    Zeitraums (später als vor 24 Monaten, wenn der Verlauf kürzer ist; full ist dann False). once: der Bestpreis kam
+    Zeitraums (später als vor 18 Monaten, wenn der Verlauf kürzer ist; full ist dann False). once: der Bestpreis kam
     nur in einem einzigen Zeitraum vor. usual: der niedrigste Preis, der in mindestens zwei
     getrennten Zeiträumen galt (bis 2 % darüber), das übliche Angebot; None ohne Wiederholung."""
     d = date.fromisoformat(today)

@@ -288,7 +288,7 @@ def replace(col, games, src="playnite"):
     systems = {g.get("system") or "PC" for g in games.values()}
     # Spiele aus der Retro-Liste, dem eShopKompass und VR-Titel am PC (0.8.9) gehören nicht zum Playnite-Export und
     # bleiben immer stehen
-    games = dict({k: g for k, g in old.items() if ((g.get("system") or "PC") not in systems or g.get("src") in ("retro", ESHOP, PCVR))
+    games = dict({k: g for k, g in old.items() if ((g.get("system") or "PC") not in systems or g.get("src") in ("retro", ESHOP, PCVR, STEAMACCT))
                   and k not in games}, **games)
     new = 0
     for k, g in games.items():
@@ -309,6 +309,7 @@ def replace(col, games, src="playnite"):
 ESHOP = "eshop"
 ESHOP_MAX = 5000
 PCVR = "pcvr"           # 0.8.9: deine VR-Titel am PC, die Playnite nicht kennt
+STEAMACCT = "steamacct"  # 0.9.7: Spiele aus deinem Steam-Konto, die Playnite nicht kennt
 
 
 def _pl(v):
@@ -567,6 +568,40 @@ def sync_pcvr(col, data):
     return new, len(gone)
 
 
+def sync_steam(col, data):
+    """Spiele aus deinem Steam-Konto (GetOwnedGames, data["steam_play"]), die weder Playnite noch die VR-Titel am PC
+    kennen, als eigene Spiele unter „steam:<App-ID>“ (0.9.7), damit die Sammlung nicht vom Stand des letzten
+    Playnite-Exports abhängt. Abgerufenes bleibt; kennt Playnite die App inzwischen oder steht sie nicht mehr im
+    Konto, fällt der Eintrag weg. Ohne gelesenes Konto bleibt alles, wie es ist. Gibt (neu, entfallen) zurück."""
+    games = col.setdefault("games", {})
+    sp = data.get("steam_play") or {}
+    if not sp:
+        return 0, 0
+    names = data.get("steam_apps") or {}
+    known = {str(g.get("id")) for k, g in games.items() if g.get("src") != STEAMACCT
+             and str(g.get("id") or "").isdigit() and (g.get("store") == "Steam" or g.get("src") == PCVR)}
+    vr = {str(t.get("steam_appid")) for t in data["titles"].values() if t.get("steam_appid")}
+    gone = [k for k, g in games.items() if g.get("src") == STEAMACCT and (str(g.get("id")) not in sp or str(g.get("id")) in known)]
+    for k in gone:
+        del games[k]
+    new = 0
+    for app, v in sp.items():
+        k = "steam:" + app
+        if app in known or app in vr or (k in games and games[k].get("src") != STEAMACCT):
+            continue
+        name = (v[2] if len(v) > 2 else "") or (names.get(app) or {}).get("name") or ""
+        if not name:
+            continue
+        if k not in games:
+            new += 1
+            games[k] = {"name": name[:200], "store": "Steam", "id": app, "src": STEAMACCT, "mp": [], "players": 0,
+                        "genres": [], "released": "", "added": "", "dev": "", "pub": ""}
+        else:
+            games[k]["name"] = name[:200]
+    col["n"] = len(games)
+    return new, len(gone)
+
+
 def _pc_vr(rows, data, wmatch=None):
     """VR am PC (0.8.7): Steam-Spiele der Sammlung, die das Tool als VR kennt (VR-Titel oder VR-Prüfung im Store),
     tragen „VR“; nennt nur der Name VR, ist das ein Hinweis (vr_guess). Dazu kommen deine VR-Titel am PC, die
@@ -728,6 +763,8 @@ def view(col, data=None):
             r["guess"] = False              # Steam kennt die App und hat Rezensionen: Laden bestätigt
         check(r, g.get("steam") or {})
         r["srcs"] = ["Playnite"] + (["Steam"] if r["src"] == "steam" else []) if not r.get("retro") else ["Retro-Liste"]
+        if g.get("src") == STEAMACCT:
+            r["srcs"][0] = "Steam-Konto"
         if g.get("src") == PCVR:
             r["srcs"][0] = "VR-Titel im Tool"
             r.update(vr=True, vr_src="VR-Titel im Tool")
@@ -760,6 +797,10 @@ def view(col, data=None):
     esh = {titles.norm(r["name"]) for r in rows if r.get("eshop")}
     if esh:
         rows = [r for r in rows if r.get("eshop") or not (r["system"].startswith("Switch") and titles.norm(r["name"]) in esh)]
+    # Playnite führt manche Spiele zweimal, einmal ohne Launcher und Kennung (0.9.7): der Eintrag ohne fällt weg,
+    # wenn es dasselbe Spiel im selben System mit Launcher gibt
+    named = {(r["system"], titles.norm(r["name"])) for r in rows if r["store"]}
+    rows = [r for r in rows if r["store"] or not r["key"].startswith("name:") or (r["system"], titles.norm(r["name"])) not in named]
     # Switch und Switch 2 in einem Reiter „Switch 2“ (0.7.5, Entscheidung 27.10.2026: alle Switch-Spiele laufen
     # auf der Switch 2); sw1 merkt, dass es ein Switch-1-Spiel ist (Filter „System“)
     for r in rows:

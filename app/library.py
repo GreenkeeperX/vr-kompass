@@ -59,7 +59,7 @@ def _gg_low(g):
 
 
 def _best(hist, src, ident, price, today):
-    """Bestpreis der letzten 24 Monate je Shop aus dem Verlauf, dazu die Stufe des aktuellen
+    """Bestpreis der letzten 18 Monate je Shop aus dem Verlauf, dazu die Stufe des aktuellen
     Preises: best (höchstens 2 % über dem Bestpreis), usual (am üblichen Angebot) oder ""."""
     if not ident or price is None:
         return None

@@ -16,7 +16,7 @@ NEAR = 0.05         # bis 5 % über dem bisherigen Tief gilt als „nah am Tief�
 # Preissturz (0.8.18): eigener Preisverlauf je Spiel (ph: [[Tag, bester Preis]], nur Änderungen). Üblich ist der
 # Median der Tagespreise der letzten DROP_DAYS Tage; ein Preissturz liegt DROP_PCT darunter und DROP_EUR billiger.
 # Steam-Sales zählen nicht eigens: Keyshops sind oft billiger als ein Sale, es gilt der beste Preis
-PH_DAYS = 180       # so lange bleibt der Verlauf
+PH_DAYS = 18 * 31  # so lange bleibt der Verlauf (0.9.7: anderthalb Jahre, vorher 180 Tage)
 DROP_DAYS = 90
 DROP_MIN_DAYS = 21  # so viele Tage Verlauf braucht das Urteil
 DROP_PCT, DROP_EUR = 25, 3.0
@@ -287,6 +287,10 @@ def view(data, col=None):
         if it.get("shops"):
             lo = min((x for x in (gg.get("retail_low"), it.get("low")) if x is not None), default=None)
             r["shops"], r["shops_at"], r["shops_low"] = itad.shop_rows(it, lo, NEAR), it.get("at") or "", lo
+            # 0.9.7: Rabattmarke wie bei VR, vom günstigsten offiziellen Laden
+            top = min(it["shops"], key=lambda x: x.get("p") if x.get("p") is not None else 1e9)
+            if top.get("c"):
+                r["cut"], r["cut_shop"] = top["c"], top.get("s") or ""
         if isinstance((e.get("play") or {}).get("now"), int):
             r["active"] = {"now": e["play"]["now"], "at": e["play"].get("at") or ""}   # Aktiv (0.8.23)
         if best[0] is not None and low is not None:
