@@ -446,6 +446,13 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   GameTDB dieselbe Zahl wie IGDB oder libretro, „… und GameTDB“ und nicht violett. Jahr: „Laut GameTDB“; nennt GameTDB
   ein anderes Jahr, ist die Zahl violett und der Tooltip nennt es. Unten „GameTDB (ID)“ unter den Quellen und ein
   Link „GameTDB“ zur Spielseite.
+- Wikidata und Wikipedia (0.10.16; Retro-Spiele): Beschreibung mit Tooltip „Einleitung des Artikels „…“ der deutschen
+  Wikipedia“, nur wo keine deutsche steht; „Deutscher Titel“ mit „Laut Wikidata“, Freigabe mit „Laut Wikidata“; Spieler:
+  nennt Wikidata dieselbe Zahl, „… und Wikidata“ und nicht violett; ein anderes Jahr violett mit „Wikidata …“ im
+  Tooltip. Unten „Wikidata (Q…) und deutsche Wikipedia“ unter den Quellen und die Links „Wikipedia“ und „Wikidata“.
+- Filter der Sammlung (ab 0.10.16): Genre, dann Mehrspieler (Switch: Spielweise) direkt vor „max. Spieler“.
+- Preise in den Tabellen (ab 0.10.16) in normaler Stärke, PC wie VR; vorher war nur der PC-Preis fett (aus dem
+  eShopKompass übernommen). Was günstig ist, zeigen „überm Tief“, ★ und „Wo“.
 - DekuDeals (0.10.14; PC, PlayStation 4 und 5, Xbox, Switch aus Playnite): Spalte Spielzeit mit „Laut HowLongToBeat
   (über DekuDeals)“, IGDB im Tooltip, wenn es eine eigene Zahl hat; in den Einzelheiten die Zeile „Spielzeit“ (Hauptspiel,
   mit Extras, komplett). Wertung: OpenCritic neben Metacritic, Metacritic von DekuDeals mit Herkunft im Tooltip

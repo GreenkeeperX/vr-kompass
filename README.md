@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.15:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.16:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -67,6 +67,11 @@ je Spiel die Suche und die Spielseite, höchstens 30 Spiele je Lauf, bekannte zu
 zählt nur mit gleichem Namen und der richtigen Plattform (am PC „Steam“). Daraus kommen die Spielzeit laut
 HowLongToBeat (vor IGDB, IGDB bleibt im Tooltip), OpenCritic, Metacritic wo Steam keine nennt, USK oder PEGI, Deutsch
 wo Steam nichts sagt; Spieler, Genre und Jahr werden bestätigt oder ergänzt, ein anderes Jahr steht violett.
+Neu in 0.10.16: Wikidata und die deutsche Wikipedia im Abgleich für alle Retro-Spiele, bis 100 je Lauf: deutsche
+Beschreibung (Einleitung des Wikipedia-Artikels, wo GameTDB keine deutsche hat), deutscher Titel, USK oder PEGI, wo keine
+Freigabe steht, Spielerzahl zur Bestätigung. Ein Treffer zählt nur als Videospiel mit derselben Plattform oder, wo
+Wikidata nur eine andere Fassung führt, demselben Jahr. In der Sammlung steht der Filter Mehrspieler neben „max.
+Spieler“ (Genre davor); der PC-Preis ist nicht mehr fett, wie die VR-Preise.
 Neu in 0.10.15: Unter Einstellungen, „Zu erledigen“ führt jeder Name zu den Einzelheiten des Spiels: VR-Titel auf die
 Wunschliste VR (sonst in die Sammlung, Reiter VR), PC-Wünsche auf die Wunschliste PC, Retro-Spiele in ihr System der
 Sammlung; die Zeile ist aufgeklappt, gesucht wird nach dem Namen. Schneller: Der Server rechnet Zustand und Sammlung nach
@@ -657,10 +662,10 @@ Quelle, Auffälligkeiten der Selbstprüfung, Fehler im letzten Lauf. Einzelheite
   meist ohnehin unter PC.
   Filter, Mischungen und Zufall gelten im gewählten Reiter; unter „Alle“ trägt ein Konsolenspiel
   sein System als Marke. Steam-Abgleich und Steam-Wertung gibt es nur für PC-Spiele. Filter nach
-  Mehrspieler-Art (Menü mit Häkchen; mehrere gewählt: alle müssen passen: Mehrspieler, Online,
-  Koop, Lokal, Splitscreen, LAN, MMO), Genre (Menü mit Suche und Häkchen, umschaltbar zwischen
+  Genre (Menü mit Suche und Häkchen, umschaltbar zwischen
   „eines davon“ und „alle“; die Zahl hinter einem Genre zählt, was mit den übrigen Filtern übrig
-  bliebe), Spielerzahl, Launcher, Steam-Wertung und „über zwei Jahre in der Sammlung“; gewählte
+  bliebe), Mehrspieler-Art (Menü mit Häkchen; mehrere gewählt: alle müssen passen: Mehrspieler, Online,
+  Koop, Lokal, Splitscreen, LAN, MMO; ab 0.10.16 direkt vor der Spielerzahl), Spielerzahl, Launcher, Steam-Wertung und „über zwei Jahre in der Sammlung“; gewählte
   Mehrspieler-Arten und Genres stehen als Marken mit × darunter; sortiert nach Wertung, Geheimtipp, Bekanntheit, neu in der Sammlung, zuletzt gespielt, Jahr, Name
   oder Zufall. Ab 0.9.3 stehen bei Spielen aus Steam (auch VR-Titeln mit Steam-ID) unter Mein Stand die Spielzeit
   und der Tag, an dem du zuletzt gespielt hast, laut Steam-Konto; der Filter „Gespielt“ zeigt nie gespielte, seit

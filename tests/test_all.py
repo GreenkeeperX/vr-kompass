@@ -1842,6 +1842,100 @@ class TestSync(unittest.TestCase):
         # bleibt beim neuen Einlesen erhalten
         self.assertIn("deku", col["name:pc:harbor heist"])
 
+    def test_wiki(self):
+        """0.10.16: Wikidata und deutsche Wikipedia für Retro-Spiele. Erfundene Antworten im Aufbau der APIs: Suche,
+        Einträge, Bezeichnungen, Einleitungen; Treffer über die Plattform, sonst das Jahr; anderes Spiel gleichen Namens nicht."""
+        from app import wiki
+
+        def ent(q, de_label, en_label, plat, year, usk=None, players=None, article=None):
+            claims = {"P400": [{"rank": "normal", "mainsnak": {"datavalue": {"value": {"entity-type": "item", "id": p}}}} for p in plat],
+                      "P577": [{"rank": "normal", "mainsnak": {"datavalue": {"value": {"time": f"+{year}-03-01T00:00:00Z", "precision": 11}}}}]}
+            if usk:
+                claims["P914"] = [{"rank": "deprecated", "mainsnak": {"datavalue": {"value": {"id": "Q9006"}}}},
+                                  {"rank": "normal", "mainsnak": {"datavalue": {"value": {"entity-type": "item", "id": usk}}}}]
+            if players:
+                claims["P1873"] = [{"rank": "normal", "mainsnak": {"datavalue": {"value": {"amount": f"+{players}", "unit": "1"}}}}]
+            e = {"type": "item", "id": q, "labels": {"de": {"language": "de", "value": de_label}, "en": {"language": "en", "value": en_label}},
+                 "claims": claims, "sitelinks": {}}
+            if article:
+                e["sitelinks"]["dewiki"] = {"site": "dewiki", "title": article}
+            return e
+        search_star = json.dumps({"search": [{"id": "Q100", "label": "Star Hop", "description": "1994 film"},
+                                             {"id": "Q101", "label": "Star Hop", "description": "1993 video game"},
+                                             {"id": "Q102", "label": "Star Hop", "description": "2010 video game"}]})
+        search_tram = json.dumps({"search": [{"id": "Q200", "label": "The Night Tram", "description": "video game"}]})
+        ents = json.dumps({"entities": {
+            "Q101": ent("Q101", "Sternenhüpfer", "Star Hop", ["Q9001"], 1993, usk="Q9005", players=2, article="Sternenhüpfer (Videospiel)"),
+            "Q102": ent("Q102", "Star Hop", "Star Hop", ["Q9003"], 2010),
+            "Q200": ent("Q200", "The Night Tram", "The Night Tram", ["Q9003"], 2004, article="The Night Tram")}})
+        labels = json.dumps({"entities": {"Q9001": {"id": "Q9001", "labels": {"en": {"language": "en", "value": "Super Nintendo Entertainment System"}}},
+                                          "Q9003": {"id": "Q9003", "labels": {"en": {"language": "en", "value": "PlayStation 2"}}},
+                                          "Q9005": {"id": "Q9005", "labels": {"de": {"language": "de", "value": "USK ab 6"}}}}})
+        long = "Sternenhüpfer ist ein Jump ’n’ Run. " * 60
+        extr = json.dumps({"batchcomplete": True, "query": {
+            "normalized": [{"fromencoded": False, "from": "Sternenhüpfer_(Videospiel)", "to": "Sternenhüpfer (Videospiel)"}],
+            "pages": [{"pageid": 1, "ns": 0, "title": "Sternenhüpfer (Videospiel)", "extract": long},
+                      {"pageid": 2, "ns": 0, "title": "The Night Tram", "extract": "The Night Tram ist ein Rennspiel aus dem Jahr 2004."}]}})
+        self.assertEqual(wiki.candidates(search_star), ["Q101", "Q102"])
+        e = wiki.entities(ents)
+        self.assertEqual((e["Q101"]["usk"], e["Q101"]["players"], e["Q101"]["years"], e["Q101"]["de"]), (["Q9005"], 2, ["1993"], "Sternenhüpfer (Videospiel)"))
+        lab = wiki.label_map(labels)
+        g = {"name": "Star Hop", "system": "SNES", "src": "retro"}
+        self.assertEqual(wiki.pick(["Q101", "Q102"], e, g, lab)[0]["q"], "Q101")
+        self.assertEqual(wiki.pick(["Q102", "Q101"], e, g, lab)[1], "plat")
+        gba = {"name": "Night Tram, The", "system": "GBA", "src": "retro", "lr": {"year": "2004"}}
+        self.assertEqual(wiki.pick(["Q200"], e, gba, lab)[1], "year")          # Konsolenfassung, dasselbe Jahr
+        self.assertEqual(wiki.pick(["Q200"], e, dict(gba, lr={"year": "1999"}), lab), (None, ""))
+        self.assertEqual(wiki.query_name(gba), "The Night Tram")
+        ex = wiki.extracts(extr)
+        self.assertLessEqual(len(ex["Sternenhüpfer (Videospiel)"]), wiki.DESC_MAX)
+        self.assertTrue(ex["Sternenhüpfer (Videospiel)"].endswith("Run."))
+        self.assertEqual(ex["Sternenhüpfer_(Videospiel)"], ex["Sternenhüpfer (Videospiel)"])
+        # Abgleich: Suche je Spiel, Einträge und Bezeichnungen gebündelt, Einleitungen gebündelt; zweiter Lauf nichts
+        store.save_json(collection.FILE, {"games": {
+            "retro:snes:star hop": {"name": "Star Hop", "system": "SNES", "src": "retro", "mp": [], "players": 2, "genres": [],
+                                    "igdb": {"id": 9, "name": "Star Hop", "desc": "A hop.", "year": "1993", "off": 2, "modes": ["Multiplayer"], "genres": [], "v": 2, "at": "2099-01-01"}},
+            "retro:gba:the night tram": {"name": "Night Tram, The", "system": "GBA", "src": "retro", "mp": [], "players": 0, "genres": [],
+                                         "lr": {"year": "2004"}},
+            "retro:gb:orbit golf": {"name": "Orbit Golf", "system": "GB", "src": "retro", "mp": [], "players": 0, "genres": []},
+            "name:pc:rally moth": {"name": "Rally Moth", "system": "PC", "mp": [], "players": 0, "genres": []}}})
+        calls = []
+
+        def fake(url, timeout=25, ua=None, headers=None, data=None, raw=False):
+            calls.append(url)
+            self.assertIn("github.com/GreenkeeperX/vr-navigator", (headers or {}).get("User-Agent", ""))
+            if "wbsearchentities" in url:
+                return search_star if "Star" in url else search_tram if "Night" in url else json.dumps({"search": []})
+            if "wbgetentities" in url:
+                return labels if "props=labels&" in url else ents
+            if "de.wikipedia.org" in url:
+                return extr
+            raise AssertionError(url)
+        sources.fetch = fake
+        logs = []
+        r = sync._wiki(logs.append)
+        self.assertTrue(r["ok"])
+        self.assertEqual(sum("wbsearchentities" in c for c in calls), 3)
+        self.assertEqual(sum("wbgetentities" in c for c in calls), 2)
+        self.assertEqual(sum("de.wikipedia.org" in c for c in calls), 1)
+        self.assertFalse(any("Rally" in c for c in calls))
+        self.assertIn("Wikidata: 3 Retro-Spiele gelesen, 2 gefunden, 2 mit deutscher Beschreibung", "\n".join(logs))
+        col = store.load_json(collection.FILE, collection.EMPTY)["games"]
+        self.assertEqual(col["retro:snes:star hop"]["wiki"]["age"], ["USK", "6"])
+        self.assertTrue(col["retro:gb:orbit golf"]["wiki"]["none"])
+        self.assertEqual(store.load_json(wiki.FILE, {})["labels"]["Q9005"], "USK ab 6")
+        calls.clear()
+        sync._wiki(logs.append)
+        self.assertEqual(calls, [])
+        rows = {x["key"]: x for x in collection.view(store.load_json(collection.FILE, collection.EMPTY))["games"]}
+        s = rows["retro:snes:star hop"]
+        self.assertEqual((s["desc_lang"], s["desc_src"], s["wp"], s["dtitle"], s["dtitle_src"], s["age"], s["age_src"], s.get("pl_wd")),
+                         ("de", "Wikipedia", "Sternenhüpfer (Videospiel)", "Sternenhüpfer", "Wikidata", ["USK", "6"], "Wikidata", True))
+        n = rows["retro:gba:the night tram"]
+        self.assertEqual((n["desc"], n["wd"]), ("The Night Tram ist ein Rennspiel aus dem Jahr 2004.", "Q200"))
+        self.assertNotIn("dtitle", n)                     # deutsche Bezeichnung wie die englische
+        self.assertIn("Wikidata", s["srcs"])
+
     def test_run(self):
         self.seed()
         sync.save_settings({"gg_key": "geheim-1234567890abcd"})

@@ -26,7 +26,7 @@ import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from . import accounts, collection, deku, gametdb, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel
+from . import accounts, collection, deku, gametdb, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel, wiki
 
 PAUSE = 2.0
 PAGE_AGE_H = 20
@@ -44,7 +44,7 @@ JUMP = 0.5                  # Selbstprüfung: Normalpreis ändert sich um mehr a
 NAMES = {"steamacc": "Steam-Konto", "ggwish": "gg.deals-Wunschliste", "sharenite": "Sharenite", "qsdb": "QuestStoreDB", "steam": "Steam",
          "gg": "gg.deals", "reviews": "Steam-Rezensionen", "details": "Steam-Details",
          "rating": "Steam-Wertungen", "vrdb": "VRDB", "players": "Steam-Spieler", "active": "Aktive Spieler PC", "retro": "Retro-Fassungen",
-         "gametdb": "GameTDB", "deku": "DekuDeals", "igdb": "IGDB", "pcwish": "PC-Wunschliste", "pcinfo": "PC-Wunschliste, Spielinfos", "vrinfo": "VR-Titel, Spielinfos", "pcgw": "PCGamingWiki", "nexus": "Nexus Mods", "wheel": "Sim-Racing", "eshop": "eShopKompass",
+         "gametdb": "GameTDB", "deku": "DekuDeals", "wiki": "Wikidata", "igdb": "IGDB", "pcwish": "PC-Wunschliste", "pcinfo": "PC-Wunschliste, Spielinfos", "vrinfo": "VR-Titel, Spielinfos", "pcgw": "PCGamingWiki", "nexus": "Nexus Mods", "wheel": "Sim-Racing", "eshop": "eShopKompass",
          "itad": "IsThereAnyDeal"}
 SHOPS = {"meta": "Meta", "steam": "Steam", "gg": "gg.deals Händler"}
 QSDB_HEAD = {"Cookie": "currency=EUR"}     # Preise und Verlauf in Euro
@@ -100,10 +100,13 @@ IGDB_PAUSE = 0.3            # IGDB erlaubt 4 Anfragen je Sekunde
 DEKU_MAX = 30               # DekuDeals (0.10.14): Spiele je Lauf, je Spiel Suche und Seite
 DEKU_DAYS = 120             # ein Spiel nach so vielen Tagen neu
 DEKU_MISS_DAYS = 60         # ohne Treffer nach so vielen Tagen neu
+WIKI_MAX = 100              # Wikidata (0.10.16): Retro-Spiele je Lauf, je Spiel eine Suche, dazu gebündelte Anfragen
+WIKI_DAYS = 180             # ein Spiel nach so vielen Tagen neu
+WIKI_MISS_DAYS = 90         # ohne Treffer nach so vielen Tagen neu
 # Beschleunigt auffüllen (0.8.6): ein Lauf von Hand mit FAST-fachen Grenzen für die langen Warteschlangen.
 # Pausen und der Abbruch bei 403 und 429 bleiben; der Lauf dauert dafür entsprechend länger.
 FAST = 5
-FAST_LIMITS = ("DEKU_MAX", "ACTIVE_MAX", "TREND_MAX", "REVIEWS_MAX", "DETAILS_MAX", "RATING_MAX", "IGDB_NAMES", "PCGW_MAX", "NEXUS_MAX", "WHEEL_MAX", "PCWISH_INFO",
+FAST_LIMITS = ("DEKU_MAX", "WIKI_MAX", "ACTIVE_MAX", "TREND_MAX", "REVIEWS_MAX", "DETAILS_MAX", "RATING_MAX", "IGDB_NAMES", "PCGW_MAX", "NEXUS_MAX", "WHEEL_MAX", "PCWISH_INFO",
                "PLAYERS_MAX", "VRDB_MAX", "PCWISH_SEARCH", "ITAD_HIST", "VRINFO_MAX", "VRINFO_NAMES")
 RATING_MAX = 60             # Steam-Rezensionen je Lauf für Titel auf Wunschliste und in der Bibliothek
 
@@ -1153,6 +1156,83 @@ def _deku(log):
     left = len(todo) - len(got)
     src.stats = {"read": len(got), "left": left}
     log(f"DekuDeals: {len(got)} Spiele gelesen, {hit} gefunden"
+        + (f", {left} noch offen (je Lauf {limit}{_runs(left, limit, ', ')})" if left else ", alle aktuell") + f", {_took(start)}")
+    return src.result()
+
+
+def _wiki(log):
+    """Wikidata und die deutsche Wikipedia (0.10.16) für die Retro-Spiele: je Spiel eine Suche nach dem Namen, die
+    Treffer gebündelt (50 je Anfrage), Bezeichnungen der Plattformen und Freigaben nur, wenn noch unbekannt, die
+    Einleitungen der Artikel gebündelt (20 je Anfrage). Höchstens WIKI_MAX Spiele je Lauf (beschleunigt mal FAST),
+    die am längsten nicht gelesenen zuerst; nach WIKI_DAYS neu, ohne Treffer nach WIKI_MISS_DAYS."""
+    start = time.monotonic()
+    src = _Source("Wikidata", log, headers=wiki.HEAD)
+    col = store.load_json(collection.FILE, collection.EMPTY)
+    old, old_miss = _iso(now() - timedelta(days=WIKI_DAYS)), _iso(now() - timedelta(days=WIKI_MISS_DAYS))
+
+    def due(g):
+        r = g.get("wiki") or {}
+        return not r or r.get("v") != wiki.V or (r.get("at") or "") < (old_miss if r.get("none") else old)
+    todo = sorted((((g.get("wiki") or {}).get("at") or ""), k) for k, g in (col.get("games") or {}).items() if wiki.wanted(g) and due(g))
+    if not todo:
+        log("Wikidata: alle aktuell" if any(wiki.wanted(g) for g in (col.get("games") or {}).values()) else "Wikidata: keine Retro-Spiele, nichts zu tun")
+        return src.result()
+    limit = WIKI_MAX
+    batch = [k for _, k in todo[:limit]]
+    cands = {}
+    for i, k in enumerate(batch):
+        progress("Wikidata", i, len(batch))
+        text = src.get(wiki.search_url(wiki.query_name(col["games"][k])), shown=f"Wikidata, Suche „{col['games'][k]['name'][:40]}“")
+        if text is None:
+            if src.stopped:
+                break
+            continue
+        try:
+            cands[k] = wiki.candidates(text)
+        except ValueError:
+            src.errors += 1
+    ents, done_q = {}, set()
+    qs = list(dict.fromkeys(q for v in cands.values() for q in v))
+    for i in range(0, len(qs), 50):
+        if src.stopped:
+            break
+        text = src.get(wiki.entities_url(qs[i:i + 50]), shown="Wikidata, Einträge")
+        if text is not None:
+            ents.update(wiki.entities(text))
+            done_q.update(qs[i:i + 50])
+    state = store.load_json(wiki.FILE, {})
+    labels = dict(state.get("labels") or {})
+    need = wiki.needs_labels(ents, labels)
+    for i in range(0, len(need), 50):
+        if src.stopped:
+            break
+        text = src.get(wiki.entities_url(need[i:i + 50], props="labels"), shown="Wikidata, Bezeichnungen")
+        if text is not None:
+            labels.update(wiki.label_map(text))
+    picks = {k: wiki.pick(v, ents, col["games"][k], labels) for k, v in cands.items() if all(q in done_q for q in v)}
+    arts = list(dict.fromkeys(e["de"] for e, _ in picks.values() if e and e["de"]))
+    descs = {}
+    for i in range(0, len(arts), 20):
+        if src.stopped:
+            break
+        text = src.get(wiki.extracts_url(arts[i:i + 20]), shown="Wikipedia, Einleitungen")
+        if text is not None:
+            descs.update(wiki.extracts(text))
+    stamp = titles.now_iso()
+    with store.lock:
+        col = store.load_json(collection.FILE, collection.EMPTY)
+        for k, (e, via) in picks.items():
+            if k in col.get("games", {}):
+                col["games"][k]["wiki"] = dict(wiki.compact(e, via, labels, descs.get(e["de"], "")), at=stamp, v=wiki.V) if e \
+                    else {"none": True, "at": stamp, "v": wiki.V}
+        store.save_json(collection.FILE, col)
+    if labels != (state.get("labels") or {}):
+        store.save_json(wiki.FILE, dict(state, labels=labels))
+    hit = sum(1 for e, _ in picks.values() if e)
+    with_desc = sum(1 for e, _ in picks.values() if e and descs.get(e["de"]))
+    left = len(todo) - len(picks)
+    src.stats = {"read": len(picks), "left": left}
+    log(f"Wikidata: {len(picks)} Retro-Spiele gelesen, {hit} gefunden, {with_desc} mit deutscher Beschreibung"
         + (f", {left} noch offen (je Lauf {limit}{_runs(left, limit, ', ')})" if left else ", alle aktuell") + f", {_took(start)}")
     return src.result()
 
@@ -2586,6 +2666,7 @@ def run(only=None, boot=False, by_hand=False, fast=False):
             do("gametdb", lambda: _gametdb(log))
         if not only or "deku" in only:
             do("deku", lambda: _deku(log))
+            do("wiki", lambda: _wiki(log))
         if sources.eshop_url() and (not only or "eshop" in only):
             do("eshop", lambda: _eshop(log))
         progress("Speichern")
