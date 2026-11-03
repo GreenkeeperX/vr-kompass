@@ -2553,7 +2553,7 @@ def _assign(log, budget, rest):
             found.append(t["name"])
         wish_back = lists.undo_auto(data)
         store.save_data(data)
-        left = titles.todo(data)
+        left = [x for x in titles.todo(data) if x["kind"] != "opinion"]      # Meinungen sind keine Zuordnung
     if wish_back:
         log(f"Wunschliste: wieder gewünscht, steht unter „Gekauft, noch auf der Wunschliste“ ({len(wish_back)}): {_few(wish_back)}")
     if unsure:

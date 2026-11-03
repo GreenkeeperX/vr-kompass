@@ -2,7 +2,7 @@
 
 ## Auftrag (ab 0.9.2)
 
-Unter Einstellungen, „Zu erledigen“, stehen in „Meinung fehlt“ die VR-Wünsche ohne Recherche.
+Unter Einstellungen, „Zu erledigen“, stehen in „Meinung fehlt“ die VR-Wünsche ohne Recherche, ab 0.10.25 danach die Titel deiner VR-Sammlung, von denen du nur eine Fassung hast (im Auftrag mit „gekauft“).
 „Auftrag kopieren“ legt einen Text in die Zwischenablage: was zu recherchieren ist (Meta oder Steam,
 Mehrspieler, Pflege, Crossbuy), die Titel mit Meta-ID und Steam-App-ID und der Aufbau der Antwort
 unten; höchstens 25 Titel je Auftrag, die zuletzt gewünschten zuerst, damit ein Lauf gründlich bleibt. Nach dem
@@ -59,6 +59,7 @@ kennt (Meta-ID, Steam-App-ID oder Name). Gespeichert wird nur im Datenordner, ni
 | `umfang` | ab 0.10.17: Spielzeit und Inhalt (Kampagne, Level, Modi) |
 | `komfort` | Bewegung, Sitzen oder Stehen, Spieldauer |
 | `warnungen` | Bugs, Abbruch der Entwicklung, Bezahlinhalte |
+| `zweitkauf`, `zweitkauf_grund` | ab 0.10.25, nur bei Titeln mit „gekauft“: `true` oder `false`, ob sich die Fassung im anderen Laden zusätzlich lohnt, mit Grund |
 | `quellen` | Links (nur http/https) mit Titel und Datum |
 
 ## Crossbuy und Crossplay

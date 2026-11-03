@@ -2078,7 +2078,7 @@ function settingsView(){
         <button data-act="merge" data-a="${esc(x.a)}" data-b="${esc(x.b)}" title="Ein Eintrag mit diesem Namen">„${esc(x.a_name)}“</button>
         <button data-act="merge" data-a="${esc(x.b)}" data-b="${esc(x.a)}" title="Ein Eintrag mit diesem Namen">„${esc(x.b_name)}“</button>
         oder <button data-act="notsame" data-a="${esc(x.a)}" data-b="${esc(x.b)}">Verschieden</button></span></div>`).join("")}</div>`;
-  const steamTodo = todo.filter(x => x.kind === "steam"), metaTodo = todo.filter(x => x.kind === "meta"), opTodo = todo.filter(x => x.kind === "opinion").sort((x, y) => (y.row?.added || "").localeCompare(x.row?.added || ""));
+  const steamTodo = todo.filter(x => x.kind === "steam"), metaTodo = todo.filter(x => x.kind === "meta"), opTodo = todo.filter(x => x.kind === "opinion").sort((x, y) => !x.owned - !y.owned || (y.row?.added || "").localeCompare(x.row?.added || ""));
   const steamList = `<p class="hint">Diese Steam-IDs stammen nur aus einem Namen, und die Prüfung im Steam-Store hat sie nicht bestätigt.</p>
     <div class="list">${steamTodo.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")} <a href="https://store.steampowered.com/app/${esc(x.steam_appid)}/" target="_blank" rel="noopener noreferrer">Steam ${esc(x.steam_appid)}</a></span>
       <span class="row2"><span class="hint">${esc(x.why)}</span>
@@ -2090,10 +2090,10 @@ function settingsView(){
         <a href="https://queststoredb.com/all_apps/?release_status=all&amp;q=${encodeURIComponent(x.name)}" target="_blank" rel="noopener noreferrer">suchen</a>
         <button class="link" data-act="edit" data-k="${esc(x.key)}">bearbeiten</button></span></div>`).join("")}</div>`;
   // Meinung fehlt (0.9.2): Wünsche ohne Recherche; der Auftrag geht an eine Claude-Routine, die Antwort kommt über Einlesen zurück
-  const opList = `<p class="hint">Für diese VR-Wünsche fehlt noch die Recherche, ob Meta oder Steam die bessere Wahl ist; Mehrspieler-Titel kommen nach sechs Monaten wieder (die Lobbys ändern sich). „Auftrag kopieren“ nimmt bis zu ${S.opinion_batch || 25} davon mit Kennungen und dem verlangten Aufbau; füg ihn in deine Claude-Routine oder einen Chat ein und lies die Antwort unter Einlesen, „Datei oder Text“ ein. Danach verschwinden die Titel von hier.</p>
+  const opList = `<p class="hint">Für diese VR-Wünsche fehlt noch die Recherche, ob Meta oder Steam die bessere Wahl ist, ab 0.10.25 auch für deine VR-Sammlung, solange du nur eine Fassung hast (lohnt die andere zusätzlich?). Der Auftrag nimmt erst die Wünsche, dann die Sammlung; Mehrspieler-Titel kommen nach sechs Monaten wieder (die Lobbys ändern sich). „Auftrag kopieren“ nimmt bis zu ${S.opinion_batch || 25} davon mit Kennungen und dem verlangten Aufbau; füg ihn in deine Claude-Routine oder einen Chat ein und lies die Antwort unter Einlesen, „Datei oder Text“ ein. Danach verschwinden die Titel von hier.</p>
     <div class="bar"><button class="primary" data-act="opcopy" title="Die zuletzt gewünschten zuerst; nach dem Einlesen der Antwort kommen die nächsten">Auftrag kopieren${opTodo.length > S.opinion_batch ? ` (${S.opinion_batch} von ${opTodo.length})` : ""}</button></div>
     <div class="list">${opTodo.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")}</span>
-      <span class="row2"><span class="hint">${[x.meta_id && "Meta", x.steam_appid && "Steam"].filter(Boolean).join(" und ") || "ohne Kennung"}${x.old ? ` · ${esc(x.why)}` : ""}</span>
+      <span class="row2"><span class="hint">${[x.meta_id && "Meta", x.steam_appid && "Steam"].filter(Boolean).join(" und ") || "ohne Kennung"}${x.owned ? ` · Sammlung, gekauft bei ${esc(x.owned)}` : ""}${x.old ? ` · ${esc(x.why)}` : ""}</span>
         ${(x.row?.links || []).filter(l => l.label === "Reddit" || l.label === "Google").map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a>`).join(" ")}</span></div>`).join("")}</div>`;
   // PC-Wunschliste (0.8.24): Steam-ID nur nach der Grundform des Namens, oder mehrere Vorschläge zur Wahl
   const sLink = (id, name) => `<a href="https://store.steampowered.com/app/${esc(id)}/" target="_blank" rel="noopener noreferrer">${esc(name || "Steam " + id)}</a>`;
@@ -2134,7 +2134,7 @@ function settingsView(){
   todoReg("owndoubt", "Besitz widerspricht sich", ["Name", "Laden", "Grund"], own.map(x => [x.name, x.kind === "steam" ? "Steam" : "Meta", x.why]));
   todoReg("steamtodo", "Steam-ID prüfen", ["Name", "Steam-ID", "Grund", "Steam-Seite"], steamTodo.map(x => [x.name, x.steam_appid, x.why, `https://store.steampowered.com/app/${x.steam_appid}/`]));
   todoReg("metatodo", "Ohne Meta-ID", ["Name", "Grund", "Herkunft"], metaTodo.map(x => [x.name, x.why, originPlain(x.row)]));
-  todoReg("optodo", "Meinung fehlt", ["Name", "Meta-ID", "Steam-ID", "Stand"], opTodo.map(x => [x.name, x.meta_id, x.steam_appid, x.why]));
+  todoReg("optodo", "Meinung fehlt", ["Name", "Meta-ID", "Steam-ID", "Stand"], opTodo.map(x => [x.name, x.meta_id, x.steam_appid, x.owned ? `Sammlung (${x.owned}), ${x.why}` : x.why]));
   todoReg("pcids", "PC-Wunsch Steam-ID", ["Name", "Steam-IDs", "Art"], pcIds.map(x => [x.name, x.kind === "near" ? `${x.appid} ${x.steam || ""}`.trim() : x.cands.map(c => `${c.appid} ${c.name || ""}`.trim()).join(" | "), x.kind === "near" ? "übernommen, bestätigen" : "Vorschläge"]));
   todoReg("retronear", "Retro ähnlicher Name", ["Name", "System", "Ähnlich in der Liste"], near.map(x => [x.name, x.system, x.near]));
   todoReg("retrode", "Retro DE fehlt", ["Name", "System", "Gesucht"], rde.map(x => [x.name, x.system, x.alt]));
@@ -2260,11 +2260,13 @@ function opinionHtml(r){
   const MPX = {lebendig: "lebendig", ruhig: "ruhig", tot: "tot", keiner: "keiner"};
   const split = o.mehrspieler_quest || o.mehrspieler_pc ? `Mehrspieler Quest ${MPX[o.mehrspieler_quest] || "?"}, PC ${MPX[o.mehrspieler_pc] || "?"}` : "";
   const head = [o.fassung && FASSUNG[o.fassung], split || (o.mehrspieler && MP[o.mehrspieler]), o.aktueller && AKT[o.aktueller],
-    o.crossplay === true ? "Crossplay Quest/PC" : o.crossplay === false ? "kein Crossplay Quest/PC" : ""].filter(Boolean).join(" · ");
+    o.crossplay === true ? "Crossplay Quest/PC" : o.crossplay === false ? "kein Crossplay Quest/PC" : "",
+    o.zweitkauf === true ? "andere Fassung lohnt zusätzlich" : ""].filter(Boolean).join(" · ");
   const rows = [["Fazit", o.fazit], ["Fassung", o.fassung_grund], ["Technik Quest", o.technik_quest], ["Technik PC", o.technik_pc],
     ["Aktueller", o.aktueller_grund], ["Mehrspieler", o.mehrspieler_stand], ["Pflege", o.pflege], ["Umfang", o.umfang],
     ["Deutsch", o.deutsch === true || o.deutsch === false ? (o.deutsch ? "ja" : "nein") + (o.deutsch_grund ? ` (${o.deutsch_grund})` : "") : ""],
-    ["Crossbuy", o.crossbuy_grund], ["Crossplay Quest/PC", o.crossplay_grund], ["Komfort", o.komfort], ["Warnungen", o.warnungen]].filter(x => x[1]);
+    ["Crossbuy", o.crossbuy_grund], ["Crossplay Quest/PC", o.crossplay_grund], ["Komfort", o.komfort], ["Warnungen", o.warnungen],
+    ["Zweitkauf", o.zweitkauf === true || o.zweitkauf === false ? (o.zweitkauf ? "lohnt" : "lohnt nicht") + (o.zweitkauf_grund ? ` (${o.zweitkauf_grund})` : "") : ""]].filter(x => x[1]);
   const src = (o.quellen || []).filter(q => safeUrl(q.url)).map(q =>
     `<a href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">${esc(q.titel || q.url.replace(/^https?:\/\/([^\/?#]+).*$/i, "$1"))}</a>${q.datum ? ` <span class="hint">${esc(q.datum)}</span>` : ""}`).join(" · ");
   // Recherche ist nicht gemessen: violett gestrichelt wie andere unsichere Werte

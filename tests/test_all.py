@@ -1296,6 +1296,25 @@ class TestAufgaben(unittest.TestCase):
         aufgaben.apply(self.ans("pcid", {"id": "lantern", "antwort": "2"}), d, near, own, pc, dry=False, act=act)
         self.assertEqual(seen, [("near", "retro:gb:x", True), ("own", "retro:gb:y", True), ("pcid", "lantern", "2")])
 
+    def test_opinions_collection(self):
+        # 0.10.25: erst Wünsche, dann deine VR-Sammlung mit nur einer Fassung; Zweitkauf aus der Recherche
+        d = empty()
+        w, _ = titles.upsert(d, "Glass Tide", "5555555555555555", "")
+        d["titles"][w]["wish"] = True
+        o, _ = titles.upsert(d, "Cloud Harbor", "", "3000042")
+        d["titles"][o]["owned"] = {"pc": {"src": "steam", "label": "Steam"}}
+        both, _ = titles.upsert(d, "Moon Diver", "6666666666666666", "3000043")
+        d["titles"][both]["owned"] = {"pc": {"src": "steam", "label": "Steam"}, "meta": {"src": "meta"}}
+        task = imports.opinion_task(d)
+        self.assertLess(task.index("Glass Tide"), task.index("Cloud Harbor"))
+        self.assertIn('"gekauft": "Steam"', task)
+        self.assertNotIn("Moon Diver", task)
+        self.assertIn("zweitkauf", task)
+        o2 = imports.parse_opinions({"app": imports.OPINION_MARK, "titles": [
+            {"name": "Cloud Harbor", "steam_appid": "3000042", "zweitkauf": True, "zweitkauf_grund": "Quest-Fassung mit mehr Inhalt"},
+            {"name": "Glass Tide", "zweitkauf": "ja"}]})
+        self.assertEqual((o2[0]["zweitkauf"], o2[0]["zweitkauf_grund"], o2[1]["zweitkauf"]), (True, "Quest-Fassung mit mehr Inhalt", None))
+
     def test_detect(self):
         self.assertEqual(imports.detect(json.dumps({"app": aufgaben.MARK, "liste": "meta"})), "todo")
 
@@ -2212,8 +2231,11 @@ class TestSync(unittest.TestCase):
         self.assertTrue(by["Orbit Golf"][1]["steam_sure"])
         self.assertIn("Orbit Golf VR", by["Orbit Golf"][1]["aliases"])
         self.assertEqual(by["Comet Chase"][1]["steam_doubt"], "laut Steam ohne VR: Comet Chase")
-        todo = {x["name"]: x for x in library.view(d)["todo"]}
+        todo = {x["name"]: x for x in library.view(d)["todo"] if x["kind"] != "opinion"}
         self.assertEqual(set(todo), {"Comet Chase", "Nebula Drift", "Moon Rover Bundle"})
+        # 0.10.25: gekaufte Titel mit nur einer Fassung warten auf eine Meinung (lohnt die andere zusätzlich?)
+        ops = {x["name"]: x["owned"] for x in library.view(d)["todo"] if x["kind"] == "opinion"}
+        self.assertEqual(ops.get("Star Ride"), "Meta")
         self.assertEqual(todo["Comet Chase"]["kind"], "steam")
         self.assertTrue(todo["Moon Rover Bundle"]["why"].startswith("Bundle:"))
         log = "\n".join(sync.status()["log"])
