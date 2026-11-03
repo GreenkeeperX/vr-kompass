@@ -541,7 +541,7 @@ def todo(data):
         if t.get("steam_appid") and not t.get("steam_sure") and t.get("steam_doubt"):
             out.append({"key": k, "name": t["name"], "kind": "steam", "steam_appid": t["steam_appid"],
                         "why": t["steam_doubt"]})
-        if t.get("meta_miss") and not t.get("meta_id") and not t.get("contains") and \
+        if t.get("meta_miss") and not t.get("meta_id") and not t.get("contains") and not t.get("meta_none") and \
                 ((t.get("owned") or {}).get("meta") or not t.get("steam_appid")):
             why = "bei QuestStoreDB nicht gefunden, gesucht als " + ", ".join(f"„{x}“" for x in store_names(t)[:4])
             if is_bundle(t):

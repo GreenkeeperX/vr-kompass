@@ -2020,6 +2020,39 @@ function box(id, title, info, body){
 function sub(k, title, info, body, shut, id){
   return `<details class="sub" ${foldAttr(k, shut)}${id ? ` id="${id}"` : ""}><summary><b>${title}</b>${info ? ` <span class="n">${info}</span>` : ""}</summary>${body}</details>`;
 }
+/* „Zu erledigen“ herunterladen und als Auftrag (0.10.24): je Liste eine CSV-Datei mit dem, was dort steht; wo eine
+   Recherche helfen kann, dazu ein Auftrag wie bei den Meinungen (Text aus aufgaben.py, Antwort unter Einlesen) */
+const TODO_TASK = {steamtodo: "steam", metatodo: "meta", pcids: "pcid", sug: "sug", retronear: "near", retroown: "own"};
+function todoReg(id, title, head, rows){ (V.todoCsv = V.todoCsv || {})[id] = {title, head, rows}; }
+function todoTools(id){
+  const t = TODO_TASK[id], task = t && S.todo_tasks?.[t], n = V.todoCsv?.[id]?.rows.length || 0;
+  return `<div class="bar slim"><button data-act="tododl" data-v="${id}" title="Diese Liste als CSV-Datei, etwa für Excel oder LibreOffice">herunterladen</button>${task ? ` <button data-act="todotask" data-v="${t}" title="Auftrag für eine Claude-Routine oder einen Chat; die Antwort liest du unter Einlesen, „Datei oder Text“ ein und siehst erst eine Vorschau">Auftrag kopieren${n > (S.todo_batch || 50) ? ` (${S.todo_batch || 50} von ${n})` : ""}</button>` : ""}</div>`;
+}
+// Werkzeuge hinter den ersten Absatz der Liste
+const withTools = (id, html) => { const i = html.indexOf("</p>"); return i < 0 ? todoTools(id) + html : html.slice(0, i + 4) + todoTools(id) + html.slice(i + 4); };
+function csvFile(name, head, rows){
+  const cell = v => { v = String(v ?? ""); return /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+  const lines = [head, ...rows].map(r => r.map(cell).join(";"));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\r\n")], {type: "text/csv;charset=utf-8"}));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+function todoDownload(id){
+  const all = id === "all", R = V.todoCsv || {};
+  const ids = all ? Object.keys(R).filter(k => R[k].rows.length) : [id];
+  if(!ids.length) return;
+  if(all){
+    // Eine Datei für alles: Liste, Name und die übrigen Angaben in einer Spalte
+    const rows = ids.flatMap(k => R[k].rows.map(r => [R[k].title, r[0], R[k].head.slice(1).map((h, i) => r[i + 1] ? `${h}: ${r[i + 1]}` : "").filter(Boolean).join(" · ")]));
+    csvFile("zu-erledigen.csv", ["Liste", "Name", "Angaben"], rows);
+    toast(`${num(rows.length)} Einträge als zu-erledigen.csv`);
+    return;
+  }
+  const r = R[id], name = "zu-erledigen-" + r.title.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".csv";
+  csvFile(name, r.head, r.rows);
+  toast(`${num(r.rows.length)} Einträge als ${name}`);
+}
+const originPlain = r => (r?.origin || []).map(o => `${o.label}${o.detail ? ", " + o.detail : ""}${o.at ? " (" + day(o.at) + ")" : ""}${o.guess ? " (vermutet)" : ""}`).join(" · ");
 // Letzte Zeile des Protokolls ohne Uhrzeit, etwa „fertig, 58 Titel aktualisiert“
 const lastLine = sy => { const l = sy.log || []; return {end: (l[l.length - 1] || "").replace(/^\d\d:\d\d:\d\d /, "")}; };
 function settingsView(){
@@ -2095,20 +2128,32 @@ function settingsView(){
     <div class="list">${xs.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "g", x.system)}</span>
       <span class="row2"><span class="hint${x.guess ? " gxc" : ""}"${x.guess ? ' title="Deutsch dieser Fassung nur aus der Region geschätzt"' : ""}>gesucht: ${esc(x.alt)}</span>
         <button data-act="deign" data-k="${esc(x.key)}" data-v="1" title="Deine Fassung reicht; „DE fehlt“ verschwindet">ignorieren</button></span></div>`).join("")}</div>`; }).join("")}`;
+  V.todoCsv = {};
+  listsHtml();      // meldet die Gruppen der Wunschliste an (todoReg)
+  todoReg("sug", "Derselbe Titel", ["Name A", "Name B"], S.suggestions.map(x => [x.a_name, x.b_name]));
+  todoReg("owndoubt", "Besitz widerspricht sich", ["Name", "Laden", "Grund"], own.map(x => [x.name, x.kind === "steam" ? "Steam" : "Meta", x.why]));
+  todoReg("steamtodo", "Steam-ID prüfen", ["Name", "Steam-ID", "Grund", "Steam-Seite"], steamTodo.map(x => [x.name, x.steam_appid, x.why, `https://store.steampowered.com/app/${x.steam_appid}/`]));
+  todoReg("metatodo", "Ohne Meta-ID", ["Name", "Grund", "Herkunft"], metaTodo.map(x => [x.name, x.why, originPlain(x.row)]));
+  todoReg("optodo", "Meinung fehlt", ["Name", "Meta-ID", "Steam-ID", "Stand"], opTodo.map(x => [x.name, x.meta_id, x.steam_appid, x.why]));
+  todoReg("pcids", "PC-Wunsch Steam-ID", ["Name", "Steam-IDs", "Art"], pcIds.map(x => [x.name, x.kind === "near" ? `${x.appid} ${x.steam || ""}`.trim() : x.cands.map(c => `${c.appid} ${c.name || ""}`.trim()).join(" | "), x.kind === "near" ? "übernommen, bestätigen" : "Vorschläge"]));
+  todoReg("retronear", "Retro ähnlicher Name", ["Name", "System", "Ähnlich in der Liste"], near.map(x => [x.name, x.system, x.near]));
+  todoReg("retrode", "Retro DE fehlt", ["Name", "System", "Gesucht"], rde.map(x => [x.name, x.system, x.alt]));
+  todoReg("retroown", "Retro Genre weicht ab", ["Name", "System", "Dein Genre", "Andere"], rown.map(x => [x.name, x.system, x.diff[0].own, x.diff.map(d => d.other).join("; ")]));
   // Zahlen, die etwas zu tun bedeuten, violett und fett (0.7.4, wie im eShopKompass „offen“)
   const tn = n => `<b class="warnc">${n}</b>`;
   const sugCard = open ? box("todo", "Zu erledigen", `${tn(open)} offen`, `
-    <p class="hint">Was das Tool nicht selbst klären konnte. Alles andere ordnet es bei jedem Abgleich von allein zu.</p>
+    <p class="hint">Was das Tool nicht selbst klären konnte. Alles andere ordnet es bei jedem Abgleich von allein zu. Jede Liste lässt sich herunterladen; wo eine Recherche helfen kann, gibt es dazu einen Auftrag wie bei den Meinungen.</p>
+    <div class="bar slim"><button data-act="tododl" data-v="all" title="Alle Listen in einer CSV-Datei">alles herunterladen</button></div>
     ${listsHtml()}
-    ${sug ? sub("sug", "Derselbe Titel?", `${tn(S.suggestions.length)} ${S.suggestions.length === 1 ? "Paar" : "Paare"}`, sugList) : ""}
-    ${own.length ? sub("owndoubt", "Besitz: Quellen widersprechen sich", tn(own.length), ownDoubt) : ""}
-    ${steamTodo.length ? sub("steamtodo", "Steam-ID prüfen", tn(steamTodo.length), steamList) : ""}
-    ${metaTodo.length ? sub("metatodo", "Ohne Meta-ID", tn(metaTodo.length), metaList) : ""}
-    ${opTodo.length ? sub("optodo", "Meinung fehlt", tn(opTodo.length), opList) : ""}
-    ${pcIds.length ? sub("pcids", "PC-Wunsch: Steam-ID", tn(pcIds.length), pcIdList) : ""}
-    ${near.length ? sub("retronear", "Retro: ähnlicher Name", tn(near.length), nearList) : ""}
-    ${rde.length ? sub("retrode", "Retro: DE fehlt", tn(rde.length), deList) : ""}
-    ${rown.length ? sub("retroown", "Retro: Genre weicht von deiner Liste ab", tn(rown.length), ownList) : ""}`) : "";
+    ${sug ? sub("sug", "Derselbe Titel?", `${tn(S.suggestions.length)} ${S.suggestions.length === 1 ? "Paar" : "Paare"}`, withTools("sug", sugList)) : ""}
+    ${own.length ? sub("owndoubt", "Besitz: Quellen widersprechen sich", tn(own.length), withTools("owndoubt", ownDoubt)) : ""}
+    ${steamTodo.length ? sub("steamtodo", "Steam-ID prüfen", tn(steamTodo.length), withTools("steamtodo", steamList)) : ""}
+    ${metaTodo.length ? sub("metatodo", "Ohne Meta-ID", tn(metaTodo.length), withTools("metatodo", metaList)) : ""}
+    ${opTodo.length ? sub("optodo", "Meinung fehlt", tn(opTodo.length), withTools("optodo", opList)) : ""}
+    ${pcIds.length ? sub("pcids", "PC-Wunsch: Steam-ID", tn(pcIds.length), withTools("pcids", pcIdList)) : ""}
+    ${near.length ? sub("retronear", "Retro: ähnlicher Name", tn(near.length), withTools("retronear", nearList)) : ""}
+    ${rde.length ? sub("retrode", "Retro: DE fehlt", tn(rde.length), withTools("retrode", deList)) : ""}
+    ${rown.length ? sub("retroown", "Retro: Genre weicht von deiner Liste ab", tn(rown.length), withTools("retroown", ownList)) : ""}`) : "";
   const ll = lastLine(sy);
   const logInfo = sy.running ? "läuft" : !sy.started ? "noch keins" : `${when(sy.started)}${sy.ok === false ? `, <span class="err">mit Fehlern</span>` : ""}${ll.end ? " · " + esc(ll.end) : ""}`;
   const abgleich = box("abgleich", "Abgleich", sy.running ? "läuft" : `Stand ${ago(sy.started)}${next ? ` · nächster ca. ${next < new Date() ? "in Kürze" : whenDay(next) + clock(next)}` : se.auto === false ? " · Zeitplan aus" : ""}`, `
@@ -2165,7 +2210,9 @@ function listsHtml(){
     const rows = L.filter(x => x.kind === kind);
     if(!rows.length) return "";
     const keys = rows.map(x => x.key).join(",");
-    const bulk = acts.map(([a, l]) => `<button data-act="lists" data-v="${a}" data-keys="${esc(keys)}">alle ${rows.length} ${l}</button>`).join(" ");
+    todoReg("lists-" + kind, title, ["Name", "Grund", "Links"], rows.map(x => [x.name, x.why, (x.links || []).map(l => l.url).join(" ")]));
+    const bulk = acts.map(([a, l]) => `<button data-act="lists" data-v="${a}" data-keys="${esc(keys)}">alle ${rows.length} ${l}</button>`).join(" ") +
+      ` <button data-act="tododl" data-v="lists-${kind}" title="Diese Liste als CSV-Datei, etwa für Excel oder LibreOffice">herunterladen</button>`;
     const list = rows.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")}</span>
       <span class="row2"><span class="hint">${esc(x.why)}</span>
         ${kind === "table" || kind === "missing" ? addLinks(x.links) : x.links.filter(l => safeUrl(l.url)).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a>`).join(" ")}
@@ -2406,6 +2453,7 @@ function wishMoves(p){
 }
 function previewHtml(p){
   if(p.error) return `<p class="err">${esc(p.error)}</p>`;
+  if(p.todo) return todoPreview(p);
   // Einfach gesagt (0.7.2): erst, was in die Sammlung kommt, dann was bleibt, dann die VR-Titel
   const pc = p.collection, sy = Object.entries(pc?.systems || {});
   const per = sy.length > 1 ? ` (${sy.map(([n, c]) => `${esc(n)} ${num(c)}`).join(", ")})` : sy.length ? ` (${esc(sy[0][0])})` : "";
@@ -2433,6 +2481,14 @@ function previewHtml(p){
     `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.price != null ? ` ${eur(e.price)}` : ""}${mark(e)}</li>`).join("")}</ul></details>` : "");
   return `<div class="prev">${p.what ? `<b>${esc(p.what)}</b>${p.kind ? ` <span class="hint">(${p.guess ? "geraten, unter „Art“ änderbar" : "erkannt"})</span>` : ""}${pc ? "." : ":"} ` : ""}${pc ? `${col}${found}`.trim() : found} Noch nichts gespeichert.${p.note ? ` <span class="hint">${esc(p.note)}</span>` : ""}<ul>${p.entries.slice(0, 300).map(e =>
     `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.meta_id ? ` <span class="b">Meta-ID</span>` : ""}${e.steam_appid ? ` <span class="b${e.steam_sure === false ? " warn" : ""}">Steam ${esc(e.steam_appid)}${e.steam_sure === false ? " ungeprüft" : ""}</span>` : ""}${e.price != null ? ` ${eur(e.price)}` : ""}${p.attach ? (e.had ? " · ersetzt die bisherige Meinung" : " · bekommt eine Meinung") : e.known ? " · schon vorhanden" : ""}</li>`).join("")}</ul></div>`;
+}
+// Antwort auf einen Auftrag aus „Zu erledigen“ (0.10.24): je Eintrag, was das Tool damit tut, und was liegen bleibt
+function todoPreview(p){
+  const li = e => `<li><span>${esc(e.name)}</span> · ${esc(e.what)}${e.grund ? ` <span class="hint">(${esc(e.grund)})</span>` : ""}${(e.quellen || []).filter(safeUrl).map((u, i) => ` <a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Quelle${e.quellen.length > 1 ? " " + (i + 1) : ""}</a>`).join("")}</li>`;
+  const sk = p.skipped?.length ? `<p class="hint">Bleibt offen (${num(p.skipped.length)}): ${p.skipped.slice(0, 40).map(esc).join(", ")}${p.skipped.length > 40 ? " …" : ""}.</p>` : "";
+  if(p.done) return `<p class="ok">${esc(p.what)} übernommen: ${num(p.n)} ${p.n === 1 ? "Eintrag" : "Einträge"} erledigt.</p>${sk}` +
+    (p.entries?.length ? `<details class="prev"><summary class="hint">Was übernommen wurde</summary><ul>${p.entries.map(li).join("")}</ul></details>` : "");
+  return `<div class="prev"><b>${esc(p.what)}:</b> ${p.n ? `${num(p.n)} ${p.n === 1 ? "Eintrag passt" : "Einträge passen"} zu offenen Punkten, beim Übernehmen geschieht das:` : "Keine Antwort passt zu einem offenen Punkt."} Noch nichts gespeichert.${sk}<ul>${p.entries.map(li).join("")}</ul></div>`;
 }
 /* ---------------------------------------------------------------- Bearbeiten */
 /* Herkunft eines Titels, etwa „Vergleichstabelle, Zeile 128 (21.10.2026)“; vermutet heißt: aus
@@ -2560,6 +2616,8 @@ document.addEventListener("click", async ev => {
   if(!el) return;
   const a = el.dataset.act, v = el.dataset.v;
   if(a === "nobm"){ ev.preventDefault(); toast("Bitte in die Lesezeichenleiste ziehen, nicht anklicken"); return; }
+  if(a === "tododl"){ todoDownload(v); return; }
+  if(a === "todotask"){ copyNow(S.todo_tasks?.[v] || ""); toast("Auftrag kopiert. In die Routine oder einen Chat einfügen, die Antwort unter Einlesen, „Datei oder Text“"); return; }
   if(a === "opcopy"){ copyNow(S.opinion_task || ""); toast("Auftrag kopiert. In die Routine einfügen, die Antwort unter Einlesen, „Datei oder Text“"); return; }
   if(a === "bmcopy"){ copyNow(metaBm()); toast("Code kopiert. Jetzt ein Lesezeichen anlegen und den Code als Adresse einfügen"); return; }
   if(a === "thm") themeMenu($("thmMenu").hidden);
@@ -2759,7 +2817,7 @@ document.addEventListener("click", async ev => {
       const res = await api("/api/import", Object.assign({kind: v === "file" ? V.kindFile || "auto" : v, text, dry: a === "preview"}, v === "retro" && V.retroLists?.length ? {lists: V.retroLists} : {}));
       V.prev[v] = a === "apply" ? Object.assign({done: true}, res, {state: null}) : res;
       if(res.state) S = res.state;
-      if(a === "apply"){ V.txt[v] = ""; if(v === "retro") V.retroLists = null; if(res.collection || res.kind === "retro") C = null; }
+      if(a === "apply"){ V.txt[v] = ""; if(v === "retro") V.retroLists = null; if(res.collection || res.kind === "retro" || res.kind === "todo") C = null; }
     }catch(e){ V.prev[v] = {error: e.message}; }
     render("imp-" + v);
   }

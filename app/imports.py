@@ -819,6 +819,8 @@ def detect(text):
             return "meta"
         if isinstance(obj, dict) and obj.get("app") == OPINION_MARK:
             return "opinions"
+        if isinstance(obj, dict) and obj.get("app") == "vr-navigator-aufgaben":
+            return "todo"           # 0.10.24: Antwort auf einen Auftrag aus „Zu erledigen“, siehe aufgaben.py und server.py
         if isinstance(obj, dict) and obj.get("app") == "vr-navigator":
             raise ValueError("Das ist eine Sicherung des VR-Navigators; die spielst du unter Sicherung ein")
         raise ValueError("Diese JSON-Datei kennt das Tool nicht")
@@ -839,6 +841,8 @@ def import_auto(data, text, dry=True):
     """Art erkennen und einlesen. Passt nichts sicher, liest das Tool den Text als Seite der
     Meta-Bestellungen (guess); findet es dort nichts, meldet es das, statt still nichts zu tun."""
     kind = detect(text)
+    if kind == "todo":
+        raise ValueError("Antworten zu „Zu erledigen“ liest der Server mit Sammlung und PC-Wunschliste (server.import_todo)")
     guess = kind == "meta" and not str(text or "").lstrip("\ufeff").lstrip().startswith("{")
     try:
         res = IMPORTERS[kind](data, text, dry=dry)
