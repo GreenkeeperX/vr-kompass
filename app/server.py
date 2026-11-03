@@ -306,10 +306,18 @@ def edit_title(body):
             # Neue Kennung von Hand: beim nächsten Abgleich wieder suchen
             t.pop("meta_miss", None)
             t.pop("steam_miss", None)
-        titles.set_ids(data, key, body.get("meta_id"), body.get("steam_appid"))
+        key = titles.set_ids(data, key, body.get("meta_id"), body.get("steam_appid"))
+        t = data["titles"][key]
+        if body.get("steam_appid") is not None:
+            # 0.10.23: von Hand gesetzt, accounts.unlink_flat lässt sie stehen
+            if t.get("steam_appid"):
+                t["steam_hand"] = True
+            else:
+                t.pop("steam_hand", None)
         if body.get("steam_sure") is True and t.get("steam_appid"):
             # „passt“ unter „Zu erledigen“: die Steam-ID gilt als geprüft
             t["steam_sure"] = True
+            t["steam_hand"] = True
             t.pop("steam_doubt", None)
         store.save_data(data)
     return state()
@@ -329,7 +337,7 @@ def new_title(body):
         if kind in ("vrdb", "qsdb"):
             t["links"][kind] = link
         if titles.steam_id_from(link):
-            t["steam_sure"] = True
+            t["steam_sure"] = t["steam_hand"] = True
         if body.get("wish", True) and not t.get("owned"):
             titles.wish_by_hand(t, True)
         store.save_data(data)

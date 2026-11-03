@@ -121,7 +121,8 @@ def apply_steam(data, owned, wished, apps, stamp=None):
     Gezählt wird nur, was zu einem Titel passt oder laut Steam VR kann; der Rest bleibt außen vor.
     Liefert eine Übersicht fürs Protokoll."""
     stamp = stamp or titles.now_iso()
-    out = {"owned": 0, "owned_new": [], "wish_keys": [], "wish_new": [], "unchecked": 0}
+    out = {"owned": 0, "owned_new": [], "wish_keys": [], "wish_new": [], "unchecked": 0,
+           "unlinked": unlink_flat(data, apps)}
     by_id = {t.get("steam_appid"): k for k, t in data["titles"].items() if t.get("steam_appid")}
 
     def place(appid, name):
@@ -133,12 +134,13 @@ def apply_steam(data, owned, wished, apps, stamp=None):
             info = apps.get(appid) or {}
             name = name or info.get("name") or ""
             k = titles.find(data, "", appid, name) if name else None
+            if appid not in apps:
+                out["unchecked"] += 1
+                return None, False
+            if not info.get("vr"):
+                # 0.10.23: auch bei gleichem Namen nicht anhängen, etwa die Fassung ohne VR
+                return None, False
             if k is None:
-                if appid not in apps:
-                    out["unchecked"] += 1
-                    return None, False
-                if not info.get("vr"):
-                    return None, False
                 k, _ = titles.upsert(data, name, "", appid)
                 by_id[appid] = k
                 t = data["titles"][k]
@@ -147,6 +149,8 @@ def apply_steam(data, owned, wished, apps, stamp=None):
             t = data["titles"][k]
             if t.get("steam_appid") and t["steam_appid"] != appid:
                 return None, False         # derselbe Name, andere App: nicht raten
+            if appid in (t.get("steam_wrong") or []):
+                return None, False         # schon einmal als falsch gelöst
             t["steam_appid"] = appid
             by_id[appid] = k
         data["titles"][k]["steam_sure"] = True
@@ -171,6 +175,30 @@ def apply_steam(data, owned, wished, apps, stamp=None):
                 if new:
                     out["wish_new"].append(data["titles"][k]["name"])
         out["wish_added"], out["wish_removed"] = titles.set_wishes(data, "steam", out["wish_keys"], stamp)
+    return out
+
+
+def unlink_flat(data, apps):
+    """Bis 0.10.22 hing der Abgleich eine App aus Besitz oder Wunschliste über den Namen an einen
+    Titel, ohne VR zu prüfen (etwa die Fassung ohne VR). Solche Zuordnungen lösen: Steam-ID samt
+    Steam-Besitz weg, die App unter steam_wrong, damit sie nicht wiederkommt. Nur, wenn Steam die
+    App zeigt, laut Steam kein VR hat und das Steam-Konto den Titel berührt hat (Besitz oder
+    Wunsch); von Hand gesetzte oder bestätigte Steam-IDs bleiben. Liefert die Namen."""
+    out = []
+    for t in data["titles"].values():
+        a = t.get("steam_appid")
+        info = apps.get(a) if a else None
+        if not info or info.get("vr") or not info.get("name") or t.get("steam_hand"):
+            continue
+        pc = (t.get("owned") or {}).get("pc") or {}
+        if pc.get("src") != "steam" and "steam" not in (t.get("wish_src") or {}):
+            continue
+        if pc.get("src") == "steam":
+            t["owned"].pop("pc")
+        t["steam_appid"], t["steam_sure"] = "", False
+        t.pop("steam_doubt", None)
+        t["steam_wrong"] = sorted(set(t.get("steam_wrong") or []) | {a})
+        out.append(f"{t['name']} (bei Steam: {info['name']})")
     return out
 
 
