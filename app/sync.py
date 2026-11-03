@@ -195,6 +195,11 @@ def save_settings(body):
     return s
 
 
+def status_running():
+    """Läuft gerade ein Abgleich? (0.10.15, für das Vorrechnen im Server)"""
+    return _running.locked()
+
+
 def status():
     """Letzter Lauf aus sync.json; läuft gerade einer, mit Schritt und Protokoll live."""
     st = store.load_json("sync.json", {})
