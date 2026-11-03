@@ -752,10 +752,7 @@ def opinion_task(data, today=None, limit=OPINION_BATCH):
     rows = [{k: v for k, v in (("name", x["name"]), ("meta_id", x["meta_id"]), ("steam_appid", x["steam_appid"])) if v}
             for x in todo]
     fields = "\n".join(f"- {f}" for f in OPINION_FIELDS)
-    return f"""Recherchiere für jeden der folgenden VR-Titel, wie er ankommt und ob die Fassung im Meta Store (Quest,
-mit Crossbuy auch PC-VR über die Meta-App) oder bei Steam (PC-VR) die bessere Wahl ist. Quellen: Reddit
-(r/OculusQuest, r/virtualreality, r/SteamVR), Foren, Tests, Store-Seiten und Patchnotes; bevorzugt aus den
-letzten zwölf Monaten. Nichts erfinden: was sich nicht belegen lässt, bleibt leer.
+    return f"""{OPINION_INTRO}
 
 Titel ({len(rows)}):
 {json.dumps(rows, ensure_ascii=False, indent=1)}
@@ -766,9 +763,17 @@ Antworte nur mit einer JSON-Datei in diesem Aufbau (meta_id und steam_appid wie 
 Felder je Titel:
 {fields}
 
-Crossbuy heißt: ein Kauf im Meta Store gilt für Quest und PC-VR. Steam gehört nie dazu; gemeinsames Spielen von
-Quest und PC ist Crossplay, kein Crossbuy.
+{OPINION_CROSSBUY}
 """
+
+
+# Absätze des Auftrags je in einer Zeile (0.10.19): Umbrüche im Code landeten sonst mitten im Satz im kopierten Text
+OPINION_INTRO = ("Recherchiere für jeden der folgenden VR-Titel, wie er ankommt und ob die Fassung im Meta Store (Quest, "
+                 "mit Crossbuy auch PC-VR über die Meta-App) oder bei Steam (PC-VR) die bessere Wahl ist. Quellen: Reddit "
+                 "(r/OculusQuest, r/virtualreality, r/SteamVR), Foren, Tests, Store-Seiten und Patchnotes; bevorzugt aus den "
+                 "letzten zwölf Monaten. Nichts erfinden: was sich nicht belegen lässt, bleibt leer.")
+OPINION_CROSSBUY = ("Crossbuy heißt: ein Kauf im Meta Store gilt für Quest und PC-VR. Steam gehört nie dazu; gemeinsames "
+                    "Spielen von Quest und PC ist Crossplay, kein Crossbuy.")
 
 
 OPINION_FIELDS = (
