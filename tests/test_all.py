@@ -361,6 +361,7 @@ class TestImports(unittest.TestCase):
         res = imports.import_auto(d, text, dry=True)
         self.assertEqual((res["n"], res["what"]), (2, "Meinungen"))
         self.assertIn("Nebula Drift", res["note"])
+        self.assertEqual((res["attach"], res["unknown"]), (True, 1))  # 0.10.18: Meldung ohne „neu angelegt“
         self.assertNotIn("opinion", d["titles"][a])
         imports.import_auto(d, text, dry=False)
         o = d["titles"][a]["opinion"]

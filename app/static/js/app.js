@@ -2419,8 +2419,10 @@ function previewHtml(p){
     return p.done ? `<p class="ok">gg.deals-Sammlung übernommen: ${head}</p><details class="prev"><summary class="hint">Was gelesen wurde</summary><ul>${p.entries.slice(0, 600).map(li).join("")}</ul></details>`
       : `<div class="prev"><b>gg.deals-Sammlung:</b> ${head} Noch nichts gespeichert. <span class="hint">${esc(p.note || "")}</span><ul>${p.entries.slice(0, 300).map(li).join("")}</ul></div>`;
   }
-  const mark = e => p.pc_n != null ? (e.known ? " · VR-Titel" : " · PC") : e.known ? " · war schon da" : " · neu";
-  if(p.done) return `<p class="ok">${p.what ? esc(p.what) + " übernommen" : "Übernommen"}${pc || gg ? "." : ":"}${pc ? `${col}${found}` : gg || ` ${p.n} erkannt, ${p.new} neu angelegt.`}</p>` + wishMoves(p) + (p.entries?.length ? `<details class="prev"><summary class="hint">Was übernommen wurde</summary><ul>${p.entries.slice(0, 600).map(e =>
+  const mark = e => p.attach ? " · Meinung gespeichert" : p.pc_n != null ? (e.known ? " · VR-Titel" : " · PC") : e.known ? " · war schon da" : " · neu";
+  const done = p.attach ? ` ${num(p.n)} ${p.n === 1 ? "Spiel hat" : "Spiele haben"} jetzt eine Meinung.${p.unknown ? ` ${num(p.unknown)} nicht zugeordnet (kein passender Titel im Tool).` : ""}`
+    : ` ${p.n} erkannt, ${p.new} neu angelegt.`;
+  if(p.done) return `<p class="ok">${p.what ? esc(p.what) + " übernommen" : "Übernommen"}${pc || gg ? "." : ":"}${pc ? `${col}${found}` : gg || done}</p>` + wishMoves(p) + (p.entries?.length ? `<details class="prev"><summary class="hint">Was übernommen wurde</summary><ul>${p.entries.slice(0, 600).map(e =>
     `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.price != null ? ` ${eur(e.price)}` : ""}${mark(e)}</li>`).join("")}</ul></details>` : "");
   return `<div class="prev">${p.what ? `<b>${esc(p.what)}</b>${p.kind ? ` <span class="hint">(${p.guess ? "geraten, unter „Art“ änderbar" : "erkannt"})</span>` : ""}${pc ? "." : ":"} ` : ""}${pc ? `${col}${found}`.trim() : found} Noch nichts gespeichert.${p.note ? ` <span class="hint">${esc(p.note)}</span>` : ""}<ul>${p.entries.slice(0, 300).map(e =>
     `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.meta_id ? ` <span class="b">Meta-ID</span>` : ""}${e.steam_appid ? ` <span class="b${e.steam_sure === false ? " warn" : ""}">Steam ${esc(e.steam_appid)}${e.steam_sure === false ? " ungeprüft" : ""}</span>` : ""}${e.price != null ? ` ${eur(e.price)}` : ""}${e.known ? " · schon vorhanden" : ""}</li>`).join("")}</ul></div>`;
