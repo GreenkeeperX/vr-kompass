@@ -28,7 +28,7 @@ import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from . import accounts, collection, deku, gametdb, igdb, itad, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel, wiki
+from . import accounts, collection, deku, gametdb, igdb, itad, library, lists, mods, pcwish, prices, probes, retro, sources, store, titles, trend, verlauf, wheel, wiki
 
 PAUSE = 2.0
 PAGE_AGE_H = 20
@@ -360,8 +360,10 @@ class _Source:
 
 
 def _targets(data):
-    """Wunschtitel, die du noch nirgends besitzt."""
-    return {k: t for k, t in data["titles"].items() if t.get("wish") and not t.get("owned")}
+    """Wunschtitel, die du noch nirgends besitzt; ab 0.10.26 dazu gekaufte, deren andere Fassung laut Recherche zusätzlich
+    lohnt (library.second_shop), damit „Jetzt“ sie im Angebot nennt."""
+    return {k: t for k, t in data["titles"].items()
+            if (t.get("wish") and not t.get("owned")) or library.second_shop(t)}
 
 
 def _missed(t, field):
@@ -2695,7 +2697,7 @@ def run(only=None, boot=False, by_hand=False, fast=False):
                 log(f"Zuordnung: unerwarteter Fehler ({type(e).__name__}), Einzelheiten im Protokoll des Containers")
                 print("Fehler bei der Zuordnung:", e, file=sys.stderr)
         targets = _targets(store.load_data())
-        log(f"Preise für {len(targets)} Wunschtitel, die du noch nicht besitzt")
+        log(f"Preise für {len(targets)} Wunschtitel, die du noch nicht besitzt" + (f", davon {n2} für einen Zweitkauf" if (n2 := sum(1 for t in targets.values() if t.get("owned"))) else ""))
         # VR-Titel am PC ohne Playnite-Eintrag (0.8.9) als Spiele der Sammlung, damit die Abrufe danach sie mitnehmen
         try:
             with store.lock:

@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.25:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.26:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -67,6 +67,13 @@ je Spiel die Suche und die Spielseite, höchstens 30 Spiele je Lauf, bekannte zu
 zählt nur mit gleichem Namen und der richtigen Plattform (am PC „Steam“). Daraus kommen die Spielzeit laut
 HowLongToBeat (vor IGDB, IGDB bleibt im Tooltip), OpenCritic, Metacritic wo Steam keine nennt, USK oder PEGI, Deutsch
 wo Steam nichts sagt; Spieler, Genre und Jahr werden bestätigt oder ergänzt, ein anderes Jahr steht violett.
+Neu in 0.10.26: Sagt die Recherche bei einem gekauften VR-Titel „zweitkauf“ (die Fassung im anderen Laden lohnt
+zusätzlich), holt der Abgleich auch dessen Preise, und „Jetzt“ zeigt die andere Fassung mit der violetten Marke
+„Zweitkauf Steam“ oder „Zweitkauf Meta“, sobald sie im Angebot nah am Tief ist. Unter „Zu erledigen“ zwei Recherchen
+zur Sammlung: „Sim-Racing: Lenkrad prüfen“ für Rennspiele, die nur Steam-Schlagwörter nennen (Lenkrad mit Force
+Feedback ja, teilweise oder nein; „nein“ nimmt den Hinweis weg), und „VR-Mods“ für Spiele ohne VR-Fassung und ohne
+Mod laut PCGamingWiki, je Auftrag 100, die besser bewerteten zuerst (UEVR, Flat2VR, Luke Ross …). Treffer stehen
+violett als „VR per Mod“ in der Sammlung und zählen im Filter VR-Mod; geprüfte Spiele kommen nicht wieder.
 Neu in 0.10.25: Der Meinungs-Auftrag nimmt nach den Wünschen auch deine VR-Sammlung, solange du ein Spiel nur in einem
 Laden hast (im Auftrag „gekauft“). Neu gefragt ist dort „zweitkauf“: ob sich die Fassung im anderen Laden zusätzlich
 lohnt, etwa wegen besserer Technik, mehr Inhalt oder lebendigerer Lobbys. Die Einzelheiten zeigen dann „andere Fassung

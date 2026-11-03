@@ -6,7 +6,8 @@ je Eintrag; sie kommt über Einlesen zurück, erst als Vorschau (`apply` mit dry
 nicht mehr offen ist oder keine erlaubte Antwort trägt, bleibt liegen und steht in der Vorschau.
 
 Listen: meta (Ohne Meta-ID), steam (Steam-ID prüfen), pcid (PC-Wunsch: Steam-ID), sug (Derselbe
-Titel?), near (Retro: ähnlicher Name), own (Retro: Genre weicht von deiner Liste ab)."""
+Titel?), near (Retro: ähnlicher Name), own (Retro: Genre weicht von deiner Liste ab); ab 0.10.26 wheel (Sim-Racing:
+Lenkrad) und vrmod (VR-Mods) für Spiele der Sammlung."""
 import json
 import re
 
@@ -14,10 +15,12 @@ from . import titles
 
 MARK = "vr-navigator-aufgaben"
 BATCH = 50          # so viele Einträge je Auftrag
+BATCHES = {"vrmod": 100}     # VR-Mods: nur ein Wort je Spiel, dafür viele Spiele (0.10.26)
 _URL = re.compile(r"^https://\S+$")
 
 TITLES = {"meta": "Ohne Meta-ID", "steam": "Steam-ID prüfen", "pcid": "PC-Wunsch: Steam-ID",
-          "sug": "Derselbe Titel?", "near": "Retro: ähnlicher Name", "own": "Retro: Genre weicht von deiner Liste ab"}
+          "sug": "Derselbe Titel?", "near": "Retro: ähnlicher Name", "own": "Retro: Genre weicht von deiner Liste ab",
+          "wheel": "Sim-Racing: Lenkrad prüfen", "vrmod": "VR-Mods prüfen"}
 
 # Absätze je in einer Zeile, wie beim Meinungs-Auftrag (0.10.19)
 INTRO = ("Hilf mir, offene Punkte in meinem Spiele-Verzeichnis zu klären. Prüfe jeden Eintrag einzeln anhand von "
@@ -47,11 +50,23 @@ ASK = {
     "own": ("Für diese Retro-Spiele nennen libretro und IGDB ein anderes Genre als meine eigene Liste. Prüfe, welches "
             "Genre das Spiel besser beschreibt (MobyGames, Wikipedia, IGDB).",
             "„liste“ (mein Genre passt), „quellen“ (das andere passt besser) oder „unklar“"),
+    # 0.10.26: Spiele der Sammlung (PC)
+    "wheel": ("Diese PC-Spiele tragen bei Steam Schlagwörter wie Racing oder Driving. Prüfe, ob man sie mit einem "
+              "Lenkrad mit Force Feedback spielen kann (Direktantrieb wie Simagic oder Simucube über DirectInput), etwa "
+              "laut Herstellerseite, PCGamingWiki, Steam-Forum oder Tests. „teilweise“ heißt: Lenkrad geht, aber ohne "
+              "richtiges Force Feedback oder nur mit Umwegen.",
+              "„ja“, „teilweise“, „nein“ oder „unklar“"),
+    "vrmod": ("Diese PC-Spiele haben keine eigene VR-Fassung. Prüfe für jedes, ob es einen VR-Mod gibt, mit dem man es "
+              "in VR spielen kann, etwa UEVR, Flat2VR, Luke Ross (R.E.A.L. VR) oder einen eigenen Mod (Flat2VR-Liste, "
+              "PCGamingWiki, Nexus Mods, Reddit r/flatscreen2vr). vorpX allein zählt nicht. Bei „ja“ nenne unter „mod“ "
+              "den Namen und im Grund, wie gut er ist (Bewegungssteuerung, Stand).",
+              "„ja“, „nein“ oder „unklar“"),
 }
 
 
-def items(kind, data, near=None, own=None, pc_ids=None):
-    """Offene Einträge einer Liste in der Form für den Auftrag: [{id, name, …}] ohne Herkunft und Besitz."""
+def items(kind, data, near=None, own=None, pc_ids=None, games=None):
+    """Offene Einträge einer Liste in der Form für den Auftrag: [{id, name, …}] ohne Herkunft und Besitz. games: Zeilen
+    der Sammlung (collection.view) für Lenkrad und VR-Mods."""
     if kind in ("meta", "steam"):
         out = []
         for x in titles.todo(data):
@@ -80,17 +95,27 @@ def items(kind, data, near=None, own=None, pc_ids=None):
     if kind == "own":
         return [{"id": x["key"], "name": x["name"], "system": x["system"], "mein_genre": x["diff"][0]["own"],
                  "andere": "; ".join(d["other"] for d in x["diff"])} for x in own or []]
+    if kind == "wheel":
+        return [{"id": g["key"], "name": g["name"], "schlagwoerter": ", ".join(g["wheel"]["tags"])}
+                for g in games or [] if g.get("system") == "PC" and g.get("wheel") and not g["wheel"]["src"]
+                and not g.get("wheel_r")]
+    if kind == "vrmod":
+        rows = [g for g in games or [] if g.get("system") == "PC" and not g.get("retro") and not g.get("vr")
+                and not g.get("vrmod") and not g.get("vrmod_r")]
+        # die besser bewerteten zuerst: dort lohnt ein Mod am ehesten
+        rows.sort(key=lambda g: (-(g.get("score") or 0), titles.norm(g["name"])))
+        return [{"id": g["key"], "name": g["name"]} for g in rows]
     raise ValueError("unbekannte Liste")
 
 
 def task(kind, rows, today=None):
     """Auftrag als Text, höchstens BATCH Einträge; leer, wenn nichts offen ist."""
-    rows = rows[:BATCH]
+    rows = rows[:BATCHES.get(kind, BATCH)]
     if not rows:
         return ""
     ask, answer = ASK[kind]
     today = today or titles.now_iso()[:10]
-    extra = ', "enthalten": [{"name": "…", "meta_id": "…"}]' if kind == "meta" else ', "behalten": "…"' if kind == "sug" else ""
+    extra = {"meta": ', "enthalten": [{"name": "…", "meta_id": "…"}]', "sug": ', "behalten": "…"', "vrmod": ', "mod": "…"'}.get(kind, "")
     return f"""{INTRO}
 
 {ask}
@@ -103,15 +128,15 @@ Einträge ({len(rows)}, Liste „{TITLES[kind]}“):
 Antworte nur mit einer JSON-Datei in diesem Aufbau; „id“ genau wie oben übernehmen:
 {{"app": "{MARK}", "liste": "{kind}", "stand": "{today}", "antworten": [{{"id": "…", "name": "…", "antwort": "…", "grund": "…", "quellen": ["https://…"]{extra}}}]}}
 
-antwort: {answer}. grund: ein Satz, woran du es festmachst. quellen: nur https-Links, die du gelesen hast.
+antwort: {answer}. grund: ein Satz, woran du es festmachst. quellen: nur https-Links, die du gelesen hast.{" Jeder Eintrag bekommt eine Antwort, auch „nein“ (dann reichen id und antwort): so weiß das Tool, was geprüft ist." if kind == "vrmod" else ""}
 """
 
 
-def tasks(data, near=None, own=None, pc_ids=None, today=None):
+def tasks(data, near=None, own=None, pc_ids=None, today=None, games=None):
     """Aufträge aller Listen mit offenen Einträgen: {liste: Text}."""
     out = {}
     for kind in ASK:
-        text = task(kind, items(kind, data, near, own, pc_ids), today)
+        text = task(kind, items(kind, data, near, own, pc_ids, games), today)
         if text:
             out[kind] = text
     return out
@@ -141,7 +166,8 @@ def parse(text):
                     "antwort": str(a.get("antwort") if a.get("antwort") is not None else "").strip()[:40],
                     "grund": str(a.get("grund") or "").strip()[:400],
                     "quellen": [u for u in (str(q).strip() for q in a.get("quellen") or [] if isinstance(q, str)) if _URL.match(u)][:5],
-                    "enthalten": inc[:40], "behalten": str(a.get("behalten") or "").strip()[:200]})
+                    "enthalten": inc[:40], "behalten": str(a.get("behalten") or "").strip()[:200],
+                    "mod": str(a.get("mod") or "").strip()[:120]})
     return kind, out
 
 
@@ -185,6 +211,14 @@ def _decide(kind, a, row):
             return ("near", True), f"dasselbe wie „{row['aehnlich']}“"
         if v == "anderes":
             return ("near", False), "anderes Spiel"
+    elif kind == "wheel":
+        if v in ("ja", "teilweise", "nein"):
+            return ("wheel", v), {"ja": "Lenkrad mit Force Feedback", "teilweise": "Lenkrad nur teilweise", "nein": "kein Lenkrad"}[v]
+    elif kind == "vrmod":
+        if v == "ja":
+            return ("vrmod", True), "VR per Mod" + (f": {a['mod']}" if a["mod"] else "")
+        if v == "nein":
+            return ("vrmod", False), "kein VR-Mod"
     elif kind == "own":
         if v == "liste":
             return ("own", False), f"dein Genre gilt ({row['mein_genre']})"
@@ -193,12 +227,12 @@ def _decide(kind, a, row):
     return None, f"Antwort „{a['antwort'][:40]}“ passt nicht zur Liste"
 
 
-def apply(text, data, near=None, own=None, pc_ids=None, dry=True, act=None):
+def apply(text, data, near=None, own=None, pc_ids=None, dry=True, act=None, games=None):
     """Antwort auf einen Auftrag prüfen und, ohne dry, übernehmen. Was in data.json gehört (meta, steam, sug),
-    trägt diese Funktion ein; die übrigen Listen (pcid, near, own) gehen an act(kind, key, value), das der
-    Server mit der Sammlung und der PC-Wunschliste ausführt. Liefert die Übersicht für die Vorschau."""
+    trägt diese Funktion ein; die übrigen Listen (pcid, near, own, ab 0.10.26 wheel und vrmod) gehen an
+    act(kind, key, value), das der Server mit der Sammlung und der PC-Wunschliste ausführt. Liefert die Übersicht für die Vorschau."""
     kind, answers = parse(text)
-    open_rows = {r["id"]: r for r in items(kind, data, near, own, pc_ids)}
+    open_rows = {r["id"]: r for r in items(kind, data, near, own, pc_ids, games)}
     entries, skipped, done = [], [], set()
     for a in answers:
         row = open_rows.get(a["id"])
@@ -250,6 +284,10 @@ def apply(text, data, near=None, own=None, pc_ids=None, dry=True, act=None):
                 data.setdefault("not_same", [])
                 if pair not in data["not_same"]:
                     data["not_same"].append(pair)
+        elif kind in ("wheel", "vrmod") and act:
+            rec = {"grund": a["grund"], "quellen": a["quellen"], "at": titles.now_iso()}
+            rec.update({"v": val} if kind == "wheel" else {"ok": val, "mod": a["mod"] if val else ""})
+            act(kind, a["id"], rec)
         elif act:
             act(kind, a["id"], val)
     return {"dry": dry, "n": len(entries), "new": 0, "entries": entries, "todo": kind, "what": f"Antworten zu „{TITLES[kind]}“",

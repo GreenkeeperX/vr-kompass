@@ -1315,6 +1315,45 @@ class TestAufgaben(unittest.TestCase):
             {"name": "Glass Tide", "zweitkauf": "ja"}]})
         self.assertEqual((o2[0]["zweitkauf"], o2[0]["zweitkauf_grund"], o2[1]["zweitkauf"]), (True, "Quest-Fassung mit mehr Inhalt", None))
 
+    def test_second_purchase(self):
+        # 0.10.26: Zweitkauf laut Recherche: andere Fassung in „Jetzt“, wenn sie nah am Tief reduziert ist
+        d = empty()
+        now = "2026-10-20T10:00:00+00:00"
+        k, _ = titles.upsert(d, "Comet Chase", "5555555555555555", "3000030")
+        d["titles"][k].update(owned={"meta": {"src": "meta"}}, opinion={"zweitkauf": True, "zweitkauf_grund": "PC-Fassung mit Mods"},
+                              live={"steam": {"price": 12.0, "base": 40.0, "discount": 70, "at": now},
+                                    "gg": {"retail": 12.0, "retail_low": 11.0, "at": now}})
+        k2, _ = titles.upsert(d, "Orbit Golf", "6666666666666666", "3000040")
+        d["titles"][k2].update(owned={"meta": {"src": "meta"}}, opinion={"zweitkauf": False},
+                               live={"steam": {"price": 12.0, "base": 40.0, "discount": 70, "at": now}})
+        self.assertEqual((library.second_shop(d["titles"][k]), library.second_shop(d["titles"][k2])), ("steam", ""))
+        self.assertEqual(set(sync._targets(d)), {k})
+        v = library.view(d, at=datetime(2026, 10, 20, 12, tzinfo=timezone.utc), hist={})
+        self.assertEqual([(r["name"], r.get("second")) for r in v["now"]], [("Comet Chase", "steam")])
+        self.assertTrue(v["now"][0]["buy"]["why"][0]["text"].endswith("PC-Fassung mit Mods"))
+
+    def test_wheel_and_vrmod(self):
+        # 0.10.26: Recherche zu Spielen der Sammlung, eingetragen über act
+        games = [{"key": "steam:1", "name": "Dust Rally", "system": "PC", "wheel": {"src": [], "tags": ["Racing"]}},
+                 {"key": "steam:2", "name": "Track Pro", "system": "PC", "wheel": {"src": ["SimHub"], "tags": []}},
+                 {"key": "steam:3", "name": "Cave Story Remix", "system": "PC", "score": 70},
+                 {"key": "steam:4", "name": "Sky Fort", "system": "PC", "score": 90},
+                 {"key": "steam:5", "name": "Star Ride", "system": "PC", "vr": True},
+                 {"key": "steam:6", "name": "Old Mill", "system": "PC", "vrmod": ["OpenXR"]}]
+        d, seen = empty(), []
+        self.assertEqual([x["id"] for x in aufgaben.items("wheel", d, games=games)], ["steam:1"])
+        self.assertEqual([x["id"] for x in aufgaben.items("vrmod", d, games=games)], ["steam:4", "steam:3", "steam:1", "steam:2"])
+        text = aufgaben.tasks(d, games=games)["vrmod"]
+        self.assertIn("auch „nein“", text)
+        act = lambda kind, key, val: seen.append((kind, key, val.get("v"), val.get("ok"), val.get("mod")))
+        res = aufgaben.apply(self.ans("vrmod", {"id": "steam:4", "antwort": "ja", "mod": "UEVR"}, {"id": "steam:3", "antwort": "nein"}),
+                             d, games=games, dry=False, act=act)
+        self.assertEqual([e["what"] for e in res["entries"]], ["VR per Mod: UEVR", "kein VR-Mod"])
+        aufgaben.apply(self.ans("wheel", {"id": "steam:1", "antwort": "teilweise"}, {"id": "steam:2", "antwort": "ja"}),
+                       d, games=games, dry=False, act=act)
+        self.assertEqual(seen, [("vrmod", "steam:4", None, True, "UEVR"), ("vrmod", "steam:3", None, False, ""),
+                                ("wheel", "steam:1", "teilweise", None, None)])
+
     def test_detect(self):
         self.assertEqual(imports.detect(json.dumps({"app": aufgaben.MARK, "liste": "meta"})), "todo")
 
