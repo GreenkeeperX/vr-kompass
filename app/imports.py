@@ -720,6 +720,8 @@ def import_opinions(data, text, dry=True):
     if not dry:
         data["imports"]["opinions"] = {"at": titles.now_iso(), "n": len(entries), "new": 0}
     res["what"] = "Meinungen"
+    res["attach"] = True  # hängt an bekannte Titel, legt keine an
+    res["unknown"] = len(unknown)
     notes = []
     dropped = [o["name"] for o in items if o.get("crossbuy_dropped")]
     if dropped:
