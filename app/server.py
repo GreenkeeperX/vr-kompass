@@ -13,7 +13,7 @@ import traceback
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import besitz, collection, imports, library, lists, muster, pcwish, retro, sources, store, sync, titles, verlauf, wheel
+from . import aufgaben, besitz, collection, imports, library, lists, muster, pcwish, retro, sources, store, sync, titles, verlauf, wheel
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 
@@ -203,7 +203,8 @@ def _state_core():
     return dict(view, muster=st, own_check=besitz.check(data),
                 marks=data["marks"], version=sources.VERSION, pcwish=pcv,
                 pcwish_ids=pcwish.id_todo(pw),
-                retro_near=near, retro_own=own, retro_de=de, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH)
+                retro_near=near, retro_own=own, retro_de=de, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
+                todo_tasks=aufgaben.tasks(data, near, own, pcwish.id_todo(pw)), todo_batch=aufgaben.BATCH)
 
 
 def state():
@@ -344,6 +345,47 @@ def new_title(body):
     return state()
 
 
+def _is_todo(text):
+    try:
+        return imports.detect(text) == "todo"
+    except ValueError:
+        return False
+
+
+def import_todo(text, dry):
+    """Antwort auf einen Auftrag aus „Zu erledigen“ (0.10.24): erst Vorschau, dann übernehmen. Die Retro-Listen und die
+    PC-Wunschliste liegen in eigenen Dateien; sie ändert act mit denselben Schritten wie die Knöpfe."""
+    with store.lock:
+        data = store.load_data()
+        col = store.load_json(collection.FILE, collection.EMPTY)
+        pw = store.load_json(pcwish.FILE, pcwish.EMPTY)
+        changed = set()
+        cache = {}
+
+        def act(kind, key, val):
+            if kind == "pcid":
+                pcwish.settle_id(pw, key, val)
+                changed.add("pw")
+            elif kind == "near":
+                g = (col.get("games") or {}).get(key) or {}
+                sy = g.get("system") or ""
+                if sy not in cache:
+                    cache[sy] = (store.load_json(retro.CACHE, {}).get(sy) or {}).get("idx")
+                retro.settle_near(col, key, bool(val), cache[sy])
+                changed.add("col")
+            elif kind == "own":
+                retro.settle_own(col, key, take=bool(val))
+                changed.add("col")
+        res = aufgaben.apply(text, data, retro.near_list(col), retro.own_list(col), pcwish.id_todo(pw), dry=dry, act=act)
+        if not dry:
+            store.save_data(data)
+            if "col" in changed:
+                store.save_json(collection.FILE, col)
+            if "pw" in changed:
+                store.save_json(pcwish.FILE, pw)
+    return dict(res, kind="todo", state=None if dry else state())
+
+
 def restore_titles(recs):
     """Rückgängig für Löschen und Zusammenführen: legt die alten Einträge unter ihrem Schlüssel
     wieder ab. Nur Einträge mit Namen, höchstens zwei auf einmal."""
@@ -467,12 +509,15 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body(50_000_000 if big else 1_000_000)
             if path == "/api/import":
                 kind = str(body.get("kind") or "")
-                if kind not in ("auto", "retro") and kind not in imports.IMPORTERS:
+                if kind not in ("auto", "retro", "todo") and kind not in imports.IMPORTERS:
                     raise ValueError("unbekannte Art des Imports")
                 dry = body.get("dry") is not False
                 text = str(body.get("text") or "")
                 if kind == "auto" and retro.looks_like(text):
                     kind = "retro"
+                if kind in ("auto", "todo") and _is_todo(text):
+                    self._send(200, import_todo(text, dry))
+                    return
                 fn = import_retro if kind == "retro" else imports.import_auto if kind == "auto" else imports.IMPORTERS[kind]
                 with store.lock:
                     data = store.load_data()

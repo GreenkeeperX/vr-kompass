@@ -18,7 +18,7 @@ from http.server import ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ["DATA_DIR"] = tempfile.mkdtemp()
 
-from app import accounts, collection, imports, library, lists, prices, retro, server, sources, store, sync, titles, wheel  # noqa: E402
+from app import accounts, aufgaben, collection, imports, library, lists, prices, retro, server, sources, store, sync, titles, wheel  # noqa: E402
 
 # Erfundene Beispiele im Format der eigenen Vergleichstabelle und der Exporte; keine echten Daten
 SHEET = """Spiel,Aufschlag,gg.deals best,Bestpreis,Gutschein,,Vergleich,meta,Rabatt,Crossbuy,https://queststoredb.com/on_sale/
@@ -1223,6 +1223,81 @@ class TestSources(unittest.TestCase):
 
     def test_version(self):
         self.assertRegex(sources.VERSION, r"^\d+\.\d+\.\d+$")
+
+
+class TestAufgaben(unittest.TestCase):
+    """0.10.24: Aufträge zu „Zu erledigen“ und ihre Antworten."""
+
+    def ans(self, kind, *rows):
+        return json.dumps({"app": aufgaben.MARK, "liste": kind, "antworten": list(rows)})
+
+    def test_meta(self):
+        d = empty()
+        a, _ = titles.upsert(d, "Glass Tide", "", "")
+        b, _ = titles.upsert(d, "Desk Racer", "", "")
+        c, _ = titles.upsert(d, "Party Pack Bundle", "", "")
+        for k in (a, b, c):
+            d["titles"][k]["meta_miss"] = "2026-11-01T00:00:00+00:00"
+        rows = aufgaben.items("meta", d)
+        self.assertEqual({r["id"]: r.get("bundle", False) for r in rows}, {a: False, b: False, c: True})
+        text = aufgaben.task("meta", rows, today="2026-11-03")
+        self.assertIn('"liste": "meta"', text)
+        self.assertIn(f'{{"id": "{c}", "name": "Party Pack Bundle", "bundle": true}}', text)
+        self.assertNotIn("Herkunft", text)
+        answer = self.ans("meta", {"id": a, "antwort": "5555555555555555", "grund": "Store-Seite", "quellen": ["https://example.org/x", "javascript:alert(1)"]},
+                          {"id": b, "antwort": "keine", "grund": "nur am Bildschirm"},
+                          {"id": c, "antwort": "", "enthalten": [{"name": "Ring Toss", "meta_id": "6666666666666666"}, {"name": "x", "meta_id": "abc"}]},
+                          {"id": "gibt-es-nicht", "antwort": "1234567"})
+        res = aufgaben.apply(answer, d)
+        self.assertEqual((res["dry"], res["n"], res["skipped"]), (True, 3, ["gibt-es-nicht (nicht offen)"]))
+        self.assertEqual(res["entries"][0]["quellen"], ["https://example.org/x"])
+        self.assertEqual(d["titles"][a]["meta_id"], "")                 # Vorschau ändert nichts
+        aufgaben.apply(answer, d, dry=False)
+        self.assertEqual(d["titles"][a]["meta_id"], "5555555555555555")
+        self.assertEqual(d["titles"][b]["meta_none"]["why"], "nur am Bildschirm")
+        self.assertEqual(d["titles"][c]["contains"], ["meta-6666666666666666"])
+        self.assertEqual([x for x in titles.todo(d) if x["kind"] == "meta"], [])
+
+    def test_steam_and_pairs(self):
+        d = empty()
+        a, _ = titles.upsert(d, "Glass Tide", "", "3000041")
+        b, _ = titles.upsert(d, "Cloud Harbor", "", "3000042")
+        c, _ = titles.upsert(d, "Moon Diver", "", "3000043")
+        for k in (a, b, c):
+            d["titles"][k].update(steam_sure=False, steam_doubt="laut Steam ohne VR: x")
+        m, _ = titles.upsert(d, "Sky Garden VR", "7777777777777777", "")
+        p, _ = titles.upsert(d, "Sky Garden", "", "3000044")
+        self.assertEqual(len(aufgaben.items("sug", d)), 1)
+        aufgaben.apply(self.ans("steam", {"id": a, "antwort": "passt"}, {"id": b, "antwort": "falsch"},
+                                {"id": c, "antwort": "3000050"}), d, dry=False)
+        self.assertEqual((d["titles"][a]["steam_sure"], d["titles"][a]["steam_hand"]), (True, True))
+        self.assertEqual((d["titles"][b]["steam_appid"], d["titles"][b]["steam_wrong"]), ("", ["3000042"]))
+        self.assertEqual((d["titles"][c]["steam_appid"], d["titles"][c]["steam_sure"]), ("3000050", False))
+        res = aufgaben.apply(self.ans("sug", {"id": f"{m}|{p}", "antwort": "dasselbe", "behalten": "Sky Garden"}), d, dry=False)
+        self.assertEqual(res["entries"][0]["what"], "dasselbe, als „Sky Garden“")
+        self.assertIn(p, d["titles"])
+        self.assertNotIn(m, d["titles"])
+        self.assertEqual(d["titles"][p]["meta_id"], "7777777777777777")
+        with self.assertRaises(ValueError):
+            aufgaben.apply(json.dumps({"app": "vr-navigator-meinungen", "titles": []}), d)
+
+    def test_other_lists_via_act(self):
+        d, seen = empty(), []
+        near = [{"key": "retro:gb:x", "name": "Pixel Quest", "system": "GB", "near": "Pixel Quest DX"}]
+        own = [{"key": "retro:gb:y", "name": "Brick Fall", "system": "GB", "diff": [{"f": "genre", "own": "Action", "other": "libretro: Puzzle; IGDB: Puzzle", "src": "libretro und IGDB"}]}]
+        pc = [{"key": "lantern", "name": "Lantern Keep", "kind": "cand", "cands": [{"appid": "1", "name": "Lantern Keep"}, {"appid": "2", "name": "Lantern Keep"}]}]
+        self.assertEqual(aufgaben.items("own", d, own=own)[0]["andere"], "libretro: Puzzle; IGDB: Puzzle")
+        self.assertEqual(set(aufgaben.tasks(d, near, own, pc)), {"near", "own", "pcid"})
+        act = lambda kind, key, val: seen.append((kind, key, val))
+        aufgaben.apply(self.ans("near", {"id": "retro:gb:x", "antwort": "Dasselbe"}), d, near, own, pc, dry=False, act=act)
+        aufgaben.apply(self.ans("own", {"id": "retro:gb:y", "antwort": "quellen"}), d, near, own, pc, dry=False, act=act)
+        res = aufgaben.apply(self.ans("pcid", {"id": "lantern", "antwort": "3"}), d, near, own, pc, dry=False, act=act)
+        self.assertEqual(res["skipped"], ["Lantern Keep (Steam 3 stand nicht zur Wahl)"])
+        aufgaben.apply(self.ans("pcid", {"id": "lantern", "antwort": "2"}), d, near, own, pc, dry=False, act=act)
+        self.assertEqual(seen, [("near", "retro:gb:x", True), ("own", "retro:gb:y", True), ("pcid", "lantern", "2")])
+
+    def test_detect(self):
+        self.assertEqual(imports.detect(json.dumps({"app": aufgaben.MARK, "liste": "meta"})), "todo")
 
 
 class TestServer(unittest.TestCase):

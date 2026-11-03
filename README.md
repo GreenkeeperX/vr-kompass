@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.23:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.24:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -67,6 +67,15 @@ je Spiel die Suche und die Spielseite, höchstens 30 Spiele je Lauf, bekannte zu
 zählt nur mit gleichem Namen und der richtigen Plattform (am PC „Steam“). Daraus kommen die Spielzeit laut
 HowLongToBeat (vor IGDB, IGDB bleibt im Tooltip), OpenCritic, Metacritic wo Steam keine nennt, USK oder PEGI, Deutsch
 wo Steam nichts sagt; Spieler, Genre und Jahr werden bestätigt oder ergänzt, ein anderes Jahr steht violett.
+Neu in 0.10.24: Jede Liste unter „Zu erledigen“ lässt sich als CSV-Datei herunterladen, alle zusammen mit „alles
+herunterladen“. Wo eine Recherche helfen kann (Ohne Meta-ID, Steam-ID prüfen, PC-Wunsch: Steam-ID, Derselbe Titel?,
+Retro: ähnlicher Name, Retro: Genre weicht ab), gibt es dazu „Auftrag kopieren“ wie bei den Meinungen, mit bis zu 50
+Einträgen. Die Antwort der KI ist eine JSON-Datei mit derselben Kennung je Eintrag; unter Einlesen, „Datei oder Text“
+zeigt das Tool erst, was es mit jeder Antwort täte (Meta-ID eintragen, Steam-ID bestätigen oder entfernen, Paar
+zusammenführen, Genre der Quellen nehmen …), samt Grund und Quellen, und übernimmt erst auf Klick. Unklare Antworten
+und Einträge, die nicht mehr offen sind, bleiben liegen. Antwortet die Recherche bei „Ohne Meta-ID“ mit „keine“
+(keine Quest-Fassung), verschwindet der Titel aus der Liste. Besitz-Widersprüche, Wunschlisten-Gruppen und „DE fehlt“
+gibt es nur zum Herunterladen: Dafür muss jemand in deine Konten schauen, oder das Tool weiß schon mehr als eine Recherche.
 Neu in 0.10.23: Das Steam-Konto hängt eine App nur noch an einen Titel, wenn sie laut Steam VR kann, auch bei
 gleichem Namen. Bisher kam so etwa die Fassung ohne VR oder ein gleichnamiges neues Spiel an einen VR-Titel, samt
 „gekauft am PC“. Solche Zuordnungen löst der nächste Abgleich: Steam-ID und Steam-Besitz fallen weg, die App kommt an
