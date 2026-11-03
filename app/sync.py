@@ -9,12 +9,14 @@ Ablauf eines Laufs (Einzelheiten in docs/abrufe.md):
 4. gg.deals, nur mit Schlüssel: Preise in Paketen zu 100.
 
 Die Abrufe laufen ohne Sperre auf data.json; erst das Ergebnis wird unter der Sperre in die
-aktuelle Fassung eingetragen. Zwischen zwei Abrufen derselben Quelle liegt PAUSE. Antwortet
+aktuelle Fassung eingetragen. Zwischen zwei Abrufen an denselben Server liegt die Pause der Quelle (PAUSE), auch
+wenn ab 0.10.21 nach den Konten mehrere Stränge gleichzeitig laufen (HOSTS). Antwortet
 eine Quelle mit 403 oder 429 oder einer Prüfseite, endet sie für diesen Lauf und ruht danach
 REST_H Stunden, auch über Läufe hinweg. Nach einem kurzen Netzfehler gibt es einen zweiten
 Versuch.
 
-Das Protokoll entsteht live (STATE), die Oberfläche liest es während des Laufs; am Ende landet
+Das Protokoll entsteht live (STATE), in den Strängen als ein Block je Quelle, wenn sie fertig ist; was noch läuft,
+steht in STATE["parts"]. Die Oberfläche liest beides während des Laufs; am Ende landet
 es mit dem Ergebnis je Quelle und der Selbstprüfung in sync.json.
 """
 import html
@@ -118,7 +120,7 @@ sleep = time.sleep          # Tests setzen hier eine Attrappe ein
 _old_misses = {"ignore": False}     # Fehlschläge einer früheren Suche (SEARCH_V) zählen nicht
 _running = threading.Lock()
 # Stand des laufenden Abgleichs, live für die Oberfläche
-STATE = {"started": "", "step": "", "done": 0, "total": 0, "log": []}
+STATE = {"started": "", "step": "", "done": 0, "total": 0, "log": [], "parts": []}
 
 
 def now():
@@ -209,7 +211,7 @@ def status():
     st["running"] = _running.locked()
     if st["running"]:
         st.update(started=STATE["started"], step=STATE["step"], done=STATE["done"],
-                  total=STATE["total"], log=list(STATE["log"]))
+                  total=STATE["total"], log=list(STATE["log"]), parts=list(STATE.get("parts") or []))
     return st
 
 
@@ -242,8 +244,55 @@ def due(settings=None, at=None, boot=False):
     return since >= (gap if boot else timedelta(hours=s["hours"]))
 
 
+_parts = {}                 # 0.10.21: Schritt je Strang {Faden: [Schritt, erledigt, gesamt]}
+_parts_lock = threading.Lock()
+
+
 def progress(step, done=0, total=0):
-    STATE.update(step=step, done=done, total=total)
+    """Schritt des laufenden Fadens. Laufen mehrere Stränge (0.10.21), steht jeder unter STATE["parts"]; der
+    Schritt nennt dann die Zahl der Stränge und den ersten, die Oberfläche zeigt alle."""
+    with _parts_lock:
+        _parts[threading.get_ident()] = [step, done, total]
+        _show_parts()
+
+
+def _progress_end():
+    with _parts_lock:
+        _parts.pop(threading.get_ident(), None)
+        _show_parts()
+
+
+def _show_parts():
+    parts = [list(p) for p in _parts.values()]
+    if len(parts) > 1:
+        STATE.update(step=f"{len(parts)} Quellen gleichzeitig, " + parts[0][0], done=parts[0][1], total=parts[0][2], parts=parts)
+    elif parts:
+        STATE.update(step=parts[0][0], done=parts[0][1], total=parts[0][2], parts=parts)
+    else:
+        STATE.update(parts=[])
+
+
+class _Hosts:
+    """Pausen je Adresse (0.10.21): Laufen Quellen gleichzeitig, geht an jeden Server (etwa store.steampowered.com)
+    trotzdem nur ein Abruf zur Zeit, und zwischen dem Ende eines Abrufs und dem nächsten an denselben Server
+    liegt die Pause der Quelle, wie früher, als alles nacheinander lief. Zwei Quellen desselben Servers teilen
+    sich also seine Pausen und werden zusammen nicht schneller."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.hosts = {}         # Name: [Sperre, Ende des letzten Abrufs]
+
+    def reset(self):
+        with self.lock:
+            self.hosts.clear()
+
+    def slot(self, url):
+        host = (urllib.parse.urlsplit(str(url)).hostname or "").lower()
+        with self.lock:
+            return self.hosts.setdefault(host, [threading.Lock(), 0.0])
+
+
+HOSTS = _Hosts()
 
 
 class _Source:
@@ -267,14 +316,21 @@ class _Source:
         "" ohne Fehlerzeile (etwa Steam-Spielerzahl 404 für eine App ohne Spieler). Mit data als POST (IGDB)."""
         if self.stopped:
             return None
-        if self.n:
-            sleep(self.pause)
         self.n += 1
         where = shown or url
+        slot = HOSTS.slot(url)
         for attempt in (1, 2):
             try:
-                text = (sources.fetch(url, headers=self.headers, raw=True, timeout=90) if raw
-                        else sources.fetch(url, headers=self.headers, data=data) if data is not None else sources.fetch(url, headers=self.headers))
+                with slot[0]:
+                    # Pause seit dem letzten Abruf an diesen Server, gleich von welcher Quelle (0.10.21)
+                    wait = slot[1] + self.pause - time.monotonic() if slot[1] else 0
+                    if wait > 0:
+                        sleep(wait)
+                    try:
+                        text = (sources.fetch(url, headers=self.headers, raw=True, timeout=90) if raw
+                                else sources.fetch(url, headers=self.headers, data=data) if data is not None else sources.fetch(url, headers=self.headers))
+                    finally:
+                        slot[1] = time.monotonic()
                 break
             except sources.FetchError as e:
                 if e.status == 0 and attempt == 1:
@@ -2509,6 +2565,9 @@ def _assign(log, budget, rest):
     log(f"Zuordnung: fertig nach {_took(start)}" + (f", {len(left)} Fälle unter „Zu erledigen“" if left else ", nichts offen"))
 
 
+CHAIN = {}       # Quellen der einfachen Stränge: Name: fn(settings, log), gefüllt unten
+
+
 def run(only=None, boot=False, by_hand=False, fast=False):
     """Ein Lauf. only: Menge der Quellen (qsdb, steam, gg), sonst alle. fast: Grenzen je Lauf mal FAST
     (nur von Hand). Läuft schon einer, kommt False zurück."""
@@ -2523,11 +2582,25 @@ def run(only=None, boot=False, by_hand=False, fast=False):
               "rest": {k: v for k, v in (prev.get("rest") or {}).items() if v > _iso(now())}}
         STATE.update(started=st["started"], step="Start", done=0, total=0, log=st["log"])
 
+        HOSTS.reset()
+        mine = threading.local()        # Block der Quelle, die in diesem Faden läuft (0.10.21)
+        log_lock = threading.Lock()
+
+        def put(lines):
+            with log_lock:
+                st["log"].extend(lines)
+                del st["log"][:-LOG_LINES]
+
         def log(msg):
-            # Zeit in UTC, die Oberfläche zeigt sie in der Zeit des Browsers
-            st["log"].append(f"{now().strftime('%H:%M:%S')} {msg}")
-            del st["log"][:-LOG_LINES]
+            # Zeit in UTC, die Oberfläche zeigt sie in der Zeit des Browsers. Laufen Quellen gleichzeitig, sammelt
+            # jede ihre Zeilen und schreibt sie am Ende als einen Block: so mischen sich keine Zeilen zweier Quellen
+            line = f"{now().strftime('%H:%M:%S')} {msg}"
             print(msg, flush=True)
+            block = getattr(mine, "block", None)
+            if block is not None:
+                block.append(line)
+            else:
+                put([line])
 
         begun = time.monotonic()
         settings = load_settings()
@@ -2550,12 +2623,20 @@ def run(only=None, boot=False, by_hand=False, fast=False):
                                  "requests": 0, "errors": 0}
                 return
             progress(NAMES[name])
+            lane = getattr(mine, "lane", None)
+            if lane is not None:
+                mine.block = []
             try:
                 results[name] = fn()
             except Exception as e:          # ein Fehler im Lesen soll die anderen Quellen nicht aufhalten
                 log(f"{NAMES[name]}: unerwarteter Fehler ({type(e).__name__}), Einzelheiten im Protokoll des Containers")
                 print(f"Fehler beim Abgleich {name}:", e, file=sys.stderr)
                 results[name] = {"at": titles.now_iso(), "ok": False, "msg": type(e).__name__}
+            finally:
+                if lane is not None:
+                    block, mine.block = mine.block, None
+                    if block:
+                        put(block)
             if results[name].get("blocked"):
                 st["rest"][name] = _iso(now() + timedelta(hours=REST_H))
                 results[name]["until"] = st["rest"][name]
@@ -2592,15 +2673,6 @@ def run(only=None, boot=False, by_hand=False, fast=False):
             log("gg.deals-Wunschliste: nur per Lesezeichen" + (f", zuletzt gelesen {_ago_text(last['at'])}" if last.get("at") else ", noch nie gelesen"))
             results["ggwish"] = {"at": titles.now_iso(), "ok": True, "manual": True, "msg": "per Lesezeichen",
                                  "requests": 0, "errors": 0}
-        if not only or "pcwish" in only:
-            do("pcwish", lambda: _pcwish(settings, log))
-        if settings["itad_key"] and (not only or "itad" in only):
-            do("itad", lambda: _itad(settings, log))
-        if any(st["rest"].get(x) for x in ("details", "reviews")) and (not only or "pcinfo" in only):
-            log("PC-Wunschliste, Spielinfos: Steam ruht nach einer Sperre, nicht abgefragt")
-        else:
-            do("pcinfo", lambda: _pcwish_info(settings, log))
-            do("vrinfo", lambda: _vr_info(settings, log))
         if settings["sharenite"]:
             last = ((prev.get("sources") or {}).get("sharenite") or {})
             fresh = last.get("ok") and (last.get("at") or "") > _iso(now() - timedelta(hours=SHARENITE_H))
@@ -2619,12 +2691,6 @@ def run(only=None, boot=False, by_hand=False, fast=False):
                 print("Fehler bei der Zuordnung:", e, file=sys.stderr)
         targets = _targets(store.load_data())
         log(f"Preise für {len(targets)} Wunschtitel, die du noch nicht besitzt")
-        do("qsdb", lambda: _qsdb(targets, upd, log))
-        do("steam", lambda: _steam(targets, upd, log))
-        if settings["gg_key"]:
-            do("gg", lambda: _gg(targets, upd, settings["gg_key"], log))
-        else:
-            log("gg.deals: kein Schlüssel eingetragen, nicht abgefragt")
         # VR-Titel am PC ohne Playnite-Eintrag (0.8.9) als Spiele der Sammlung, damit die Abrufe danach sie mitnehmen
         try:
             with store.lock:
@@ -2640,35 +2706,78 @@ def run(only=None, boot=False, by_hand=False, fast=False):
                 log(f"Sammlung: Spiele aus dem Steam-Konto ohne Playnite-Eintrag {snew} neu" + (f", {sgone} entfallen" if sgone else ""))
         except Exception as e:
             log(f"Sammlung: VR-Titel am PC nicht abgeglichen ({type(e).__name__})")
-        if not only or "reviews" in only:
-            do("reviews", lambda: _reviews(log))
-        if not only or "details" in only:
-            do("details", lambda: _details(log))
-        if not only or "rating" in only:
-            do("rating", lambda: _rating(log))
-        if settings["igdb_id"] and settings["igdb_secret"] and (not only or "igdb" in only):
-            do("igdb", lambda: _igdb(settings, log))
-        if not only or "pcgw" in only:
-            do("pcgw", lambda: _pcgw(log))
-        if not only or "nexus" in only:
-            do("nexus", lambda: _nexus(settings, log))
-        if not only or "wheel" in only:
-            do("wheel", lambda: _wheel(log))
-        if not only or "players" in only:
-            do("players", lambda: _players(log))
-        if not only or "active" in only:
-            do("active", lambda: _active(log))
-        if not only or "vrdb" in only:
-            do("vrdb", lambda: _vrdb(log))
-        if not only or "retro" in only:
-            do("retro", lambda: _retro(log))
-        if not only or "gametdb" in only:
-            do("gametdb", lambda: _gametdb(log))
-        if not only or "deku" in only:
-            do("deku", lambda: _deku(log))
-            do("wiki", lambda: _wiki(log))
-        if sources.eshop_url() and (not only or "eshop" in only):
-            do("eshop", lambda: _eshop(log))
+
+        def want(name):
+            return not only or name in only
+
+        def steam_shop():
+            do("steam", lambda: _steam(targets, upd, log))
+            # gg.deals nach Steam: es nimmt die App-IDs, die die Steam-Suche eben gefunden hat
+            if settings["gg_key"]:
+                do("gg", lambda: _gg(targets, upd, settings["gg_key"], log))
+            else:
+                log("gg.deals: kein Schlüssel eingetragen, nicht abgefragt")
+            for name, fn in (("reviews", _reviews), ("details", _details), ("rating", _rating)):
+                if want(name):
+                    do(name, lambda fn=fn: fn(log))
+
+        def pc_wish():
+            if want("pcwish"):
+                do("pcwish", lambda: _pcwish(settings, log))
+            if settings["itad_key"] and want("itad"):
+                do("itad", lambda: _itad(settings, log))
+            if any(st["rest"].get(x) for x in ("details", "reviews")) and want("pcinfo"):
+                log("PC-Wunschliste, Spielinfos: Steam ruht nach einer Sperre, nicht abgefragt")
+            else:
+                do("pcinfo", lambda: _pcwish_info(settings, log))
+                do("vrinfo", lambda: _vr_info(settings, log))
+
+        def meta():
+            do("qsdb", lambda: _qsdb(targets, upd, log))
+            if want("vrdb"):
+                do("vrdb", lambda: _vrdb(log))
+
+        def chain(*names):
+            def go():
+                for name in names:
+                    if name == "igdb" and not (settings["igdb_id"] and settings["igdb_secret"]):
+                        continue
+                    if name == "eshop" and not sources.eshop_url():
+                        continue
+                    if want(name):
+                        do(name, lambda fn=CHAIN[name]: fn(settings, log))
+            return go
+
+        # Ab 0.10.21 laufen die Quellen in Strängen gleichzeitig. Ein Strang ruft nacheinander ab, was
+        # voneinander abhängt; Pausen gelten je Server (HOSTS), auch über Stränge hinweg
+        lanes = [("Steam-Laden", steam_shop), ("PC-Wunschliste", pc_wish), ("Meta", meta),
+                 ("Steam-Spieler", chain("players", "active")), ("Spielinfos", chain("igdb", "pcgw", "nexus")),
+                 ("Sim-Racing, Retro", chain("wheel", "retro", "gametdb")), ("DekuDeals, Wikidata", chain("deku", "wiki", "eshop"))]
+        took = {}
+
+        def run_lane(label, fn):
+            mine.lane = label
+            t0 = time.monotonic()
+            try:
+                fn()
+            except Exception as e:          # ein Fehler in einem Strang hält die anderen nicht auf
+                log(f"{label}: unerwarteter Fehler ({type(e).__name__}), Einzelheiten im Protokoll des Containers")
+                print(f"Fehler im Strang {label}:", e, file=sys.stderr)
+            finally:
+                took[label] = time.monotonic() - t0
+                _progress_end()
+
+        _progress_end()
+        log(f"Weiter in {len(lanes)} Strängen gleichzeitig; je Server ein Abruf zur Zeit, Pausen wie sonst. "
+            "Jede Quelle schreibt ihre Zeilen als Block, sobald sie fertig ist")
+        threads = [threading.Thread(target=run_lane, args=lane, name=f"abgleich-{i}", daemon=True) for i, lane in enumerate(lanes)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        busy = sorted(((v, k) for k, v in took.items() if v >= 1), reverse=True)
+        if busy:
+            log("Stränge: " + ", ".join(f"{k} {int(v) // 60}:{int(v) % 60:02d} min" for v, k in busy))
         progress("Speichern")
         applied = apply(upd)
         st["sources"].update(results)
@@ -2702,8 +2811,15 @@ def run(only=None, boot=False, by_hand=False, fast=False):
         return True
     finally:
         globals().update(limits)
-        STATE.update(step="", done=0, total=0)
+        with _parts_lock:
+            _parts.clear()
+        STATE.update(step="", done=0, total=0, parts=[])
         _running.release()
+
+
+CHAIN.update({k: (lambda fn: lambda settings, log: fn(log))(fn) for k, fn in dict(
+    players=_players, active=_active, pcgw=_pcgw, wheel=_wheel, retro=_retro, gametdb=_gametdb, deku=_deku, wiki=_wiki,
+    eshop=_eshop).items()}, igdb=_igdb, nexus=_nexus)
 
 
 def start(only=None, fast=False):
