@@ -865,8 +865,10 @@ def _steam_account(settings, log, budget):
     apps = dict(data.get("steam_apps") or {})
     have = {t.get("steam_appid") for t in data["titles"].values()}
     todo = [a for a in wished or [] if a not in have]
-    todo += [g["appid"] for g in owned or [] if g["appid"] not in have
-             and not titles.find(data, "", g["appid"], g["name"])]
+    todo += [g["appid"] for g in owned or [] if g["appid"] not in have]
+    # 0.10.23: auch Apps, die schon an einem Titel hängen, einmal auf VR prüfen (accounts.unlink_flat)
+    todo += [a for a in list(wished or []) + [g["appid"] for g in owned or []] if a in have]
+    todo = list(dict.fromkeys(todo))
     checked = _app_checks(src, todo, apps, budget, stamp)
     with store.lock:
         data = store.load_data()
@@ -885,6 +887,9 @@ def _steam_account(settings, log, budget):
             + (f"; neu auf der Wunschliste ({len(res['wish_added'])}): {_few(res['wish_added'])}" if res["wish_added"] else "")
             + (f"; nicht mehr auf der Steam-Wunschliste und damit von deiner ({len(res['wish_removed'])}): "
                f"{_few(res['wish_removed'])}" if res["wish_removed"] else ""))
+    if res["unlinked"]:
+        log(f"Steam-Konto: {len(res['unlinked'])} Steam-IDs gelöst, die App kann laut Steam kein VR: "
+            + _few(res["unlinked"]))
     rest = res["unchecked"]
     if checked or rest:
         log(f"Steam-Konto: {checked} Apps auf VR geprüft"

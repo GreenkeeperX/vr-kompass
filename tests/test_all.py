@@ -2656,6 +2656,7 @@ class TestSync(unittest.TestCase):
         sources.fetch = net = FakeNet({
             "GetOwnedGames": steam_owned_json(("3000005", "Sky Garden"), ("3000020", "Star Ride"), ("3000021", "Flat Racer")),
             "GetWishlist": steam_wish_json("3000030"),
+            "appids=3000005&cc=de&l=german": steam_app_json(3000005, "Sky Garden", True),
             "appids=3000020&cc=de&l=german": steam_app_json(3000020, "Star Ride", True),
             "appids=3000021&cc=de&l=german": steam_app_json(3000021, "Flat Racer", False),
             "appids=3000030&cc=de&l=german": steam_app_json(3000030, "Comet Chase", True),
@@ -3922,7 +3923,8 @@ class TestAccounts(unittest.TestCase):
     def test_apply_steam(self):
         d = empty()
         imports.import_sheet(d, SHEET, dry=False)
-        apps = {"3000020": {"name": "Star Ride", "vr": True}, "3000021": {"name": "Flat Racer", "vr": False}}
+        apps = {"3000020": {"name": "Star Ride", "vr": True}, "3000021": {"name": "Flat Racer", "vr": False},
+                "3000005": {"name": "Sky Garden", "vr": True}}
         res = accounts.apply_steam(d, [{"appid": "3000005", "name": "Sky Garden"}, {"appid": "3000020", "name": "Star Ride"},
                                        {"appid": "3000021", "name": "Flat Racer"}, {"appid": "3000022", "name": "Unbekannt"}],
                                    ["3000023"], apps)
@@ -3933,6 +3935,47 @@ class TestAccounts(unittest.TestCase):
         self.assertNotIn("Flat Racer", by)
         self.assertEqual(res["owned_new"], ["Star Ride"])
         self.assertEqual(res["unchecked"], 2)               # eine gekaufte, eine gewünschte App ohne Prüfung
+
+    def test_apply_steam_flat_name(self):
+        # 0.10.23: gleicher Name, aber die App kann laut Steam kein VR (Fassung ohne VR): nicht anhängen
+        d = empty()
+        k, _ = titles.upsert(d, "Moon Diver", "4444444444444444", "")
+        apps = {"3000031": {"name": "Moon Diver", "vr": False}}
+        res = accounts.apply_steam(d, [{"appid": "3000031", "name": "Moon Diver"}], None, apps)
+        t = d["titles"][k]
+        self.assertEqual((t["steam_appid"], t.get("owned") or {}), ("", {}))
+        self.assertEqual(res["owned"], 0)
+        # noch nicht geprüft: auch nicht anhängen, erst nach der Prüfung
+        res = accounts.apply_steam(d, [{"appid": "3000032", "name": "Moon Diver"}], None, {})
+        self.assertEqual((t["steam_appid"], res["unchecked"]), ("", 1))
+        res = accounts.apply_steam(d, [{"appid": "3000032", "name": "Moon Diver"}], None,
+                                   {"3000032": {"name": "Moon Diver", "vr": True}})
+        self.assertEqual((t["steam_appid"], t["steam_sure"], t["owned"]["pc"]["src"]), ("3000032", True, "steam"))
+
+    def test_unlink_flat(self):
+        # Alte Daten: bis 0.10.22 über den Namen angehängt, samt Steam-Besitz; beim Abgleich gelöst
+        d = empty()
+        a, _ = titles.upsert(d, "Moon Diver", "4444444444444444", "3000031")
+        d["titles"][a].update(steam_sure=True, owned={"pc": {"src": "steam", "label": "Steam"},
+                                                      "meta": {"src": "meta"}})
+        b, _ = titles.upsert(d, "Cloud Harbor", "", "3000033")       # von Hand gesetzt: bleibt
+        d["titles"][b].update(steam_sure=True, steam_hand=True, owned={"pc": {"src": "steam", "label": "Steam"}})
+        c, _ = titles.upsert(d, "Glass Tide", "", "3000034")         # aus der Tabelle, Steam-Konto nie berührt
+        d["titles"][c]["steam_sure"] = True
+        apps = {"3000031": {"name": "Moon Diver", "vr": False}, "3000033": {"name": "Cloud Harbor", "vr": False},
+                "3000034": {"name": "Glass Tide", "vr": False}}
+        res = accounts.apply_steam(d, [{"appid": "3000031", "name": "Moon Diver"},
+                                       {"appid": "3000033", "name": "Cloud Harbor"}], None, apps)
+        t = d["titles"][a]
+        self.assertEqual(res["unlinked"], ["Moon Diver (bei Steam: Moon Diver)"])
+        self.assertEqual((t["steam_appid"], t["steam_sure"], t["steam_wrong"]), ("", False, ["3000031"]))
+        self.assertEqual(list(t["owned"]), ["meta"])
+        self.assertEqual(d["titles"][b]["steam_appid"], "3000033")
+        self.assertEqual(d["titles"][c]["steam_appid"], "3000034")
+        # auch mit VR laut Steam kommt eine gelöste App nicht wieder an denselben Titel
+        apps["3000031"]["vr"] = True
+        accounts.apply_steam(d, [{"appid": "3000031", "name": "Moon Diver"}], None, apps)
+        self.assertEqual(t["steam_appid"], "")
 
     def test_detect_and_meta_wishlist(self):
         self.assertEqual(imports.detect(SHEET), "sheet")
