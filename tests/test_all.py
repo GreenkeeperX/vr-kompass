@@ -451,6 +451,9 @@ class TestImports(unittest.TestCase):
         self.assertNotIn("Night Tram", task)
         self.assertIn('"app": "vr-navigator-meinungen", "stand": "2026-10-28"', task)
         self.assertIn("crossplay", task)
+        # 0.10.19: jeder Absatz in einer Zeile, kein Umbruch mitten im Satz
+        self.assertTrue(task.startswith("Recherchiere") and task.split("\n")[0].endswith("bleibt leer."))
+        self.assertIn("\nCrossbuy heißt: ein Kauf im Meta Store gilt für Quest und PC-VR. Steam gehört nie dazu; gemeinsames Spielen von Quest und PC ist Crossplay, kein Crossbuy.\n", task)
         d["titles"][a]["added"], d["titles"][b]["added"] = "2026-01-05", "2026-10-27"
         self.assertIn("Rally Moth", imports.opinion_task(d, limit=1))
         self.assertNotIn("Harbor Heist", imports.opinion_task(d, limit=1))
