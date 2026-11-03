@@ -2734,8 +2734,6 @@ def run(only=None, boot=False, by_hand=False, fast=False):
 
         def meta():
             do("qsdb", lambda: _qsdb(targets, upd, log))
-            if want("vrdb"):
-                do("vrdb", lambda: _vrdb(log))
 
         def chain(*names):
             def go():
@@ -2750,9 +2748,12 @@ def run(only=None, boot=False, by_hand=False, fast=False):
 
         # Ab 0.10.21 laufen die Quellen in Strängen gleichzeitig. Ein Strang ruft nacheinander ab, was
         # voneinander abhängt; Pausen gelten je Server (HOSTS), auch über Stränge hinweg
-        lanes = [("Steam-Laden", steam_shop), ("PC-Wunschliste", pc_wish), ("Meta", meta),
-                 ("Steam-Spieler", chain("players", "active")), ("Spielinfos", chain("igdb", "pcgw", "nexus")),
-                 ("Sim-Racing, Retro", chain("wheel", "retro", "gametdb")), ("DekuDeals, Wikidata", chain("deku", "wiki", "eshop"))]
+        # 0.10.22: Quellen verschiedener Server, die nicht voneinander abhängen, in eigenen Strängen (vorher
+        # warteten etwa PCGamingWiki auf IGDB und Wikidata auf DekuDeals)
+        lanes = [("Steam-Laden", steam_shop), ("PC-Wunschliste", pc_wish), ("QuestStoreDB", meta), ("VRDB", chain("vrdb")),
+                 ("Steam-Spieler", chain("players", "active")), ("IGDB", chain("igdb")), ("PCGamingWiki", chain("pcgw")),
+                 ("Nexus Mods", chain("nexus")), ("Sim-Racing, Retro", chain("wheel", "retro", "gametdb")),
+                 ("DekuDeals", chain("deku")), ("Wikidata", chain("wiki", "eshop"))]
         took = {}
 
         def run_lane(label, fn):
@@ -2818,7 +2819,7 @@ def run(only=None, boot=False, by_hand=False, fast=False):
 
 
 CHAIN.update({k: (lambda fn: lambda settings, log: fn(log))(fn) for k, fn in dict(
-    players=_players, active=_active, pcgw=_pcgw, wheel=_wheel, retro=_retro, gametdb=_gametdb, deku=_deku, wiki=_wiki,
+    vrdb=_vrdb, players=_players, active=_active, pcgw=_pcgw, wheel=_wheel, retro=_retro, gametdb=_gametdb, deku=_deku, wiki=_wiki,
     eshop=_eshop).items()}, igdb=_igdb, nexus=_nexus)
 
 
