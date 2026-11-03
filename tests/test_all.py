@@ -7,8 +7,10 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from http.server import ThreadingHTTPServer
@@ -2504,6 +2506,43 @@ class TestSync(unittest.TestCase):
             if old is not None:
                 os.environ["ESHOP_URL"] = old
 
+    def test_hosts_one_at_a_time(self):
+        """0.10.21: Quellen laufen gleichzeitig, aber je Server geht nur ein Abruf zur Zeit hinaus, und zwischen dem
+        Ende eines Abrufs und dem nächsten an denselben Server liegt die Pause, gleich von welcher Quelle. Ein anderer
+        Server wartet nicht auf ihn."""
+        sync.sleep = time.sleep
+        sync.HOSTS.reset()
+        seen, lock = [], threading.Lock()
+
+        def fetch(url, **kw):
+            t0 = time.monotonic()
+            time.sleep(0.02)
+            with lock:
+                seen.append((urllib.parse.urlsplit(url).hostname, t0, time.monotonic()))
+            return "{}"
+        sources.fetch = fetch
+        log = lambda m: None
+        srcs = [sync._Source("Steam-Rezensionen", log, pause=0.05), sync._Source("Steam-Details", log, pause=0.05),
+                sync._Source("VRDB", log, pause=0.05)]
+        urls = ["https://store.steampowered.com/appreviews/1", "https://store.steampowered.com/api/appdetails?appids=1",
+                "https://vrdb.app/game/x/1"]
+
+        def go(src, url):
+            for _ in range(4):
+                self.assertEqual(src.get(url), "{}")
+        threads = [threading.Thread(target=go, args=x) for x in zip(srcs, urls)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        steam = sorted((a, b) for h, a, b in seen if h == "store.steampowered.com")
+        vrdb = sorted((a, b) for h, a, b in seen if h == "vrdb.app")
+        self.assertEqual((len(steam), len(vrdb)), (8, 4))
+        for (a1, b1), (a2, b2) in zip(steam, steam[1:]):
+            self.assertGreaterEqual(a2 - b1, 0.045)          # nie gleichzeitig, immer mit Pause dazwischen
+        self.assertLess(vrdb[0][0], steam[2][0])            # VRDB wartet nicht, bis Steam durch ist
+        self.assertLess(vrdb[-1][1], steam[-1][1])
+
     def test_vrdb_and_players(self):
         """VRDB: Crossbuy, Version (mit Tag des Wechsels), Meta-Wertung als Anteil 4 und 5 Sterne.
         Steam: Spieler jetzt mit Spitze, letztes Update aus den Meldungen."""
@@ -2529,6 +2568,12 @@ class TestSync(unittest.TestCase):
                                        "GetNumberOfCurrentPlayers": '{"response": {"player_count": 42, "result": 1}}',
                                        "GetNewsForApp": news})
         sync.run(only={"vrdb", "players"})
+        # 0.10.21: beide laufen in eigenen Strängen gleichzeitig; ihre Zeilen stehen trotzdem je Quelle beisammen
+        lines = [x[9:] for x in sync.status()["log"]]
+        for name in ("VRDB:", "Steam-Spieler:"):
+            at = [i for i, x in enumerate(lines) if x.startswith(name)]
+            self.assertTrue(at and at == list(range(at[0], at[-1] + 1)), (name, lines))
+        self.assertEqual((sync.STATE["parts"], sync.STATE["step"]), ([], ""))
         t = store.load_data()["titles"]
         self.assertEqual((t[a]["vrdb"]["crossbuy"], t[a]["vrdb"]["pos"], t[a]["vrdb"]["n"], {k: v for k, v in t[a]["meta_ver"].items() if k != "seen"}), (True, 81, 1234, {"v": "1.4.0_123", "since": ""}))
         self.assertTrue(t[a]["meta_ver"]["seen"])                # 0.10.2: erste Sicht, die Version ist mindestens so alt

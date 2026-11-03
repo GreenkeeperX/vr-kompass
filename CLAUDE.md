@@ -40,7 +40,7 @@ Weitere feste Regeln (wie im eShopKompass):
   Sharenite)
 - `app/besitz.py`: ab 0.10.2 Besitz mit zweiter Quelle (Steam-Konto, Sharenite, gg.deals-Sammlung, Meta-Käufe),
   Widersprüche für „Zu erledigen“ (`check`), ohne Netz
-- `app/sync.py`: Abgleich je Quelle (erst Konten, dann Zuordnung, dann Preise), Zeitplan, Einstellungen, Verbindungstest (siehe
+- `app/sync.py`: Abgleich je Quelle (erst Konten, dann Zuordnung, ab 0.10.21 dann sieben Stränge gleichzeitig mit Pausen je Server, `HOSTS`), Zeitplan, Einstellungen, Verbindungstest (siehe
   `docs/abrufe.md`)
 - `app/titles.py`: Namen vergleichen, Kennungen aus Links, Titel finden, anlegen, zusammenführen,
   Vorschläge für ähnliche Namen, Steam-ID prüfen, Liste „Zu erledigen“ (`todo`), Suchlinks

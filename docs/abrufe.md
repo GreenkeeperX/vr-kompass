@@ -9,7 +9,8 @@ Lesern. Ist der letzte vor weniger als 30 Minuten fehlgeschlagen, wartet auch di
 
 Alle Abrufe gehen über `sources.fetch`: ehrliche Kennung `vr-navigator/<Version>`, nur
 öffentliche Ziele, Grenzen für Zeit und Größe. Zwischen zwei Abrufen derselben Quelle liegen
-2 Sekunden. Nach einem kurzen Netzfehler gibt es nach 5 Sekunden einen zweiten Versuch.
+2 Sekunden. Ab 0.10.21 gilt die Pause je Server: Es geht immer nur ein Abruf zur Zeit an einen Server, und nach seinem
+Ende wartet der nächste die Pause seiner Quelle ab, auch wenn er von einer anderen Quelle kommt (`sync.HOSTS`). Nach einem kurzen Netzfehler gibt es nach 5 Sekunden einen zweiten Versuch.
 Antwortet eine Quelle mit 403 oder 429 oder mit einer Prüfseite (Cloudflare „Just a moment“),
 endet sie für diesen Lauf und **ruht 24 Stunden**, auch über spätere Läufe hinweg; das Protokoll
 nennt das Ende der Ruhezeit. Nach 5 anderen Fehlern endet sie nur für diesen Lauf. Die übrigen
@@ -20,9 +21,29 @@ Grenzen je Lauf mal `FAST` (5): `REVIEWS_MAX`, `DETAILS_MAX`, `RATING_MAX`, `IGD
 `NEXUS_MAX`, `WHEEL_MAX`, `PLAYERS_MAX`, `VRDB_MAX`. Pausen, Ruhezeiten und der Abbruch bei 403 und 429
 bleiben wie sonst; danach gelten wieder die üblichen Grenzen. Der Zeitplan startet nie einen solchen Lauf.
 
+**Stränge** (ab 0.10.21): Erst laufen nacheinander die Konten (Steam-Konto, gg.deals-Wunschliste, Sharenite), die
+Zuordnung und der Abgleich der Sammlung mit den Konten. Danach laufen sieben Stränge gleichzeitig, jeder ruft seine Quellen
+nacheinander ab:
+
+| Strang | Quellen | Server vor allem |
+|---|---|---|
+| Steam-Laden | Steam-Preise, gg.deals-Preise (nimmt die eben gefundenen App-IDs), Rezensionen, Details, Wertungen | store.steampowered.com, api.gg.deals |
+| PC-Wunschliste | PC-Wunschliste, IsThereAnyDeal, Spielinfos PC-Wünsche, Spielinfos VR-Titel | store.steampowered.com, api.isthereanydeal.com, api.igdb.com |
+| Meta | QuestStoreDB, VRDB | queststoredb.com, vrdb.app |
+| Steam-Spieler | Spielerzahlen, aktive Spieler PC | api.steampowered.com |
+| Spielinfos | IGDB, PCGamingWiki, Nexus Mods | api.igdb.com, pcgamingwiki.com, api.nexusmods.com |
+| Sim-Racing, Retro | Sim-Racing, Retro-Fassungen, GameTDB | api.steampowered.com, raw.githubusercontent.com, gametdb.com |
+| DekuDeals, Wikidata | DekuDeals, Wikidata, eShopKompass | dekudeals.com, wikidata.org, de.wikipedia.org |
+
+Die Preise werden wie bisher erst nach allen Strängen eingetragen. Was am längsten dauert, ist der Steam-Store: Rezensionen,
+Details, Wertungen und die Spielinfos der Wunschlisten gehen alle an store.steampowered.com und teilen sich dessen Pause.
+
 ## Protokoll, Selbstprüfung, Verbindung testen
 
-- **Protokoll:** jede Quelle schreibt, was sie tut, live während des Laufs (letzte 200 Zeilen,
+- **Protokoll:** jede Quelle schreibt, was sie tut; ab 0.10.21 sammelt sie ihre Zeilen und schreibt sie als einen Block,
+  sobald sie fertig ist (die Zeit jeder Zeile bleibt die ihres Ereignisses). Was gerade läuft, steht während des Laufs
+  unter dem Protokoll unter „läuft gerade“ mit Fortschritt; die Zeile „Stränge“ nennt am Ende die Dauer je Strang.
+  Bis 0.10.20 schrieb jede Quelle live während des Laufs (letzte 200 Zeilen,
   Zeit in UTC, die Oberfläche zeigt die Zeit des Browsers). Unter Einstellungen, Protokoll, zum Lesen und Kopieren.
   Die zweite Zeile ist eine Kurzfassung nach dem Lauf: Wunschtitel im Angebot, günstiger
   gewordene, neue Meta-Tiefstpreise, Quellen mit Fehler, Ergebnis der Selbstprüfung.

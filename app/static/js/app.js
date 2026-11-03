@@ -143,6 +143,8 @@ function renderHead(){
   const sy = S.sync || {}, se = S.settings || {}, hours = se.hours || 6, m = $("meta");
   if(sy.running){
     m.textContent = `${sy.step || "Abgleich"}${sy.total ? ` (${sy.done}/${sy.total})` : ""} …`;
+    // 0.10.21: laufen mehrere Quellen gleichzeitig, nennt der Hinweis an der Zeile alle
+    m.title = (sy.parts || []).length > 1 ? sy.parts.map(partText).join("\n") : "";
   } else {
     const last = sy.started ? new Date(sy.started) : null;
     const stale = last && Date.now() - last > 2 * hours * 3600000;
@@ -2112,7 +2114,7 @@ function settingsView(){
   const abgleich = box("abgleich", "Abgleich", sy.running ? "läuft" : `Stand ${ago(sy.started)}${next ? ` · nächster ca. ${next < new Date() ? "in Kürze" : whenDay(next) + clock(next)}` : se.auto === false ? " · Zeitplan aus" : ""}`, `
     <form data-form="sched" class="bar sched"><label><input type="checkbox" name="auto" data-sched="1"${se.auto ? " checked" : ""}> automatisch alle</label>
       <input type="number" name="hours" min="2" max="48" value="${esc(hours)}" aria-label="Abstand in Stunden" data-sched="1"> Stunden <span class="err" id="s-err"></span></form>
-    <p class="hint">Liest deine Konten, ordnet alle Titel zu und holt Preise und Messwerte. Ein Lauf dauert einige Minuten, weil zwischen zwei Abrufen einer Quelle Pausen liegen; nach einer Sperre ruht eine Quelle 24 Stunden.</p>
+    <p class="hint">Liest deine Konten, ordnet alle Titel zu und holt Preise und Messwerte. Die Quellen laufen gleichzeitig; an jeden Server geht nur ein Abruf zur Zeit, mit Pausen dazwischen, darum dauert ein Lauf einige Minuten. Nach einer Sperre ruht eine Quelle 24 Stunden.</p>
     ${sub("quellen", "Quellen", srcInfo, `<div class="scroll"><table class="mini-t"><tbody>${rows}</tbody></table></div>`, !bad)}
     <div class="bar slim" style="margin-top:10px"><button class="primary" data-act="sync" ${sy.running ? "disabled" : ""}>${sy.running ? "Läuft …" : "Aktualisieren"}</button>
       <button data-act="sync" data-v="fast" ${sy.running ? "disabled" : ""} title="Ein Lauf mit 5-mal so vielen Abrufen je Quelle, für das erste Auffüllen einer großen Sammlung. Die Pausen bleiben, darum dauert er etwa eine Stunde.">Beschleunigt auffüllen</button>
@@ -2181,11 +2183,14 @@ function localStamp(line){
   const d = new Date(); d.setUTCHours(+m[1], +m[2], +m[3], 0);
   return FMT.time.format(d) + m[4];
 }
+function partText(p){ return `${p[0]}${p[2] ? ` (${p[1]}/${p[2]})` : ""}`; }
 function logText(){
   const sy = S.sync || {};
   if(!(sy.log || []).length) return "Noch kein Protokoll.";
   const head = `Abgleich vom ${new Date(sy.started).toLocaleString("de-DE")}, v${S.version}${sy.running ? ", läuft" : sy.ok === false ? ", mit Fehlern" : ""}\n`;
-  return head + sy.log.map(localStamp).join("\n");
+  // 0.10.21: jede Quelle schreibt ihren Block, wenn sie fertig ist; bis dahin steht sie unter „läuft gerade“
+  const parts = sy.running ? (sy.parts || []) : [];
+  return head + sy.log.map(localStamp).join("\n") + (parts.length ? "\n\nläuft gerade:\n" + parts.map(p => "  " + partText(p)).join("\n") : "");
 }
 function showLog(){
   const l = $("log");
