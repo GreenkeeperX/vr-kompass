@@ -362,6 +362,7 @@ class TestImports(unittest.TestCase):
         self.assertEqual((res["n"], res["what"]), (2, "Meinungen"))
         self.assertIn("Nebula Drift", res["note"])
         self.assertEqual((res["attach"], res["unknown"]), (True, 1))  # 0.10.18: Meldung ohne „neu angelegt“
+        self.assertEqual((res["had"], [e["had"] for e in res["entries"]]), (0, [False, False]))  # 0.10.20
         self.assertNotIn("opinion", d["titles"][a])
         imports.import_auto(d, text, dry=False)
         o = d["titles"][a]["opinion"]
@@ -369,6 +370,7 @@ class TestImports(unittest.TestCase):
         self.assertNotIn("unbekannt", o)
         self.assertEqual([q["url"] for q in o["quellen"]], ["https://example.org/a"])
         self.assertNotIn("fassung", d["titles"][b]["opinion"])
+        self.assertEqual(imports.import_auto(d, text, dry=True)["had"], 2)  # 0.10.20: ersetzt beide
         rows = {r["name"]: r for r in library.view(d)["wishlist"] + [library.row(k, t) for k, t in d["titles"].items()]}
         self.assertEqual((rows["Orbit Golf"]["crossbuy"], rows["Orbit Golf"]["crossbuy_src"]), (False, "Recherche"))
         self.assertEqual((rows["Comet Chase"]["crossbuy"], rows["Comet Chase"]["crossbuy_src"]), (True, "Hand"))
