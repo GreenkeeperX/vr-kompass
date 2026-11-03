@@ -196,6 +196,7 @@ STATE_FILES = ("data.json", collection.FILE, pcwish.FILE, "history.json", "setti
 def _state_core():
     data = store.load_data()
     near, own, de = memo("retro", (collection.FILE,), _retro_lists)
+    games = collection_view().get("games") or []
     hist, pw = store.load_json("history.json", {}), store.load_json(pcwish.FILE, pcwish.EMPTY)
     view, pcv = library.view(data, hist=hist, settings=sync.load_settings()), pcwish.view(data)
     st = price_stats(data, pw, hist)
@@ -204,7 +205,10 @@ def _state_core():
                 marks=data["marks"], version=sources.VERSION, pcwish=pcv,
                 pcwish_ids=pcwish.id_todo(pw),
                 retro_near=near, retro_own=own, retro_de=de, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
-                todo_tasks=aufgaben.tasks(data, near, own, pcwish.id_todo(pw)), todo_batch=aufgaben.BATCH)
+                todo_tasks=aufgaben.tasks(data, near, own, pcwish.id_todo(pw), games=games), todo_batch=aufgaben.BATCH,
+                # 0.10.26: Recherche zur Sammlung: Lenkrad (die Spiele) und VR-Mods (nur die Zahl, es sind Tausende)
+                research={"wheel": [{"key": x["id"], "name": x["name"], "tags": x["schlagwoerter"]} for x in aufgaben.items("wheel", data, games=games)],
+                          "vrmod_n": len(aufgaben.items("vrmod", data, games=games)), "vrmod_batch": aufgaben.BATCHES["vrmod"]})
 
 
 def state():
@@ -214,11 +218,16 @@ def state():
     return dict(core, sync=sync.status(), settings=settings_view())
 
 
+def collection_view():
+    """Die Sammlung wie in der Oberfläche, zwischengespeichert, bis sich eine der Dateien ändert."""
+    return memo("colview", (collection.FILE, "data.json", wheel.LIST_FILE),
+                lambda: collection.view(store.load_json(collection.FILE, collection.EMPTY), store.load_data()))
+
+
 def collection_body():
     """Die Sammlung als fertige Antwort, roh und gepackt."""
     def make():
-        raw = json.dumps(collection.view(store.load_json(collection.FILE, collection.EMPTY), store.load_data()),
-                         ensure_ascii=False).encode("utf-8")
+        raw = json.dumps(collection_view(), ensure_ascii=False).encode("utf-8")
         return raw, gzip.compress(raw, compresslevel=5)
     return memo("collection", (collection.FILE, "data.json", wheel.LIST_FILE), make)
 
@@ -376,7 +385,11 @@ def import_todo(text, dry):
             elif kind == "own":
                 retro.settle_own(col, key, take=bool(val))
                 changed.add("col")
-        res = aufgaben.apply(text, data, retro.near_list(col), retro.own_list(col), pcwish.id_todo(pw), dry=dry, act=act)
+            elif kind in ("wheel", "vrmod") and key in (col.get("games") or {}):
+                col["games"][key]["r_" + kind] = val
+                changed.add("col")
+        games = collection.view(col, data)["games"]
+        res = aufgaben.apply(text, data, retro.near_list(col), retro.own_list(col), pcwish.id_todo(pw), dry=dry, act=act, games=games)
         if not dry:
             store.save_data(data)
             if "col" in changed:

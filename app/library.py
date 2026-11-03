@@ -392,6 +392,19 @@ def _sale(r):
 BUNDLE_MIN_WISH = 2                    # so viele deiner Wünsche muss ein Paket enthalten
 
 
+def second_shop(t, r=None):
+    """Laden der anderen Fassung, wenn die Recherche sie zusätzlich empfiehlt (zweitkauf) und du sie noch nicht hast:
+    bei Meta gekauft Steam, am PC gekauft Meta. Sonst leer."""
+    if (t.get("opinion") or {}).get("zweitkauf") is not True:
+        return ""
+    own = t.get("owned") or {}
+    if own.get("meta") and not own.get("pc"):
+        return "steam" if t.get("steam_appid") else ""
+    if own.get("pc") and not own.get("meta"):
+        return "meta" if t.get("meta_id") else ""
+    return ""
+
+
 def bundle_deals(data, rows):
     """Meta-Pakete gegen Einzelpreise (0.10.2): Ein Titel mit Inhalt (contains, etwa ein Bundle oder Crossbuy-Paket)
     und Meta-Preis, der mindestens BUNDLE_MIN_WISH deiner offenen Wünsche enthält. Verglichen wird der Paketpreis mit
@@ -447,6 +460,19 @@ def view(data, at=None, hist=None, settings=None):
     sale = sorted((r for r in wish if not r["where"] and _sale(r)), key=lambda r: (-_sale(r), titles.norm(r["name"])))
     now = [r for r in sale if _near(r)]
     far = [r for r in sale if not _near(r)]
+    # 0.10.26: Zweitkauf aus der Recherche: die andere Fassung eines gekauften Titels, wenn sie im Angebot nah am Tief ist
+    for r in owned:
+        other = second_shop(data["titles"][r["key"]], r)
+        if not other:
+            continue
+        L, B = r["live"].get(other) or {}, r["best"].get(other) or {}
+        if L.get("discount") and B.get("grade") in ("buy", "good"):
+            why = ((r.get("opinion") or {}).get("zweitkauf_grund") or "").strip()
+            r["second"] = other
+            r["buy"] = {"shop": other, "grade": B["grade"],
+                        "why": [{"shop": other, "text": "Zweitkauf laut Recherche" + (f": {why}" if why else ""), "w": 1, "guess": True}]}
+            now.append(r)
+    now.sort(key=lambda r: (-_sale(r), titles.norm(r["name"])))
     return {
         "now": now, "now_far": far,
         "library": owned,

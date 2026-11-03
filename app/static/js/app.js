@@ -201,6 +201,8 @@ function badges(r, compact){
   if(r.where === "pc" || r.where === "beide") out.push(`<span class="b" title="In Playnite (PC)">${esc(r.pc_label || "PC")}</span>`);
   if(r.where === "meta" || r.where === "beide") out.push(`<span class="b" title="Im Meta Store gekauft">Meta</span>`);
   if(r.bundle) out.push(`<span class="b" title="Paket aus mehreren Spielen">Bundle</span>`);
+  // 0.10.26: die andere Fassung lohnt laut Recherche zusätzlich und ist gerade nah am Tief (nur in „Jetzt“)
+  if(r.second) out.push(`<span class="b gxc" title="${esc(`Du hast das Spiel schon; laut Recherche lohnt die Fassung bei ${r.second === "meta" ? "Meta" : "Steam"} zusätzlich${r.opinion?.zweitkauf_grund ? ": " + r.opinion.zweitkauf_grund : ""}`)}">Zweitkauf ${r.second === "meta" ? "Meta" : "Steam"}</span>`);
   if(r.info?.xp?.on) out.push(xpMark(r.info.xp));
   const pk = (r.bundles || []).find(b => b.wish_save > 0);
   if(pk && !r.where) out.push(`<span class="b go" title="${esc(bundleTip(pk))}">im Paket günstiger</span>`);
@@ -1113,7 +1115,7 @@ function gYear(g){
   const tdb = [g.tyear && `GameTDB ${g.tyear}`, g.dyear && `DekuDeals ${g.dyear}`, g.wyear && `Wikidata ${g.wyear}`].filter(Boolean);      // 0.10.13/0.10.14/0.10.16: andere Quelle, anderes Jahr
   return `<span class="${chk(g) && !g.year_ok || g.tyear || g.dyear || g.wyear ? "gxc" : ""}" title="${esc(who.concat(tip ? [tip] : [], tdb).join("\n"))}">${esc(g.year)}</span>`;
 }
-const vrMod = g => !!(g.vrmod?.length || g.nexus?.vr?.length || g.vorpx);
+const vrMod = g => !!(g.vrmod?.length || g.nexus?.vr?.length || g.vorpx || g.vrmod_r?.ok);
 // Wertung nach Rangfolge (0.8.0); eine Ersatzquelle grau und kursiv wie OpenCritic im eShopKompass
 function gSc(g){
   if(g.score == null) return "";
@@ -1435,6 +1437,7 @@ function gBadges(g){
     : `<span class="b vrb" title="${esc(g.from_vr ? `Dein VR-Titel (${g.store}); Playnite kennt ihn nicht` : `VR laut ${g.vr_src || "Steam"}`)}">VR</span>`);
   // VR per Mod (0.8.1): PCGamingWiki „hackable“ gilt; nur Nexus-Mods mit VR im Namen oder vorpX ist ein Hinweis (gestrichelt)
   else if(g.vrmod?.length) b.push(`<span class="b vrb" title="${esc(`Laut PCGamingWiki per Mod: ${g.vrmod.join(", ")}${g.vorpx ? "; auch mit vorpX" : ""}`)}">VR per Mod</span>`);
+  else if(g.vrmod_r?.ok) b.push(`<span class="b vrq gxc" title="${esc(`Laut Recherche per Mod${g.vrmod_r.mod ? ": " + g.vrmod_r.mod : ""}${g.vrmod_r.grund ? "\n" + g.vrmod_r.grund : ""}`)}">VR per Mod</span>`);
   else if(vrMod(g)) b.push(`<span class="b vrq" title="${esc(["Nur ein Hinweis, nicht geprüft", g.nexus?.vr?.length && `Nexus Mods: ${g.nexus.vr.map(m => m.name).join(", ")}`, g.vorpx && "PCGamingWiki: geht mit vorpX"].filter(Boolean).join("\n"))}">VR-Mod</span>`);
   // Sim-Racing (0.8.3): in der Liste der Rennsimulationen bestätigt; nur Steam-Schlagwörter sind ein Hinweis (gestrichelt)
   b.push(wheelBadge(g.wheel));
@@ -1582,20 +1585,26 @@ const WHEEL_LIST = "Liste der Rennspiele (SimHub, Simucube-Forum)";
 function wheelBadge(w){
   if(!w) return "";
   const tags = w.tags.length ? `Steam-Schlagwörter: ${w.tags.join(", ")}` : "";
+  // 0.10.26: Recherche bestätigt das Lenkrad (violett: zusammengetragen, nicht vom Tool geprüft)
+  if(!w.src.length && w.r) return `<span class="b simb gxc" title="${esc(`Laut Recherche: Lenkrad ${w.r === "ja" ? "mit Force Feedback" : "nur teilweise"}\n${tags}`)}">SimRacing</span>`;
   return w.src.length ? `<span class="b simb" title="${esc([`Laut ${w.src.join(" und ")}`, tags].filter(Boolean).join("\n"))}">SimRacing</span>`
     : `<span class="b simq" title="${esc(`Nur ein Hinweis, nicht geprüft\n${tags}`)}">SimRacing</span>`;
 }
+// Recherche (0.10.26) als Text mit Quellen, violett
+const resHtml = (text, x) => `<span class="gxc" title="Aus der Recherche, nicht vom Tool geprüft">${esc(text)}${x.grund ? ` (${esc(x.grund)})` : ""}</span>${(x.quellen || []).filter(safeUrl).map((u, i) => ` <a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Quelle${x.quellen.length > 1 ? " " + (i + 1) : ""}</a>`).join("")}`;
 function wheelHtml(g){
   const w = g.wheel;
   if(!w) return "";
   return [...w.src.map(s => `<a href="${WHEEL_SRC[s]?.[0] || ""}" target="_blank" rel="noopener noreferrer" title="${esc(WHEEL_SRC[s]?.[1] || "")}">${esc(s)}</a>`),
-    w.tags.length && `<span class="${w.src.length ? "" : "gxc"}" title="Steam-Schlagwörter${w.src.length ? "" : ", nur ein Hinweis"}">${esc(w.tags.join(", "))}</span>`].filter(Boolean).join(" · ");
+    w.tags.length && `<span class="${w.src.length ? "" : "gxc"}" title="Steam-Schlagwörter${w.src.length ? "" : ", nur ein Hinweis"}">${esc(w.tags.join(", "))}</span>`,
+    g.wheel_r && resHtml(`Recherche: Lenkrad ${g.wheel_r.v === "ja" ? "mit Force Feedback" : g.wheel_r.v === "teilweise" ? "nur teilweise" : "nein"}`, g.wheel_r)].filter(Boolean).join(" · ");
 }
 // VR per Mod und Nexus Mods in den Einzelheiten (0.8.1), mit Links
 const nxLink = (g, m) => `<a href="https://www.nexusmods.com/${encodeURIComponent(g.nexus.dom)}/mods/${Number(m.id)}" target="_blank" rel="noopener noreferrer" title="${num(m.end)} Empfehlungen">${esc(m.name)}</a>`;
 function vrModHtml(g){
   const p = [g.vrmod?.length && `<span title="Laut PCGamingWiki: „hackable“">${esc(g.vrmod.join(", "))}</span>`, g.vorpx && "vorpX",
-    g.nexus?.vr?.length && `<span class="gxc" title="Mods mit VR im Namen, nicht geprüft">${g.nexus.vr.map(m => nxLink(g, m)).join(", ")}</span>`].filter(Boolean);
+    g.nexus?.vr?.length && `<span class="gxc" title="Mods mit VR im Namen, nicht geprüft">${g.nexus.vr.map(m => nxLink(g, m)).join(", ")}</span>`,
+    g.vrmod_r && resHtml(g.vrmod_r.ok ? `Recherche: ${g.vrmod_r.mod || "VR-Mod"}` : "Recherche: kein VR-Mod", g.vrmod_r)].filter(Boolean);
   return p.join(" · ");
 }
 function nexusHtml(g){
@@ -2022,11 +2031,12 @@ function sub(k, title, info, body, shut, id){
 }
 /* „Zu erledigen“ herunterladen und als Auftrag (0.10.24): je Liste eine CSV-Datei mit dem, was dort steht; wo eine
    Recherche helfen kann, dazu ein Auftrag wie bei den Meinungen (Text aus aufgaben.py, Antwort unter Einlesen) */
-const TODO_TASK = {steamtodo: "steam", metatodo: "meta", pcids: "pcid", sug: "sug", retronear: "near", retroown: "own"};
+const TODO_TASK = {steamtodo: "steam", metatodo: "meta", pcids: "pcid", sug: "sug", retronear: "near", retroown: "own", wheel: "wheel", vrmod: "vrmod"};
 function todoReg(id, title, head, rows){ (V.todoCsv = V.todoCsv || {})[id] = {title, head, rows}; }
 function todoTools(id){
-  const t = TODO_TASK[id], task = t && S.todo_tasks?.[t], n = V.todoCsv?.[id]?.rows.length || 0;
-  return `<div class="bar slim"><button data-act="tododl" data-v="${id}" title="Diese Liste als CSV-Datei, etwa für Excel oder LibreOffice">herunterladen</button>${task ? ` <button data-act="todotask" data-v="${t}" title="Auftrag für eine Claude-Routine oder einen Chat; die Antwort liest du unter Einlesen, „Datei oder Text“ ein und siehst erst eine Vorschau">Auftrag kopieren${n > (S.todo_batch || 50) ? ` (${S.todo_batch || 50} von ${n})` : ""}</button>` : ""}</div>`;
+  const t = TODO_TASK[id], task = t && S.todo_tasks?.[t], reg = V.todoCsv?.[id];
+  const n = id === "vrmod" ? S.research?.vrmod_n || 0 : reg?.rows.length || 0, per = id === "vrmod" ? S.research?.vrmod_batch || 100 : S.todo_batch || 50;
+  return `<div class="bar slim">${reg ? `<button data-act="tododl" data-v="${id}" title="Diese Liste als CSV-Datei, etwa für Excel oder LibreOffice">herunterladen</button>` : ""}${task ? ` <button data-act="todotask" data-v="${t}" title="Auftrag für eine Claude-Routine oder einen Chat; die Antwort liest du unter Einlesen, „Datei oder Text“ ein und siehst erst eine Vorschau">Auftrag kopieren${n > per ? ` (${per} von ${num(n)})` : ""}</button>` : ""}</div>`;
 }
 // Werkzeuge hinter den ersten Absatz der Liste
 const withTools = (id, html) => { const i = html.indexOf("</p>"); return i < 0 ? todoTools(id) + html : html.slice(0, i + 4) + todoTools(id) + html.slice(i + 4); };
@@ -2070,8 +2080,9 @@ function settingsView(){
   const todo = S.todo || [], lists = S.lists || [], near = S.retro_near || [], rown = S.retro_own || [], rde = S.retro_de || [], pcIds = S.pcwish_ids || [];
   // Besitz mit zweiter Quelle (0.10.2): Widersprüche nur gemeldet, der Besitz bleibt
   const oc = S.own_check || {doubt: []}, own = oc.doubt || [];
-  const open = sug + todo.length + lists.length + near.length + rown.length + rde.length + pcIds.length + own.length;
-  const jumps = [open && ["todo", "Zu erledigen"], ["importe", "Einlesen"], ["abgleich", "Abgleich"], ["sicherung", "Sicherung"]].filter(Boolean);
+  const rs = S.research || {}, rwh = rs.wheel || [];
+  const open = sug + todo.length + lists.length + near.length + rown.length + rde.length + pcIds.length + own.length + rwh.length;
+  const jumps = [(open || rs.vrmod_n) && ["todo", "Zu erledigen"], ["importe", "Einlesen"], ["abgleich", "Abgleich"], ["sicherung", "Sicherung"]].filter(Boolean);
   const sugList = `<p class="hint">Diese Paare heißen fast gleich, einer stammt aus Meta, der andere vom PC. Zusammenführen heißt: ein Eintrag mit beiden Seiten, unter dem Namen, den du anklickst. Der andere Name bleibt für spätere Importe bekannt, und unter „bearbeiten“ kannst du jederzeit umbenennen.</p>
     <div class="list">${S.suggestions.map(x => `<div class="item"><span class="nm">${todoGo(x.a_name, x.a, "vr")} ↔ ${todoGo(x.b_name, x.b, "vr")}</span>
       <span class="row2">Zusammenführen als
@@ -2138,10 +2149,15 @@ function settingsView(){
   todoReg("pcids", "PC-Wunsch Steam-ID", ["Name", "Steam-IDs", "Art"], pcIds.map(x => [x.name, x.kind === "near" ? `${x.appid} ${x.steam || ""}`.trim() : x.cands.map(c => `${c.appid} ${c.name || ""}`.trim()).join(" | "), x.kind === "near" ? "übernommen, bestätigen" : "Vorschläge"]));
   todoReg("retronear", "Retro ähnlicher Name", ["Name", "System", "Ähnlich in der Liste"], near.map(x => [x.name, x.system, x.near]));
   todoReg("retrode", "Retro DE fehlt", ["Name", "System", "Gesucht"], rde.map(x => [x.name, x.system, x.alt]));
+  todoReg("wheel", "Lenkrad prüfen", ["Name", "Steam-Schlagwörter"], rwh.map(x => [x.name, x.tags]));
   todoReg("retroown", "Retro Genre weicht ab", ["Name", "System", "Dein Genre", "Andere"], rown.map(x => [x.name, x.system, x.diff[0].own, x.diff.map(d => d.other).join("; ")]));
   // Zahlen, die etwas zu tun bedeuten, violett und fett (0.7.4, wie im eShopKompass „offen“)
   const tn = n => `<b class="warnc">${n}</b>`;
-  const sugCard = open ? box("todo", "Zu erledigen", `${tn(open)} offen`, `
+  // 0.10.26: Recherche zur Sammlung: Lenkrad für Rennspiele mit nur Schlagwörtern, VR-Mods für Spiele ohne VR
+  const wheelList = `<p class="hint">Diese Spiele deiner Sammlung tragen bei Steam Schlagwörter wie Racing, stehen aber in keiner Liste der Rennsimulationen. Die Recherche prüft, ob ein Lenkrad mit Force Feedback geht; „ja“ und „teilweise“ zeigen die Marke SimRacing violett, „nein“ nimmt den Hinweis weg.</p>
+    <div class="list">${rwh.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "g", "PC")}</span><span class="row2"><span class="hint">${esc(x.tags)}</span></span></div>`).join("")}</div>`;
+  const vrmodList = `<p class="hint">${num(rs.vrmod_n || 0)} Spiele deiner Sammlung am PC haben keine VR-Fassung und laut PCGamingWiki keinen VR-Mod. Die Recherche prüft je Auftrag ${rs.vrmod_batch || 100} davon, die besser bewerteten zuerst, ob es einen Mod gibt (UEVR, Flat2VR, Luke Ross …). Geprüfte kommen nicht wieder; Treffer zeigt die Sammlung als „VR per Mod“ (violett), auch im Filter VR-Mod.</p>`;
+  const sugCard = open || rs.vrmod_n ? box("todo", "Zu erledigen", open ? `${tn(open)} offen` : "", `
     <p class="hint">Was das Tool nicht selbst klären konnte. Alles andere ordnet es bei jedem Abgleich von allein zu. Jede Liste lässt sich herunterladen; wo eine Recherche helfen kann, gibt es dazu einen Auftrag wie bei den Meinungen.</p>
     <div class="bar slim"><button data-act="tododl" data-v="all" title="Alle Listen in einer CSV-Datei">alles herunterladen</button></div>
     ${listsHtml()}
@@ -2153,7 +2169,9 @@ function settingsView(){
     ${pcIds.length ? sub("pcids", "PC-Wunsch: Steam-ID", tn(pcIds.length), withTools("pcids", pcIdList)) : ""}
     ${near.length ? sub("retronear", "Retro: ähnlicher Name", tn(near.length), withTools("retronear", nearList)) : ""}
     ${rde.length ? sub("retrode", "Retro: DE fehlt", tn(rde.length), withTools("retrode", deList)) : ""}
-    ${rown.length ? sub("retroown", "Retro: Genre weicht von deiner Liste ab", tn(rown.length), withTools("retroown", ownList)) : ""}`) : "";
+    ${rown.length ? sub("retroown", "Retro: Genre weicht von deiner Liste ab", tn(rown.length), withTools("retroown", ownList)) : ""}
+    ${rwh.length ? sub("wheel", "Sim-Racing: Lenkrad prüfen", tn(rwh.length), withTools("wheel", wheelList)) : ""}
+    ${rs.vrmod_n ? sub("vrmod", "Recherche: VR-Mods", `${num(rs.vrmod_n)} ungeprüft`, withTools("vrmod", vrmodList), true) : ""}`) : "";
   const ll = lastLine(sy);
   const logInfo = sy.running ? "läuft" : !sy.started ? "noch keins" : `${when(sy.started)}${sy.ok === false ? `, <span class="err">mit Fehlern</span>` : ""}${ll.end ? " · " + esc(ll.end) : ""}`;
   const abgleich = box("abgleich", "Abgleich", sy.running ? "läuft" : `Stand ${ago(sy.started)}${next ? ` · nächster ca. ${next < new Date() ? "in Kürze" : whenDay(next) + clock(next)}` : se.auto === false ? " · Zeitplan aus" : ""}`, `

@@ -1007,8 +1007,19 @@ def view(col, data=None):
         # Sim-Racing (0.8.3): in einer Liste der Rennspiele bestätigt, Steam-Schlagwörter nur ein Hinweis
         if r["system"] == "PC" and not r.get("retro"):
             w = wheel.row(wmatch, g.get("id") if g.get("store") == "Steam" else "", g.get("stag"), (g.get("igdb") or {}).get("name"), g["name"])
+            # 0.10.26: Recherche zum Lenkrad (aufgaben.py); „nein“ nimmt den Hinweis aus den Schlagwörtern weg
+            rw = g.get("r_wheel") or {}
+            if rw.get("v") and w:
+                r["wheel_r"] = rw
+                if rw["v"] == "nein" and not w["src"]:
+                    w = None
+                elif rw["v"] in ("ja", "teilweise"):
+                    w = dict(w, r=rw["v"])
             if w:
                 r["wheel"] = w
+        # 0.10.26: Recherche zu VR-Mods (auch „nein“, damit das Spiel nicht wieder in den Auftrag kommt)
+        if g.get("r_vrmod"):
+            r["vrmod_r"] = g["r_vrmod"]
         # Spielzeit und zuletzt gespielt laut Steam-Konto (0.9.3)
         sid = str(g.get("id") or "") if g.get("store") == "Steam" or g.get("src") == PCVR else ""
         sp = ((data or {}).get("steam_play") or {}).get(sid) if sid else None

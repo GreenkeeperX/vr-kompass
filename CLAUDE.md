@@ -71,7 +71,8 @@ Weitere feste Regeln (wie im eShopKompass):
   über Plattform oder Jahr (`pick`), Einleitungen (`extracts`), am Spiel als `wiki` (`compact`); abgerufen in `sync._wiki`,
   in der Sammlung `collection.merge_wiki`
 - `app/aufgaben.py`: ab 0.10.24 Aufträge zu den Listen unter „Zu erledigen“ (`items`, `task`, `tasks`) und ihre Antworten
-  (`parse`, `apply`, erst als Vorschau); eingelesen in `server.import_todo`
+  (`parse`, `apply`, erst als Vorschau); eingelesen in `server.import_todo`; ab 0.10.26 auch Lenkrad und VR-Mods der Sammlung
+  (`r_wheel`, `r_vrmod` am Spiel in `collection.json`)
 - `app/wheel.py`: Sim-Racing ohne Netz: Steam-Schlagwörter (Hinweis), Liste der Rennsimulationen (Bestätigung)
 - `app/pcwish.py`: PC-Wunschliste (`pcwish.json`), Spiegel der gg.deals-Wunschliste; Zeilen mit Preisen und ab 0.8.11
   Spielinfos nach den Regeln der Sammlung (`info`); abgerufen in `sync._pcwish` und `sync._pcwish_info`
