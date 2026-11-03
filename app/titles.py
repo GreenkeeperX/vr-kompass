@@ -9,7 +9,7 @@ import functools
 import re
 import unicodedata
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 def now_iso():
@@ -519,6 +519,18 @@ def set_bundle(data, key, items):
     return t["contains"]
 
 
+OPINION_DAYS = 180
+
+
+def opinion_old(op, now=None):
+    """Meinung zu einem Mehrspieler-Titel, älter als OPINION_DAYS (0.10.17)? Dann kommt er wieder in den Auftrag."""
+    mp = {op.get(f) for f in ("mehrspieler", "mehrspieler_quest", "mehrspieler_pc")} - {None, "", "keiner"}
+    if not mp:
+        return False
+    cut = ((now or datetime.now(timezone.utc)) - timedelta(days=OPINION_DAYS)).isoformat(timespec="seconds")
+    return (op.get("at") or "") < cut
+
+
 def todo(data):
     """Was das Tool nicht selbst klären konnte, je Titel mit Grund: Steam-IDs, die die Prüfung
     nicht bestätigt hat, und Titel, die QuestStoreDB unter keinem ihrer Namen fand (Meta-Käufe
@@ -536,9 +548,10 @@ def todo(data):
                 why = "Bundle: " + why + ". Trag die enthaltenen Spiele einzeln ein oder die Meta-ID des Bundles"
             out.append({"key": k, "name": t["name"], "kind": "meta", "why": why,
                         "owned_meta": bool((t.get("owned") or {}).get("meta"))})
-        if t.get("wish") and not t.get("opinion") and not t.get("contains"):
+        if t.get("wish") and not t.get("contains") and (not t.get("opinion") or opinion_old(t["opinion"])):
             out.append({"key": k, "name": t["name"], "kind": "opinion", "meta_id": t.get("meta_id") or "",
-                        "steam_appid": t.get("steam_appid") or "", "why": "noch keine Meinung recherchiert"})
+                        "steam_appid": t.get("steam_appid") or "", "old": bool(t.get("opinion")),
+                        "why": f"Mehrspieler zuletzt recherchiert am {(t['opinion'].get('at') or '')[:10]}" if t.get("opinion") else "noch keine Meinung recherchiert"})
     return sorted(out, key=lambda x: (x["kind"] != "steam", norm(x["name"])))
 
 

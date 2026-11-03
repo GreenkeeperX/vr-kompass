@@ -346,6 +346,10 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - „Zu erledigen“, Gruppe „PC-Wunsch: Steam-ID“ (0.8.24, `pcwish_ids`): übernommene ID nach der Grundform mit Link zur
   Steam-Seite und „passt“, „falsch“; sonst Vorschläge mit Link und „dieses“, dazu „keins“. In der Wunschliste PC am
   Namen „Steam-ID ungeprüft“ (`.b.warn`, Steam-Name im Tooltip), solange nicht bestätigt.
+- Recherche unter dem Titel (ab 0.10.17): in der Kopfzeile dazu „Quest-Fassung aktueller“ / „Steam-Fassung aktueller“
+  / „gleicher Stand“ und bei getrennten Lobbys „Mehrspieler Quest …, PC …“; aufgeklappt die Zeilen Technik Quest,
+  Technik PC, Aktueller, Umfang und Deutsch. In „Meinung fehlt“ steht bei aufzufrischenden Titeln „Mehrspieler zuletzt
+  recherchiert am …“.
 - „Zu erledigen“, Gruppe „Meinung fehlt“ (0.9.2, `todo` mit kind `opinion`): VR-Wünsche ohne Recherche, die zuletzt gewünschten oben (in dieser Reihenfolge nimmt sie der Auftrag), je Titel
   welche Kennungen da sind und Links zu Reddit und Google; oben „Auftrag kopieren“ (`opcopy`, Text aus `opinion_task`).
 - „Zu erledigen“, Gruppe „Retro: DE fehlt“ (0.10.12, `retro_de`): je System eine Überschrift mit Zahl und „alle …

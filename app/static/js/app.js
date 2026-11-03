@@ -2055,10 +2055,10 @@ function settingsView(){
         <a href="https://queststoredb.com/all_apps/?release_status=all&amp;q=${encodeURIComponent(x.name)}" target="_blank" rel="noopener noreferrer">suchen</a>
         <button class="link" data-act="edit" data-k="${esc(x.key)}">bearbeiten</button></span></div>`).join("")}</div>`;
   // Meinung fehlt (0.9.2): Wünsche ohne Recherche; der Auftrag geht an eine Claude-Routine, die Antwort kommt über Einlesen zurück
-  const opList = `<p class="hint">Für diese VR-Wünsche fehlt noch die Recherche, ob Meta oder Steam die bessere Wahl ist. „Auftrag kopieren“ nimmt bis zu ${S.opinion_batch || 25} davon mit Kennungen und dem verlangten Aufbau; füg ihn in deine Claude-Routine oder einen Chat ein und lies die Antwort unter Einlesen, „Datei oder Text“ ein. Danach verschwinden die Titel von hier.</p>
+  const opList = `<p class="hint">Für diese VR-Wünsche fehlt noch die Recherche, ob Meta oder Steam die bessere Wahl ist; Mehrspieler-Titel kommen nach sechs Monaten wieder (die Lobbys ändern sich). „Auftrag kopieren“ nimmt bis zu ${S.opinion_batch || 25} davon mit Kennungen und dem verlangten Aufbau; füg ihn in deine Claude-Routine oder einen Chat ein und lies die Antwort unter Einlesen, „Datei oder Text“ ein. Danach verschwinden die Titel von hier.</p>
     <div class="bar"><button class="primary" data-act="opcopy" title="Die zuletzt gewünschten zuerst; nach dem Einlesen der Antwort kommen die nächsten">Auftrag kopieren${opTodo.length > S.opinion_batch ? ` (${S.opinion_batch} von ${opTodo.length})` : ""}</button></div>
     <div class="list">${opTodo.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")}</span>
-      <span class="row2"><span class="hint">${[x.meta_id && "Meta", x.steam_appid && "Steam"].filter(Boolean).join(" und ") || "ohne Kennung"}</span>
+      <span class="row2"><span class="hint">${[x.meta_id && "Meta", x.steam_appid && "Steam"].filter(Boolean).join(" und ") || "ohne Kennung"}${x.old ? ` · ${esc(x.why)}` : ""}</span>
         ${(x.row?.links || []).filter(l => l.label === "Reddit" || l.label === "Google").map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a>`).join(" ")}</span></div>`).join("")}</div>`;
   // PC-Wunschliste (0.8.24): Steam-ID nur nach der Grundform des Namens, oder mehrere Vorschläge zur Wahl
   const sLink = (id, name) => `<a href="https://store.steampowered.com/app/${esc(id)}/" target="_blank" rel="noopener noreferrer">${esc(name || "Steam " + id)}</a>`;
@@ -2199,14 +2199,19 @@ function showLog(){
 /* Meinungen aus der Recherche (Reddit, Web): eine Zeile mit Fassung und Mehrspieler, der Rest
    aufklappbar; alles mit „Recherche“ und Stand gekennzeichnet */
 const FASSUNG = {quest: "Quest-Fassung besser", pc: "PC-Fassung besser", gleich: "Fassungen gleichwertig"};
+const AKT = {quest: "Quest-Fassung aktueller", pc: "Steam-Fassung aktueller", gleich: "gleicher Stand"};
 const MP = {lebendig: "Mehrspieler lebendig", ruhig: "Mehrspieler ruhig", tot: "Mehrspieler tot", keiner: "kein Mehrspieler"};
 function opinionHtml(r){
   const o = r.opinion;
   if(!o) return "";
   // Crossplay: Quest und PC spielen zusammen (nicht Crossbuy, das ist der gemeinsame Kauf im Meta Store)
-  const head = [o.fassung && FASSUNG[o.fassung], o.mehrspieler && MP[o.mehrspieler],
+  const MPX = {lebendig: "lebendig", ruhig: "ruhig", tot: "tot", keiner: "keiner"};
+  const split = o.mehrspieler_quest || o.mehrspieler_pc ? `Mehrspieler Quest ${MPX[o.mehrspieler_quest] || "?"}, PC ${MPX[o.mehrspieler_pc] || "?"}` : "";
+  const head = [o.fassung && FASSUNG[o.fassung], split || (o.mehrspieler && MP[o.mehrspieler]), o.aktueller && AKT[o.aktueller],
     o.crossplay === true ? "Crossplay Quest/PC" : o.crossplay === false ? "kein Crossplay Quest/PC" : ""].filter(Boolean).join(" · ");
-  const rows = [["Fazit", o.fazit], ["Fassung", o.fassung_grund], ["Mehrspieler", o.mehrspieler_stand], ["Pflege", o.pflege],
+  const rows = [["Fazit", o.fazit], ["Fassung", o.fassung_grund], ["Technik Quest", o.technik_quest], ["Technik PC", o.technik_pc],
+    ["Aktueller", o.aktueller_grund], ["Mehrspieler", o.mehrspieler_stand], ["Pflege", o.pflege], ["Umfang", o.umfang],
+    ["Deutsch", o.deutsch === true || o.deutsch === false ? (o.deutsch ? "ja" : "nein") + (o.deutsch_grund ? ` (${o.deutsch_grund})` : "") : ""],
     ["Crossbuy", o.crossbuy_grund], ["Crossplay Quest/PC", o.crossplay_grund], ["Komfort", o.komfort], ["Warnungen", o.warnungen]].filter(x => x[1]);
   const src = (o.quellen || []).filter(q => safeUrl(q.url)).map(q =>
     `<a href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">${esc(q.titel || q.url.replace(/^https?:\/\/([^\/?#]+).*$/i, "$1"))}</a>${q.datum ? ` <span class="hint">${esc(q.datum)}</span>` : ""}`).join(" · ");

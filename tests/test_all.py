@@ -461,6 +461,41 @@ class TestImports(unittest.TestCase):
         self.assertEqual([x for x in titles.todo(d) if x["kind"] == "opinion"], [])
         self.assertEqual(imports.opinion_task(d), "")
 
+    def test_opinion_more_fields(self):
+        """0.10.17: Technik je Fassung, aktuellere Fassung, Mehrspieler je Plattform, Deutsch, Umfang; Mehrspieler-Titel
+        nach OPINION_DAYS wieder im Auftrag, nach den neuen; „wo kaufen“ nutzt Stand und getrennte Lobbys."""
+        d = empty()
+        a, _ = titles.upsert(d, "Harbor Heist", meta_id="1234567890123456", steam_appid="3000040")
+        b, _ = titles.upsert(d, "Laser Tennis", steam_appid="3000041")
+        c, _ = titles.upsert(d, "Sky Garden", steam_appid="3000042")
+        for k in (a, b, c):
+            d["titles"][k]["wish"] = True
+        doc = {"app": "vr-navigator-meinungen", "stand": "2026-11-03", "titles": [
+            {"name": "Harbor Heist", "meta_id": "1234567890123456", "fazit": "Gut.", "technik_quest": "72 Hz, scharf auf Quest 3.",
+             "technik_pc": "Höhere Sichtweite.", "aktueller": "pc", "aktueller_grund": "Quest bekam das letzte Kapitel später.",
+             "mehrspieler_quest": "lebendig", "mehrspieler_pc": "tot", "deutsch": True, "deutsch_grund": "Untertitel",
+             "umfang": "Etwa acht Stunden.", "mehrspieler": "falsch"},
+            {"name": "Laser Tennis", "fazit": "Nur allein.", "mehrspieler": "keiner"}]}
+        imports.import_auto(d, json.dumps(doc), dry=False)
+        op = d["titles"][a]["opinion"]
+        self.assertEqual((op["aktueller"], op["mehrspieler_quest"], op["deutsch"], op["umfang"]), ("pc", "lebendig", True, "Etwa acht Stunden."))
+        self.assertNotIn("mehrspieler", op)                    # unbekannter Wert fällt weg
+        self.assertEqual([x["key"] for x in titles.todo(d) if x["kind"] == "opinion"], [c])
+        # nach einem halben Jahr: der Mehrspieler-Titel kommt wieder, der Einzelspieler-Titel nicht; neue zuerst
+        d["titles"][a]["opinion"]["at"] = d["titles"][b]["opinion"]["at"] = "2026-01-01T00:00:00+00:00"
+        ops = [x for x in titles.todo(d) if x["kind"] == "opinion"]
+        self.assertEqual(sorted(x["key"] for x in ops), sorted([a, c]))
+        self.assertTrue(next(x for x in ops if x["key"] == a)["old"])
+        task = imports.opinion_task(d, "2026-11-03")
+        self.assertLess(task.index("Sky Garden"), task.index("Harbor Heist"))
+        for f in ("technik_quest", "aktueller", "mehrspieler_quest", "deutsch", "umfang"):
+            self.assertIn(f, task)
+        d["titles"][a]["opinion"]["at"] = "2026-01-01T00:00:00+00:00"
+        r = library.row(a, d["titles"][a], hist={}, data=d)
+        texts = [w["text"] for w in (library.where_buy(r) or {}).get("why", [])]
+        self.assertIn("Recherche: Steam-Fassung aktueller", texts)
+        self.assertIn("Recherche: Mehrspieler auf der Quest lebendiger", texts)
+
     def test_opinion_crossbuy_needs_evidence(self):
         """Crossbuy gilt nur im Meta Store: eine Begründung mit Steam, Crossplay oder der eigenen
         Zuordnung ist kein Beleg und fällt weg; Crossplay steht als eigenes Feld."""
@@ -2856,7 +2891,7 @@ class TestSync(unittest.TestCase):
         inf = library.info({"name": "Star Ride", "opinion": {"spieler_online": 8}})
         self.assertEqual((inf["players"], inf["pl_src"], inf["plm"]), (8, "Recherche", {"online": [8, "Recherche"]}))
         self.assertIn("online", inf["mp"])
-        self.assertIn("spieler_online", imports.opinion_task.__globals__["OPINION_FIELDS"][6])
+        self.assertTrue(any("spieler_online" in f for f in imports.OPINION_FIELDS))
 
     def test_active_order(self):
         """0.10.1: Aktiv in der Sammlung zuerst für Mehrspieler-Spiele, darunter nach Rezensionen."""
