@@ -6,7 +6,8 @@ Unter Einstellungen, „Zu erledigen“, stehen in „Meinung fehlt“ die VR-W�
 „Auftrag kopieren“ legt einen Text in die Zwischenablage: was zu recherchieren ist (Meta oder Steam,
 Mehrspieler, Pflege, Crossbuy), die Titel mit Meta-ID und Steam-App-ID und der Aufbau der Antwort
 unten; höchstens 25 Titel je Auftrag, die zuletzt gewünschten zuerst, damit ein Lauf gründlich bleibt. Nach dem
-Einlesen kommen die nächsten. Den Text in eine Claude-Routine oder einen Chat mit Websuche einfügen (Entscheidung 28.10.2026: Recherche per Routine,
+Einlesen kommen die nächsten. Ab 0.10.17 kommen Mehrspieler-Titel (Mehrspieler nicht „keiner“) nach 180 Tagen
+wieder in den Auftrag, nach den Titeln ganz ohne Meinung und die am längsten nicht recherchierten zuerst. Den Text in eine Claude-Routine oder einen Chat mit Websuche einfügen (Entscheidung 28.10.2026: Recherche per Routine,
 nicht über eine Schnittstelle im Tool); die Antwort als Datei oder Text einlesen. Das Tool selbst
 ruft dafür nichts ab.
 
@@ -51,6 +52,11 @@ kennt (Meta-ID, Steam-App-ID oder Name). Gespeichert wird nur im Datenordner, ni
 | `crossbuy`, `crossbuy_grund` | `true`, `false` oder weglassen; gilt nur, wo du Crossbuy nicht selbst gesetzt hast, und steht dann violett da. Belegt durch Store-Seite, VRDB oder einen Test, nie durch die eigene Tabelle |
 | `crossplay`, `crossplay_grund` | `true`, `false` oder weglassen: spielen Quest und PC zusammen (gleiche Lobby), mit Grund |
 | `spieler_online`, `spieler_lokal` | ab 0.10.1: höchste Zahl der Spieler in einer Partie (2 bis 100) online bzw. lokal; gilt nur, wo IGDB und Steam keine Zahl nennen, und steht violett da |
+| `mehrspieler_quest`, `mehrspieler_pc` | ab 0.10.17: wie `mehrspieler`, je Plattform, wenn Quest und PC getrennte Lobbys haben; ist eine Seite lebendiger, zählt das halb in „wo kaufen“ |
+| `technik_quest`, `technik_pc` | ab 0.10.17: wie es auf der Quest 3 läuft (Auflösung, Bildrate, Quest-3-Verbesserungen, Ladezeiten) und am PC (Grafik, Probleme über Link) |
+| `aktueller`, `aktueller_grund` | ab 0.10.17: `quest`, `pc` (Steam) oder `gleich`: welche Fassung den neueren Inhalt und Patchstand hat, auch ob die PC-Fassung im Meta Store der bei Steam nachläuft; zählt halb in „wo kaufen“ |
+| `deutsch`, `deutsch_grund` | ab 0.10.17: `true` oder `false`, ob es deutsche Texte oder Sprache gibt, mit Beleg |
+| `umfang` | ab 0.10.17: Spielzeit und Inhalt (Kampagne, Level, Modi) |
 | `komfort` | Bewegung, Sitzen oder Stehen, Spieldauer |
 | `warnungen` | Bugs, Abbruch der Entwicklung, Bezahlinhalte |
 | `quellen` | Links (nur http/https) mit Titel und Datum |

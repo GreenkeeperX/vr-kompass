@@ -648,8 +648,12 @@ def import_ggwish(data, text, dry=True):
 
 OPINION_MARK = "vr-navigator-meinungen"
 OPINION_TEXT = {"fazit": 600, "fassung_grund": 400, "mehrspieler_stand": 300, "pflege": 400,
-                "komfort": 300, "warnungen": 400, "crossbuy_grund": 300, "crossplay_grund": 300}
-OPINION_ENUM = {"fassung": ("quest", "pc", "gleich", ""), "mehrspieler": ("lebendig", "ruhig", "tot", "keiner", "")}
+                "komfort": 300, "warnungen": 400, "crossbuy_grund": 300, "crossplay_grund": 300,
+                # 0.10.17: Technik je Fassung, welche aktueller ist, Deutsch, Umfang
+                "technik_quest": 300, "technik_pc": 300, "aktueller_grund": 300, "deutsch_grund": 200, "umfang": 300}
+_MP_ENUM = ("lebendig", "ruhig", "tot", "keiner", "")
+OPINION_ENUM = {"fassung": ("quest", "pc", "gleich", ""), "mehrspieler": _MP_ENUM,
+                "aktueller": ("quest", "pc", "gleich", ""), "mehrspieler_quest": _MP_ENUM, "mehrspieler_pc": _MP_ENUM}
 # Crossbuy heißt: ein Kauf im Meta Store gilt für Quest und für PC-VR (Meta Link, Air Link) im
 # Meta Store. Steam gehört nie dazu, gemeinsames Spielen über Plattformen ist Crossplay. Eine
 # Begründung, die Steam nennt oder nur deine Zuordnung wiederholt, ist kein Beleg (Entscheidung 22.10.2026).
@@ -682,6 +686,8 @@ def parse_opinions(obj):
             o["crossbuy"], o["crossbuy_dropped"] = None, True
         cp = e.get("crossplay")
         o["crossplay"] = cp if cp in (True, False) else None
+        de = e.get("deutsch")
+        o["deutsch"] = de if de in (True, False) else None
         # 0.10.1: Höchstzahl der Spieler je Art, wo IGDB und PCGamingWiki für VR-Titel nichts nennen
         for f in OPINION_PLAYERS:
             v = e.get(f)
@@ -733,7 +739,10 @@ def opinion_task(data, today=None, limit=OPINION_BATCH):
     muss, als Text zum Einfügen in eine Claude-Routine oder einen Chat. Höchstens limit Titel, die zuletzt
     gewünschten zuerst; leer, wenn nichts fehlt."""
     todo = [x for x in titles.todo(data) if x["kind"] == "opinion"]
-    todo.sort(key=lambda x: data["titles"][x["key"]].get("added") or "", reverse=True)
+    # erst die ohne Meinung, die zuletzt gewünschten zuerst; danach die aufzufrischenden (0.10.17), die ältesten zuerst
+    new = sorted((x for x in todo if not x.get("old")), key=lambda x: data["titles"][x["key"]].get("added") or "", reverse=True)
+    old = sorted((x for x in todo if x.get("old")), key=lambda x: data["titles"][x["key"]]["opinion"].get("at") or "")
+    todo = new + old
     todo = todo[:limit]
     if not todo:
         return ""
@@ -764,11 +773,16 @@ OPINION_FIELDS = (
     "fazit: zwei bis drei Sätze, wie das Spiel ankommt",
     "fassung: quest, pc oder gleich; fassung_grund: warum (Grafik, Inhalte, Updates, Mods)",
     "mehrspieler: lebendig, ruhig, tot oder keiner; mehrspieler_stand: wie voll die Lobbys sind, mit Zeitraum",
+    "mehrspieler_quest, mehrspieler_pc: dasselbe je Plattform (lebendig, ruhig, tot oder keiner), wenn Quest und PC getrennte Lobbys haben; sonst leer",
+    "technik_quest: wie es auf der Quest 3 läuft (Auflösung, Bildrate, Quest-3-Verbesserungen, Ladezeiten); technik_pc: wie es am PC läuft (Grafik, Einstellungen, Probleme über Link oder Air Link)",
+    "aktueller: quest, pc oder gleich, welche Fassung den neueren Inhalt und Patchstand hat; aktueller_grund: was fehlt oder später kam, auch ob die PC-Fassung im Meta Store der bei Steam nachläuft",
     "pflege: letzte größere Updates, ist der Entwickler aktiv",
     "crossbuy: true oder false, nur mit Beleg (Store-Seite, Test); crossbuy_grund: der Beleg",
     "crossplay: true oder false; crossplay_grund: warum",
     "spieler_online, spieler_lokal: höchste Zahl der Spieler in einer Partie online bzw. an einem Gerät oder im selben Raum, als Zahl (leer, wenn es die Art nicht gibt oder keine Quelle es nennt)",
     "komfort: Bewegung, Sitzen oder Stehen, Spieldauer",
+    "deutsch: true oder false, ob es deutsche Texte oder Sprache gibt (Quest-Fassung zuerst); deutsch_grund: Beleg",
+    "umfang: Spielzeit und Inhalt (Kampagne, Level, Modi), damit sich der Preis einordnen lässt",
     "warnungen: Bugs, Abbruch der Entwicklung, Bezahlinhalte (sonst leer)",
     "quellen: Liste von {\"url\", \"titel\", \"datum\"}, nur https-Links, die du gelesen hast",
 )

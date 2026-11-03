@@ -15,6 +15,9 @@ def _where(t):
     return "meta" if o.get("meta") else ("pc" if o.get("pc") else "")
 
 
+MP_RANK = {"lebendig": 3, "ruhig": 2, "tot": 1}
+
+
 def _live(t, at=None):
     """Live-Preise je Quelle, mit Kennzeichen „veraltet“. Ein Meta-Angebot, dessen Ende
     vorbei ist, gilt wieder zum Normalpreis, auch wenn noch kein neuer Abruf lief."""
@@ -348,6 +351,15 @@ def where_buy(r):
         add("meta", "Recherche: Quest-Fassung besser", 1, True)
     elif op.get("fassung") == "pc" and r["crossbuy"] is not True:
         add("steam", "Recherche: PC-Fassung besser", 1, True)
+    # 0.10.17: welche Fassung den neueren Stand hat; die PC-Fassung bei Meta gilt dabei nicht als „PC“
+    if op.get("aktueller") == "quest":
+        add("meta", "Recherche: Quest-Fassung aktueller", 1, True)
+    elif op.get("aktueller") == "pc":
+        add("steam", "Recherche: Steam-Fassung aktueller", 1, True)
+    # 0.10.17: getrennte Lobbys, eine Seite lebendiger
+    mq, mpc = MP_RANK.get(op.get("mehrspieler_quest") or ""), MP_RANK.get(op.get("mehrspieler_pc") or "")
+    if mq and mpc and mq != mpc:
+        add("meta" if mq > mpc else "steam", f"Recherche: Mehrspieler {'auf der Quest' if mq > mpc else 'am PC'} lebendiger", 1, True)
     pm, ps = (L.get("meta") or {}).get("price"), (L.get("steam") or {}).get("price")
     if pm is not None and ps is not None and pm > 0:
         diff = pm - ps
