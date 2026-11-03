@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.14:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.15:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -67,6 +67,11 @@ je Spiel die Suche und die Spielseite, höchstens 30 Spiele je Lauf, bekannte zu
 zählt nur mit gleichem Namen und der richtigen Plattform (am PC „Steam“). Daraus kommen die Spielzeit laut
 HowLongToBeat (vor IGDB, IGDB bleibt im Tooltip), OpenCritic, Metacritic wo Steam keine nennt, USK oder PEGI, Deutsch
 wo Steam nichts sagt; Spieler, Genre und Jahr werden bestätigt oder ergänzt, ein anderes Jahr steht violett.
+Neu in 0.10.15: Unter Einstellungen, „Zu erledigen“ führt jeder Name zu den Einzelheiten des Spiels: VR-Titel auf die
+Wunschliste VR (sonst in die Sammlung, Reiter VR), PC-Wünsche auf die Wunschliste PC, Retro-Spiele in ihr System der
+Sammlung; die Zeile ist aufgeklappt, gesucht wird nach dem Namen. Schneller: Der Server rechnet Zustand und Sammlung nach
+jedem Abgleich und Import vorab und hält sie bereit, bis sich eine Datei ändert; die Wunschliste PC zeigt wie die
+Sammlung erst 100 Zeilen und lädt beim Scrollen nach; Preise und Daten formatiert die Oberfläche ohne Neuaufbau je Wert.
 Neu in 0.10.5: Meta im Meta-Blau, Steam im dunkleren Blau des Steam-Logos (vorher war Steam im dunklen Modus
 heller als Meta).
 Neu in 0.10.4: ein teurerer Weg (Händler statt Keyshop, ein anderer Laden) steht in den Einzelheiten der PC-Wünsche nur

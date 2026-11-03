@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import threading
+import time
 import traceback
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -155,18 +156,23 @@ def _lists(body):
 # collection.json allein zu lesen dauert auf einem kleinen Server schon eine Weile
 _memo = {}
 _memo_lock = threading.Lock()
+_memo_busy = {}          # je Schlüssel ein Riegel (0.10.15): wer gleichzeitig fragt, wartet auf dieselbe Rechnung
 
 
-def memo(key, files, make):
-    st = (store.DATA_DIR, store.stamp(*files))
+def memo(key, files, make, extra=None):
+    """extra: was außer den Dateien zählt (etwa die Uhrzeit, gerundet)."""
     with _memo_lock:
-        hit = _memo.get(key)
-    if hit and hit[0] == st:
-        return hit[1]
-    val = make()
-    with _memo_lock:
-        _memo[key] = (st, val)
-    return val
+        busy = _memo_busy.setdefault(key, threading.Lock())
+    with busy:
+        st = (store.DATA_DIR, store.stamp(*files), extra)
+        with _memo_lock:
+            hit = _memo.get(key)
+        if hit and hit[0] == st:
+            return hit[1]
+        val = make()
+        with _memo_lock:
+            _memo[key] = (st, val)
+        return val
 
 
 def _retro_lists():
@@ -183,7 +189,11 @@ def price_stats(data=None, pw=None, hist=None):
     return memo("muster:" + datetime.date.today().isoformat(), ("data.json", pcwish.FILE, "history.json"), make)
 
 
-def state():
+# Was der Zustand liest (0.10.15): ändert sich keine dieser Dateien, kommt er aus dem Zwischenspeicher
+STATE_FILES = ("data.json", collection.FILE, pcwish.FILE, "history.json", "settings.json", wheel.LIST_FILE)
+
+
+def _state_core():
     data = store.load_data()
     near, own, de = memo("retro", (collection.FILE,), _retro_lists)
     hist, pw = store.load_json("history.json", {}), store.load_json(pcwish.FILE, pcwish.EMPTY)
@@ -192,9 +202,15 @@ def state():
     muster.annotate(view, pcv, data, pw.get("items") or {}, st, hist)
     return dict(view, muster=st, own_check=besitz.check(data),
                 marks=data["marks"], version=sources.VERSION, pcwish=pcv,
-                pcwish_ids=pcwish.id_todo(store.load_json(pcwish.FILE, pcwish.EMPTY)),
-                retro_near=near, retro_own=own, retro_de=de, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH,
-                sync=sync.status(), settings=settings_view())
+                pcwish_ids=pcwish.id_todo(pw),
+                retro_near=near, retro_own=own, retro_de=de, mp_label=collection.MP_LABEL, opinion_task=imports.opinion_task(data), opinion_batch=imports.OPINION_BATCH)
+
+
+def state():
+    """Zustand für die Oberfläche. Der große Teil bleibt zwischengespeichert, bis sich eine Datei ändert, höchstens
+    zehn Minuten (Preise gelten nach 48 Stunden als veraltet, Meta-Angebote enden); Abgleich und Einstellungen frisch."""
+    core = memo("state", STATE_FILES, _state_core, extra=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M")[:-1])
+    return dict(core, sync=sync.status(), settings=settings_view())
 
 
 def collection_body():
@@ -612,13 +628,23 @@ class Handler(BaseHTTPRequestHandler):
         self._send(500, {"error": f"Interner Fehler ({type(e).__name__}), Einzelheiten im Protokoll des Containers"})
 
 
-def _warm():
-    """Sammlung gleich nach dem Start einmal berechnen, dann öffnet sie der erste Klick ohne Warten."""
-    try:
-        collection_body()
-        state()
-    except Exception:
-        pass
+def _warm(once=False):
+    """Sammlung und Zustand gleich nach dem Start berechnen, ab 0.10.15 auch nach jedem Abgleich und Import: alle
+    paar Sekunden prüfen, ob sich eine Datei geändert hat (nur die Änderungszeit, ohne Lesen), und dann vorab
+    rechnen; so öffnet der erste Klick ohne Warten. Während eines Abgleichs nicht, der schreibt laufend."""
+    while True:
+        try:
+            if not sync.status_running():
+                collection_body()
+                state()
+        except Exception:
+            pass
+        if once:
+            return
+        time.sleep(WARM_S)
+
+
+WARM_S = 3
 
 
 def main():

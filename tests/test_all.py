@@ -1207,6 +1207,27 @@ class TestServer(unittest.TestCase):
         self.assertIn("Moon Rover", b[0].decode())
         self.assertEqual(gzip.decompress(b[1]), b[0])
 
+    def test_state_memo(self):
+        # 0.10.15: der große Teil des Zustands bleibt berechnet, bis sich eine Datei ändert; Abgleich frisch
+        server._warm(once=True)
+        calls = []
+        real = server._state_core
+        server._state_core = lambda: calls.append(1) or real()
+        try:
+            a = server.state()
+            self.assertEqual(calls, [])                  # schon vorab gerechnet
+            self.assertIn("sync", a)
+            d = store.load_data()
+            d["marks"]["pc:moon"] = {"fav": True}
+            store.save_data(d)
+            b = server.state()
+            self.assertEqual(calls, [1])
+            self.assertEqual(b["marks"]["pc:moon"], {"fav": True})
+            server.state()
+            self.assertEqual(calls, [1])
+        finally:
+            server._state_core = real
+
     def call(self, path, body=None, ctype="application/json", host=None):
         data = None if body is None else json.dumps(body).encode()
         req = urllib.request.Request(self.base + path, data=data, method="POST" if body is not None else "GET")

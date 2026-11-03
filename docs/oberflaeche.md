@@ -337,6 +337,12 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
   Ab 0.8.5 auch an VR-Titeln (Reiter VR, Wunschliste, Karten). Filter „Lenkrad“ (`d.wh`), wenn ein Spiel im Reiter eins
   hat. Einzelheiten: Zeile „Sim-Racing“ mit Links auf die Listen und den Schlagwörtern (violett ohne Liste).
 - Über der Liste nur „Alle n Spiele (Reiter).“ mit Aufklappdreieck; die Herkunft klappt darunter auf (`details.gnote`, 0.7.5).
+- „Zu erledigen“, alle Gruppen (ab 0.10.15, `todoGo`): der Name ist ein Link (`button.link`, Tooltip „Einzelheiten zeigen
+  (Wunschliste VR)“ usw.) zu den Einzelheiten: VR-Titel auf die Wunschliste VR, sonst Sammlung, Reiter VR; PC-Wünsche auf
+  die Wunschliste PC; Retro-Spiele in ihr System der Sammlung. Das Ziel sucht nach dem Namen, die Zeile ist aufgeklappt,
+  Filter der Wunschliste sind aus; ohne Ziel bleibt der Name Text. Bei „Derselbe Titel?“ sind beide Namen Links.
+- Wunschliste PC (ab 0.10.15): wie die Sammlung erst 100 Zeilen, dann „weitere … zeigen“, das beim Herunterscrollen von
+  selbst lädt; eine offene Zeile weiter unten wird mitgezeichnet.
 - „Zu erledigen“, Gruppe „PC-Wunsch: Steam-ID“ (0.8.24, `pcwish_ids`): übernommene ID nach der Grundform mit Link zur
   Steam-Seite und „passt“, „falsch“; sonst Vorschläge mit Link und „dieses“, dazu „keins“. In der Wunschliste PC am
   Namen „Steam-ID ungeprüft“ (`.b.warn`, Steam-Name im Tooltip), solange nicht bestätigt.

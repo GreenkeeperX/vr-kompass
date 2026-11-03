@@ -6,14 +6,20 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const safeUrl = u => /^https?:\/\//i.test(String(u || "")) ? String(u) : "";
-const eur = v => v == null ? "–" : v.toLocaleString("de-DE", {minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2}) + " €";
-const day = iso => iso ? new Date(iso).toLocaleDateString("de-DE", {day: "2-digit", month: "2-digit", year: "numeric"}) : "";
+// Formate einmal anlegen (0.10.15): toLocaleString mit Optionen baut sie bei jedem Aufruf neu, bei 500 Zeilen spürbar
+const FMT = {e0: new Intl.NumberFormat("de-DE", {maximumFractionDigits: 2}), e2: new Intl.NumberFormat("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+  day: new Intl.DateTimeFormat("de-DE", {day: "2-digit", month: "2-digit", year: "numeric"}),
+  when: new Intl.DateTimeFormat("de-DE", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}),
+  dm: new Intl.DateTimeFormat("de-DE", {day: "2-digit", month: "2-digit"}), num: new Intl.NumberFormat("de-DE"),
+  time: new Intl.DateTimeFormat("de-DE", {hour: "2-digit", minute: "2-digit", second: "2-digit"})};
+const eur = v => v == null ? "–" : (v % 1 ? FMT.e2 : FMT.e0).format(v) + " €";
+const day = iso => iso ? FMT.day.format(new Date(iso)) : "";
 // Erscheinen (0.8.8): libretro nennt oft nur Jahr und Monat („2004-11“)
 const relDay = r => /^\d{4}-\d{2}$/.test(r || "") ? new Date(r + "-15").toLocaleDateString("de-DE", {month: "long", year: "numeric"}) : (r || "").length > 4 ? day(r) : "";
 const mb = b => b >= 1e9 ? `${(b / 1e9).toLocaleString("de-DE", {maximumFractionDigits: 1})} GB` : b >= 1e6 ? `${Math.round(b / 1e6)} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`;
-const when = iso => iso ? new Date(iso).toLocaleString("de-DE", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}) : "";
+const when = iso => iso ? FMT.when.format(new Date(iso)) : "";
 // Ende eines Angebots als Tag: „bis 28.10.“
-const until = d => d ? "bis " + new Date(d + "T12:00:00").toLocaleDateString("de-DE", {day: "2-digit", month: "2-digit"}) : "";
+const until = d => d ? "bis " + FMT.dm.format(new Date(d + "T12:00:00")) : "";
 
 let S = null;                                   // Zustand vom Server
 // Die Bibliothek ist seit 0.6.0 der Reiter VR in der Sammlung
@@ -247,7 +253,7 @@ function match(r){
    Wertung je Laden auf einer Skala (Steam: Anteil positiver Rezensionen ab 50; Meta: Anteil 4 und 5
    Sterne laut VRDB, sonst Sterne × 20, violett), der bessere ab 5 Punkten Abstand grün;
    Steam-Spieler jetzt (Spitze aus eigenen Messungen), letztes Steam-Update, Meta-Version. */
-const num = n => (n ?? 0).toLocaleString("de-DE");
+const num = n => FMT.num.format(n ?? 0);
 const RATE_GAP = 5;
 const fact = (label, body, tip) => `<span class="fact"${tip ? ` title="${esc(tip)}"` : ""}><span class="fl">${label}</span><span class="fv">${body}</span></span>`;
 function agoDays(d){
@@ -418,8 +424,13 @@ function pcTable(rows, t = "pcw"){
   rows = sortRows(t, rows, PC_KEYS);
   const th = (k, l, tip, cls, d0) => gTh(k, l, tip, cls, d0, t);
   const head = `<div class="gr nph" role="row">${th("title", "Spiel", "")}${th("pl", "max. Spieler", T_PL, "r", -1)}${th("price", "Preis", "Günstigster Preis jetzt bei gg.deals, Händler oder Keyshop; Einzelheiten im Tooltip", "r")}${th("low", "überm Tief", T_LOW, "r")}${th("wo", "Wo", T_WO)}${th("sc", "Wertung", "Anteil positiver Steam-Rezensionen ab 50, sonst IGDB (grau und kursiv)", "r", -1)}${th("rev", "Rezensionen", "Zahl der Steam-Rezensionen", "r", -1)}${th("genre", "Genre", "Von Steam und IGDB; violett: nur eine Quelle")}${th("hours", "Spielzeit", "Laut IGDB: normal, sonst eilig", "r", -1)}${th("play", "Aktiv", "Steam-Spieler, wöchentlich gemessen", "r", -1)}${th("year", "Jahr", "Erscheinungsjahr", "r", -1)}</div>`;
-  return `<div class="glist box pcw" style="--gcols:${PC_COLS}">${head}${rows.map(pcRow).join("")}</div>`;
+  // 0.10.15: wie in der Sammlung erst PC_PAGE Zeilen, weitere beim Herunterscrollen (500 Zeilen zu zeichnen und die
+  // Marken einzupassen dauerte spürbar); eine offene Zeile weiter unten zählt mit
+  const at = rows.findIndex(r => r.key === V.pwOpen), lim = Math.max(V.pcN || PC_PAGE, at + 1);
+  return `<div class="glist box pcw" style="--gcols:${PC_COLS}">${head}${rows.slice(0, lim).map(pcRow).join("")}</div>` +
+    (rows.length > lim ? `<div class="actions"><button id="dmore" data-act="pcmore">weitere ${Math.min(PC_PAGE, rows.length - lim)} zeigen</button></div>` : "");
 }
+const PC_PAGE = 100;
 function pcPriceTip(r){
   return [`Günstigster Preis: ${r.best_from || "gg.deals"}`, r.retail != null && `Händler ${eur(r.retail)}`, r.keyshops != null && `Keyshop ${eur(r.keyshops)}`,
     (r.retail_low != null || r.keyshops_low != null) && `Tief: ${[r.retail_low != null && `Händler ${eur(r.retail_low)}`, r.keyshops_low != null && `Keyshop ${eur(r.keyshops_low)}`].filter(Boolean).join(", ")}`,
@@ -1880,7 +1891,7 @@ function nowView(){
    und je Laden von IsThereAnyDeal), Linien für Bestpreis und typischen Angebotspreis, darunter je Laden die Zahlen */
 const VL_COLORS = {meta: "var(--brand)", steam: "var(--deal)", gg: "var(--muted)"};
 const VL_SHOP = ["#2563eb", "#c2410c", "#9333ea", "#0891b2", "#be185d", "#4d7c0f", "#a16207", "#64748b", "#7c3aed", "#0d6b4f"];
-const dm = iso => iso ? new Date(iso).toLocaleDateString("de-DE", {day: "2-digit", month: "2-digit"}) : "";
+const dm = iso => iso ? FMT.dm.format(new Date(iso)) : "";
 async function openVerlauf(kind, key){
   let v;
   try{ v = await api(`/api/verlauf?${kind}=${encodeURIComponent(key)}`); }
@@ -2025,50 +2036,50 @@ function settingsView(){
   const open = sug + todo.length + lists.length + near.length + rown.length + rde.length + pcIds.length + own.length;
   const jumps = [open && ["todo", "Zu erledigen"], ["importe", "Einlesen"], ["abgleich", "Abgleich"], ["sicherung", "Sicherung"]].filter(Boolean);
   const sugList = `<p class="hint">Diese Paare heißen fast gleich, einer stammt aus Meta, der andere vom PC. Zusammenführen heißt: ein Eintrag mit beiden Seiten, unter dem Namen, den du anklickst. Der andere Name bleibt für spätere Importe bekannt, und unter „bearbeiten“ kannst du jederzeit umbenennen.</p>
-    <div class="list">${S.suggestions.map(x => `<div class="item"><span class="nm">${esc(x.a_name)} ↔ ${esc(x.b_name)}</span>
+    <div class="list">${S.suggestions.map(x => `<div class="item"><span class="nm">${todoGo(x.a_name, x.a, "vr")} ↔ ${todoGo(x.b_name, x.b, "vr")}</span>
       <span class="row2">Zusammenführen als
         <button data-act="merge" data-a="${esc(x.a)}" data-b="${esc(x.b)}" title="Ein Eintrag mit diesem Namen">„${esc(x.a_name)}“</button>
         <button data-act="merge" data-a="${esc(x.b)}" data-b="${esc(x.a)}" title="Ein Eintrag mit diesem Namen">„${esc(x.b_name)}“</button>
         oder <button data-act="notsame" data-a="${esc(x.a)}" data-b="${esc(x.b)}">Verschieden</button></span></div>`).join("")}</div>`;
   const steamTodo = todo.filter(x => x.kind === "steam"), metaTodo = todo.filter(x => x.kind === "meta"), opTodo = todo.filter(x => x.kind === "opinion").sort((x, y) => (y.row?.added || "").localeCompare(x.row?.added || ""));
   const steamList = `<p class="hint">Diese Steam-IDs stammen nur aus einem Namen, und die Prüfung im Steam-Store hat sie nicht bestätigt.</p>
-    <div class="list">${steamTodo.map(x => `<div class="item"><span class="nm">${esc(x.name)} <a href="https://store.steampowered.com/app/${esc(x.steam_appid)}/" target="_blank" rel="noopener noreferrer">Steam ${esc(x.steam_appid)}</a></span>
+    <div class="list">${steamTodo.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")} <a href="https://store.steampowered.com/app/${esc(x.steam_appid)}/" target="_blank" rel="noopener noreferrer">Steam ${esc(x.steam_appid)}</a></span>
       <span class="row2"><span class="hint">${esc(x.why)}</span>
         <button data-act="steamok" data-k="${esc(x.key)}" title="Die App gehört zu diesem Titel">passt</button>
         <button data-act="steamwrong" data-k="${esc(x.key)}" title="Steam-ID entfernen; diese App schlägt das Tool nicht wieder vor">falsch</button></span></div>`).join("")}</div>`;
   const metaList = `<p class="hint">QuestStoreDB fand diese Titel unter keinem ihrer Namen. Unter „bearbeiten“ kannst du einen Link oder die Meta-ID eintragen, dann holt das Tool den Rest.</p>
-    <div class="list">${metaTodo.map(x => `<div class="item"><span class="nm">${esc(x.name)}</span>
+    <div class="list">${metaTodo.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")}</span>
       <span class="row2"><span class="hint">${esc(x.why)}${x.row?.origin?.length ? `. Herkunft: ${originText(x.row)}` : ""}</span>
         <a href="https://queststoredb.com/all_apps/?release_status=all&amp;q=${encodeURIComponent(x.name)}" target="_blank" rel="noopener noreferrer">suchen</a>
         <button class="link" data-act="edit" data-k="${esc(x.key)}">bearbeiten</button></span></div>`).join("")}</div>`;
   // Meinung fehlt (0.9.2): Wünsche ohne Recherche; der Auftrag geht an eine Claude-Routine, die Antwort kommt über Einlesen zurück
   const opList = `<p class="hint">Für diese VR-Wünsche fehlt noch die Recherche, ob Meta oder Steam die bessere Wahl ist. „Auftrag kopieren“ nimmt bis zu ${S.opinion_batch || 25} davon mit Kennungen und dem verlangten Aufbau; füg ihn in deine Claude-Routine oder einen Chat ein und lies die Antwort unter Einlesen, „Datei oder Text“ ein. Danach verschwinden die Titel von hier.</p>
     <div class="bar"><button class="primary" data-act="opcopy" title="Die zuletzt gewünschten zuerst; nach dem Einlesen der Antwort kommen die nächsten">Auftrag kopieren${opTodo.length > S.opinion_batch ? ` (${S.opinion_batch} von ${opTodo.length})` : ""}</button></div>
-    <div class="list">${opTodo.map(x => `<div class="item"><span class="nm">${esc(x.name)}</span>
+    <div class="list">${opTodo.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")}</span>
       <span class="row2"><span class="hint">${[x.meta_id && "Meta", x.steam_appid && "Steam"].filter(Boolean).join(" und ") || "ohne Kennung"}</span>
         ${(x.row?.links || []).filter(l => l.label === "Reddit" || l.label === "Google").map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a>`).join(" ")}</span></div>`).join("")}</div>`;
   // PC-Wunschliste (0.8.24): Steam-ID nur nach der Grundform des Namens, oder mehrere Vorschläge zur Wahl
   const sLink = (id, name) => `<a href="https://store.steampowered.com/app/${esc(id)}/" target="_blank" rel="noopener noreferrer">${esc(name || "Steam " + id)}</a>`;
   const pcIdList = `<p class="hint">Für diese PC-Wünsche fand die Steam-Suche keinen genau gleichen Namen. Ohne Steam-ID gibt es keine Preise, Wertung und Spielinfos. „passt“ oder ein Vorschlag übernimmt die ID; „keins“ verwirft die Vorschläge, sie kommen nicht wieder.</p>
-    <div class="list">${pcIds.map(x => `<div class="item"><span class="nm">${esc(x.name)}</span>
+    <div class="list">${pcIds.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "pc")}</span>
       <span class="row2">${x.kind === "near" ? `<span class="hint">übernommen: ${sLink(x.appid, x.steam)}</span>
         <button data-act="pcid" data-k="${esc(x.key)}" data-v="${esc(x.appid)}" title="Die App gehört zu diesem Wunsch">passt</button>`
         : `<span class="hint">Vorschläge:</span> ${x.cands.map(c => `${sLink(c.appid, c.name)} <button data-act="pcid" data-k="${esc(x.key)}" data-v="${esc(c.appid)}" title="Diese App übernehmen">dieses</button>`).join(" ")}`}
         <button data-act="pcid" data-k="${esc(x.key)}" data-v="" title="Keine davon; diese Vorschläge kommen nicht wieder">${x.kind === "near" ? "falsch" : "keins"}</button></span></div>`).join("")}</div>`;
   const ownSum = k => { const c = oc[k] || {}; return c.both || c.one ? `${k === "steam" ? "Steam" : "Meta"}: ${c.both || 0} von ${(c.both || 0) + (c.one || 0)} von einer zweiten Quelle bestätigt` : ""; };
   const ownDoubt = `<p class="hint">Eine Quelle nennt diese Spiele als gekauft, die maßgebliche nicht (bei Steam das Steam-Konto, bei Meta die eingelesenen Meta-Käufe). Das Tool ändert am Besitz nichts, prüf es bei Gelegenheit. ${[ownSum("steam"), ownSum("meta")].filter(Boolean).join("; ")}.</p>
-    <div class="list">${own.map(x => `<div class="item"><span class="nm">${esc(x.name)} <span class="hint">(${x.kind === "steam" ? "Steam" : "Meta"})</span></span>
+    <div class="list">${own.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")} <span class="hint">(${x.kind === "steam" ? "Steam" : "Meta"})</span></span>
       <span class="row2"><span class="hint">${esc(x.why)}</span></span></div>`).join("")}</div>`;
   // Retro (0.8.4): Titel ohne Treffer in der Fassungsliste, dort aber ein ähnlicher
   const nearList = `<p class="hint">Diese Retro-Spiele stehen nicht unter ihrem Namen in der Fassungsliste (No-Intro oder Redump), dort aber ein ähnlicher Titel. Ist es dasselbe Spiel, prüft das Tool darüber, ob es eine Fassung mit Deutsch gab.</p>
-    <div class="list">${near.map(x => `<div class="item"><span class="nm">${esc(x.name)} <span class="hint">(${esc(x.system)})</span></span>
+    <div class="list">${near.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "g", x.system)} <span class="hint">(${esc(x.system)})</span></span>
       <span class="row2"><span class="hint">ähnlich: „${esc(x.near)}“</span>
         <button data-act="nearok" data-k="${esc(x.key)}" title="Dasselbe Spiel; der Titel der Liste gilt fortan">dasselbe</button>
         <button data-act="nearno" data-k="${esc(x.key)}" title="Ein anderes Spiel; dieser Vorschlag kommt nicht wieder">anderes</button></span></div>`).join("")}</div>`;
   // Retro (0.8.8): andere Quellen widersprechen deinem Genre aus der Ordner-Liste
   const ownList = `<p class="hint">Deine Ordner-Liste gilt zuerst. Hier nennen libretro und IGDB beide ein anderes Genre und sind sich darin einig (ab 0.8.12; was nur eine Quelle anders sieht, steht nur in den Einzelheiten, ihr Genre kommt in der Zeile dazu). „Liste gilt“ blendet den Hinweis aus. „Quellen gelten“ (ab 0.9.6) nimmt im Tool das Genre von libretro und IGDB statt deinem; deine Liste bleibt, wie sie ist. Ändert sich ein Wert, kommt der Hinweis wieder.</p>
     <div class="bar"><button data-act="ownok" data-k="" title="Für alle hier: deine Liste gilt">Alle: Liste gilt</button> <button data-act="ownok" data-k="" data-take="1" title="Für alle hier: das Genre, in dem libretro und IGDB einig sind, gilt">Alle: Quellen gelten</button></div>
-    <div class="list">${rown.slice(0, 300).map(x => `<div class="item"><span class="nm">${esc(x.name)} <span class="hint">(${esc(x.system)})</span></span>
+    <div class="list">${rown.slice(0, 300).map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "g", x.system)} <span class="hint">(${esc(x.system)})</span></span>
       <span class="row2"><span class="hint">deins: ${esc(x.diff[0].own)}; ${x.diff.map(d => `${esc(d.src)}: ${esc(d.other)}`).join("; ")}</span>
         <button data-act="ownok" data-k="${esc(x.key)}" title="Dein Genre gilt; der Hinweis verschwindet">Liste gilt</button>
         <button data-act="ownok" data-k="${esc(x.key)}" data-take="1" title="Das Genre von libretro und IGDB gilt statt deinem; deine Liste bleibt">Quellen gelten</button></span></div>`).join("")}</div>${rown.length > 300 ? `<p class="hint">… und ${rown.length - 300} weitere</p>` : ""}`;
@@ -2077,7 +2088,7 @@ function settingsView(){
   const deList = `<p class="hint">Von diesen Spielen gab es laut No-Intro, Redump oder Retool eine Fassung mit Deutsch, deine Datei hat keins. „ignorieren“, wenn dir deine Fassung reicht: Die Marke „DE fehlt“ verschwindet, das Spiel zählt dann als „ohne Deutsch“. Zurück holst du es in den Einzelheiten des Spiels mit „wieder melden“.</p>
     <div class="bar"><button data-act="deign" data-k="" data-v="1" title="Alle hier ignorieren">Alle ignorieren</button></div>
     ${deSys.map(sy => { const xs = rde.filter(x => x.system === sy); return `<h4 class="dehd">${esc(sy)} <span class="n">${xs.length}</span>${deSys.length > 1 ? ` <button class="link" data-act="deign" data-k="" data-sys="${esc(sy)}" data-v="1" title="Alle von ${esc(sy)} ignorieren">alle ${esc(sy)} ignorieren</button>` : ""}</h4>
-    <div class="list">${xs.map(x => `<div class="item"><span class="nm">${esc(x.name)}</span>
+    <div class="list">${xs.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "g", x.system)}</span>
       <span class="row2"><span class="hint${x.guess ? " gxc" : ""}"${x.guess ? ' title="Deutsch dieser Fassung nur aus der Region geschätzt"' : ""}>gesucht: ${esc(x.alt)}</span>
         <button data-act="deign" data-k="${esc(x.key)}" data-v="1" title="Deine Fassung reicht; „DE fehlt“ verschwindet">ignorieren</button></span></div>`).join("")}</div>`; }).join("")}`;
   // Zahlen, die etwas zu tun bedeuten, violett und fett (0.7.4, wie im eShopKompass „offen“)
@@ -2129,6 +2140,17 @@ const LIST_GROUPS = [
     [["ok", "so lassen"]]],
   ["table", "Nur aus der alten Tabelle", "Diese Wünsche stehen auf keiner Wunschliste, nur in deiner Vergleichstabelle. Am schnellsten: mit „+ Meta“ und „+ gg.deals“ dort eintragen, dann ordnet das Tool sie beim nächsten Lesen selbst zu. Oder „behalten“ (nur im Tool, von Hand) oder „entfernen“.",
     [["keep", "behalten"], ["drop", "entfernen"]]]];
+/* 0.10.15: Namen unter „Zu erledigen“ führen zu den Einzelheiten: VR-Titel auf die Wunschliste VR, sonst in die
+   Sammlung, Reiter VR; PC-Wünsche auf die Wunschliste PC; Spiele der Sammlung (Retro) in ihr System. Gesucht wird
+   nach dem Namen, damit die Zeile oben steht; „Suche leeren“ zeigt wieder alles. Ohne Ziel bleibt der Name Text. */
+function todoGo(name, key, w, sys){
+  const vrWish = w === "vr" && (S.wishlist || []).some(r => r.key === key), lib = w === "vr" && !vrWish && (S.library || []).some(r => r.key === key);
+  const pc = w === "pc" && (S.pcwish?.rows || []).some(r => r.key === key && !pcIsVr(r));
+  const to = vrWish ? ["vr", key, "", "Wunschliste VR"] : lib ? ["lib", "vr:" + key, "VR", "Sammlung, VR"] : pc ? ["pc", key, "", "Wunschliste PC"]
+    : w === "g" && key ? ["lib", key, sys || "", `Sammlung${sys ? ", " + sys : ""}`] : null;
+  if(!to) return esc(name);
+  return `<button class="link" data-act="todogo" data-w="${to[0]}" data-s="${esc(to[1])}" data-sys="${esc(to[2])}" data-n="${esc(name)}" title="${esc(`Einzelheiten zeigen (${to[3]})`)}">${esc(name)}</button>`;
+}
 function listsHtml(){
   const L = S.lists || [], st = S.lists_stale || [];
   const metaWish = st.find(x => x.src === "metawish");
@@ -2140,7 +2162,7 @@ function listsHtml(){
     if(!rows.length) return "";
     const keys = rows.map(x => x.key).join(",");
     const bulk = acts.map(([a, l]) => `<button data-act="lists" data-v="${a}" data-keys="${esc(keys)}">alle ${rows.length} ${l}</button>`).join(" ");
-    const list = rows.map(x => `<div class="item"><span class="nm">${esc(x.name)}</span>
+    const list = rows.map(x => `<div class="item"><span class="nm">${todoGo(x.name, x.key, "vr")}</span>
       <span class="row2"><span class="hint">${esc(x.why)}</span>
         ${kind === "table" || kind === "missing" ? addLinks(x.links) : x.links.filter(l => safeUrl(l.url)).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a>`).join(" ")}
         ${acts.map(([a, l]) => `<button data-act="lists" data-v="${a}" data-keys="${esc(x.key)}">${l}</button>`).join(" ")}</span></div>`).join("");
@@ -2155,7 +2177,7 @@ function localStamp(line){
   const m = /^(\d\d):(\d\d):(\d\d)( .*)$/s.exec(line);
   if(!m) return line;
   const d = new Date(); d.setUTCHours(+m[1], +m[2], +m[3], 0);
-  return d.toLocaleTimeString("de-DE") + m[4];
+  return FMT.time.format(d) + m[4];
 }
 function logText(){
   const sy = S.sync || {};
@@ -2526,7 +2548,7 @@ document.addEventListener("click", async ev => {
   if(a === "bmcopy"){ copyNow(metaBm()); toast("Code kopiert. Jetzt ein Lesezeichen anlegen und den Code als Adresse einfügen"); return; }
   if(a === "thm") themeMenu($("thmMenu").hidden);
   else if(a === "thmset") setTheme(v);
-  else if(a === "tab"){ V.tab = v; V.q = ""; if(V.d) V.d.q = ""; render(); scrollTo(0, 0); }
+  else if(a === "tab"){ V.tab = v; V.q = ""; V.pcN = 0; if(V.d) V.d.q = ""; render(); scrollTo(0, 0); }
   else if(a === "lf"){ V.lf[v] = !V.lf[v]; render(); }
   else if(a === "legend"){ V.legend = !V.legend; render(); }
   else if(a === "addopen"){ V.add = !V.add; render(); if(V.add) document.querySelector("form[data-form=add] input")?.focus(); }
@@ -2542,6 +2564,14 @@ document.addEventListener("click", async ev => {
   else if(a === "vlall"){ V.vl.hide = new Set(el.dataset.v === "off" ? V.vl.data.series.map(s => s.name) : []); drawVerlauf(); }
   else if(a === "vltoggle"){ const n = el.dataset.n; V.vl.hide.has(n) ? V.vl.hide.delete(n) : V.vl.hide.add(n); drawVerlauf(); }
   // 0.9.8: immer nur ein Eintrag offen, auch in „Jetzt, Alle“ mit PC und VR in einer Tabelle
+  else if(a === "todogo"){
+    // 0.10.15: aus „Zu erledigen“ zu den Einzelheiten; gesucht wird nach dem Namen, die Zeile ist aufgeklappt
+    const w = el.dataset.w, k = el.dataset.s, n = el.dataset.n;
+    if(w === "lib"){ V.tab = "find"; V.d = Object.assign({}, D0, {sys: el.dataset.sys, q: n, sort: V.d.sort, seed: V.d.seed}); V.gAll = false; V.gOpen = k; V.q = ""; }
+    else { V.tab = "wish"; V.wsub = w; V.q = n; V.pwOpen = w === "pc" ? k : null; V.vwOpen = w === "vr" ? k : null; V.pcMp = []; for(const f in V.lf) V.lf[f] = false; }
+    render(); scrollTo(0, 0);
+    requestAnimationFrame(() => document.querySelector(".gr.open")?.scrollIntoView({block: "start"}));
+  }
   else if(a === "pwopen"){ V.pwOpen = V.pwOpen === el.dataset.s ? null : el.dataset.s; V.vwOpen = null; keepRow(el, render); showOpen(V.pwOpen); }
   else if(a === "vwopen"){ V.vwOpen = V.vwOpen === el.dataset.s ? null : el.dataset.s; V.pwOpen = null; keepRow(el, render); showOpen(V.vwOpen); }
   else if(a === "nowk"){ V.nowKind = v || ""; render(); }
@@ -2583,7 +2613,7 @@ document.addEventListener("click", async ev => {
   else if(a === "dgclear"){ V.d.g = []; V.d.mix = ""; V.d.n = D0.n; V.menu = "g"; render(); }
   else if(a === "dreset"){ V.d = Object.assign({}, D0, {sort: V.d.sort, sys: V.d.sys}); delete V.sorts.find; render(); }
   // Suche gilt nur im Reiter, in dem sie steht (0.8.7)
-  else if(a === "wsub"){ V.wsub = v === "pc" ? "pc" : "vr"; V.q = ""; render(); }
+  else if(a === "wsub"){ V.wsub = v === "pc" ? "pc" : "vr"; V.q = ""; V.pcN = 0; render(); }
   else if(a === "dsys"){
     // Ein anderer Reiter hat andere Spalten: Sortierung nach Spalte und Filter, die es dort nicht gibt, fallen weg
     V.d.sys = v; V.d.q = ""; V.d.sw = ""; V.d.how = []; V.d.hr = 0; V.d.usk = ""; V.d.st = ""; V.d.cb = 0; V.d.vm = 0; V.d.wh = 0; V.d.vr = 0; V.d.xp = 0; V.d.n = D0.n; V.gOpen = null; V.gAll = false; V.gShut.clear(); delete V.sorts.find;
@@ -2593,6 +2623,7 @@ document.addEventListener("click", async ev => {
   }
   else if(a === "dshuffle"){ V.d.seed = newSeed(); render(); }
   else if(a === "dmore"){ V.d.n += D0.n; render(); }
+  else if(a === "pcmore"){ V.pcN = (V.pcN || PC_PAGE) + PC_PAGE; render(); }
   else if(a === "dqclear"){ V.d.q = ""; render(); $("dq")?.focus(); }
   else if(a === "qclear"){ V.q = ""; render(); $("q")?.focus(); }
   else if(a === "foldall"){ $("main").querySelectorAll("details[data-kc]").forEach(d => { d.open = !!v; keepFold(d); }); saveView(); }
