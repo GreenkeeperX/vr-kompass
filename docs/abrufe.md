@@ -481,6 +481,23 @@ IGDB oder Steam) gleich ist und unter „Platforms“ die des Systems steht. Am 
 `at`, `v`), ohne Treffer `{"none": true}`, mit anderem Namen dazu `near`. Eine Cloudflare-Prüfseite, 403 oder 429
 halten die Quelle an (Ruhezeit wie bei den anderen).
 
+## Wikidata und deutsche Wikipedia (Sammlung, ab 0.10.16)
+
+Für alle Retro-Spiele, ohne Schlüssel, nach DekuDeals. Kennung mit dem öffentlichen Repository als Kontakt, wie
+Wikimedia es erbittet (`wiki.HEAD`).
+
+| Abruf | Adresse | Wie oft | Liefert |
+|---|---|---|---|
+| Suche | `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=<Name>&language=en` | je Spiel ohne Stand, nach 180 Tagen (`WIKI_DAYS`), ohne Treffer nach 90 Tagen (`WIKI_MISS_DAYS`); höchstens 100 Spiele je Lauf (`WIKI_MAX`, beschleunigt mal FAST), die am längsten nicht gelesenen zuerst | Einträge, deren Beschreibung ein Videospiel nennt |
+| Einträge | `…?action=wbgetentities&ids=Q1\|Q2…&props=claims\|labels\|sitelinks` | gebündelt, 50 je Anfrage | Plattform (P400), Erscheinen (P577), USK (P914), PEGI (P908), Spielerzahl (P1873), deutsche Bezeichnung, Artikel der deutschen Wikipedia |
+| Bezeichnungen | `…?action=wbgetentities&ids=…&props=labels` | nur für Plattformen und Freigaben, die noch nicht in `wiki.json` stehen | „Game Boy Advance“, „USK ab 12“ |
+| Einleitungen | `https://de.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=…` | gebündelt, 20 je Anfrage | Einleitung des Artikels als Text, auf 1200 Zeichen am Satzende gekürzt |
+
+Gesucht wird unter dem Namen bei IGDB, sonst dem Namen ohne Klammern („…, The“ vorn). Es zählt der erste Treffer mit
+derselben Plattform, sonst der erste mit demselben Erscheinungsjahr (Wikidata führt manches Spiel nur mit der
+Konsolenfassung). Am Spiel bleibt unter `wiki` der Treffer (`q`, `via`, `t`, `de`, `desc`, `age`, `players`, `year`,
+`at`, `v`), ohne Treffer `{"none": true}`. 403 oder 429 halten die Quelle an (Ruhezeit wie bei den anderen).
+
 ## Ablage im Datenordner
 
 - `data.json`: je Titel unter `live` die letzten Werte je Quelle (`meta`, `steam`, `gg`), jeweils
@@ -506,7 +523,7 @@ halten die Quelle an (Ruhezeit wie bei den anderen).
 - `retro_meta.json` (0.8.8): je System Tag des letzten Abrufs der Spielinfos, Fassung (`v`) und Zahl der Einträge.
 - `gametdb.json` (0.10.13): je Datenbank (`wiitdb`, `dstdb`, `3dstdb`, `ps3tdb`) Tag des letzten Abrufs, Fassung
   (`v`) und Zahl der Einträge. Die Spielinfos selbst stehen je Spiel unter `tdb` in `collection.json`; ein neuer
-  Playnite-Export und eine neue Retro-Liste behalten sie. Ebenso `deku` (0.10.14, DekuDeals) je Spiel.
+  Playnite-Export und eine neue Retro-Liste behalten sie. Ebenso `deku` (0.10.14, DekuDeals) und `wiki` (0.10.16, Wikidata) je Spiel; `wiki.json` (0.10.16) merkt sich die Bezeichnungen der Plattformen und Freigaben.
 - `collection.json`: die ganze Sammlung (je Spiel mit System, ohne Feld PC), je Spiel Merkmale aus Playnite;
   Spiele aus der Retro-Liste mit `src` „retro“, Schlüssel `retro:<system>:<name>`, dazu `files`, `regions`,
   `langs`, `lang_guess`, `flags`, gegebenenfalls `tid` und `serial` (3DS) und `gone` (Tag, seit dem es in der

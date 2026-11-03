@@ -322,7 +322,7 @@ def replace(col, games, src="playnite"):
         if o is None:
             new += 1
             continue
-        for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb", "deku"):
+        for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb", "deku", "wiki"):
             if f in o:
                 g[f] = o[f]
     col["games"] = games
@@ -601,7 +601,7 @@ def sync_pcvr(col, data):
         if o is None:
             new += 1
         else:
-            for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb", "deku"):
+            for f in ("rev", "steam", "mark", "igdb", "pcgw", "nexus", "stag", "tdb", "deku", "wiki"):
                 if f in o:
                     g[f] = o[f]
         games[k] = g
@@ -841,6 +841,37 @@ def merge_tdb(r, t):
         r["tdb_langs"] = t["langs"]
 
 
+def merge_wiki(r, w):
+    """Wikidata und deutsche Wikipedia (0.10.16) für Retro-Spiele:
+    - deutsche Beschreibung, wo keine deutsche steht (die von GameTDB gehört zur gefundenen Fassung und geht vor)
+    - deutscher Titel, wo GameTDB keinen nennt; USK oder PEGI, wo keine Freigabe steht
+    - Spielerzahl: bestätigt, was andere sagen (pl_wd), sonst Ersatz; ein anderes Jahr nennt wyear"""
+    r["srcs"] = r["srcs"] + ["Wikidata"]
+    r["wd"] = w.get("q") or ""
+    if w.get("de"):
+        r["wp"] = w["de"]
+    if w.get("desc") and r.get("desc_lang") != "de":
+        if r.get("desc") and r.get("desc_src"):
+            r["desc_en_src"] = r["desc_src"]
+        r["desc"], r["desc_lang"], r["desc_src"] = w["desc"], "de", "Wikipedia"
+    if w.get("t") and not r.get("dtitle") and titles.norm(w["t"]) != titles.norm(r["name"]):
+        r["dtitle"], r["dtitle_src"] = w["t"], "Wikidata"
+    if w.get("age") and not r.get("age"):
+        r["age"], r["age_src"] = w["age"], "Wikidata"
+    p = w.get("players") or 0
+    if p:
+        if r.get("players") == p:
+            r["pl_wd"] = True
+        elif not r.get("players"):
+            r["players"], r["pl_src"] = p, "Wikidata"
+    y = w.get("year") or ""
+    if y:
+        if not r.get("year"):
+            r.update(year=y, year_src="Wikidata")
+        elif r["year"] != y:
+            r["wyear"] = y
+
+
 def merge_deku(r, d):
     """DekuDeals (0.10.14), zweite Quelle für PC und Konsolen:
     - Spielzeit laut HowLongToBeat vor IGDB (wie im eShopKompass); IGDB bleibt im Tooltip (ihours)
@@ -960,6 +991,8 @@ def view(col, data=None):
             merge_retro(r, g)
         if (g.get("tdb") or {}).get("id"):
             merge_tdb(r, g["tdb"])
+        if (g.get("wiki") or {}).get("q"):
+            merge_wiki(r, g["wiki"])
         if (g.get("deku") or {}).get("slug"):
             merge_deku(r, g["deku"])
         # VR per Mod (0.8.1): PCGamingWiki „hackable“, vorpX; Nexus Mods mit Spielseite und Mods

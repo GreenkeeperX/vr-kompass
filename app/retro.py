@@ -325,7 +325,7 @@ def apply(col, games, dry=True, own_systems=()):
     for k, g in games.items():
         o = old.get(k)
         if o:
-            for f in ("rev", "steam", "mark", "info", "igdb", "pcgw", "nexus", "stag", "alias", "near_no", "lr", "own_ok", "own_take", "de_ign", "tdb", "deku"):
+            for f in ("rev", "steam", "mark", "info", "igdb", "pcgw", "nexus", "stag", "alias", "near_no", "lr", "own_ok", "own_take", "de_ign", "tdb", "deku", "wiki"):
                 if f in o:
                     g[f] = o[f]
             # Ordner-Liste (0.8.8): ohne neue Liste für das System bleibt die alte, ebenso die Größe ohne Ordnerwahl
