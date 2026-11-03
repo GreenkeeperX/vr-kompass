@@ -22,18 +22,22 @@ Grenzen je Lauf mal `FAST` (5): `REVIEWS_MAX`, `DETAILS_MAX`, `RATING_MAX`, `IGD
 bleiben wie sonst; danach gelten wieder die üblichen Grenzen. Der Zeitplan startet nie einen solchen Lauf.
 
 **Stränge** (ab 0.10.21): Erst laufen nacheinander die Konten (Steam-Konto, gg.deals-Wunschliste, Sharenite), die
-Zuordnung und der Abgleich der Sammlung mit den Konten. Danach laufen sieben Stränge gleichzeitig, jeder ruft seine Quellen
-nacheinander ab:
+Zuordnung und der Abgleich der Sammlung mit den Konten. Danach laufen die Stränge gleichzeitig (ab 0.10.22 elf, jede Quelle
+für sich, außer sie hängt von einer anderen ab oder teilt mit ihr den Server), jeder ruft seine Quellen nacheinander ab:
 
 | Strang | Quellen | Server vor allem |
 |---|---|---|
 | Steam-Laden | Steam-Preise, gg.deals-Preise (nimmt die eben gefundenen App-IDs), Rezensionen, Details, Wertungen | store.steampowered.com, api.gg.deals |
 | PC-Wunschliste | PC-Wunschliste, IsThereAnyDeal, Spielinfos PC-Wünsche, Spielinfos VR-Titel | store.steampowered.com, api.isthereanydeal.com, api.igdb.com |
-| Meta | QuestStoreDB, VRDB | queststoredb.com, vrdb.app |
+| QuestStoreDB | QuestStoreDB | queststoredb.com |
+| VRDB | VRDB | vrdb.app |
 | Steam-Spieler | Spielerzahlen, aktive Spieler PC | api.steampowered.com |
-| Spielinfos | IGDB, PCGamingWiki, Nexus Mods | api.igdb.com, pcgamingwiki.com, api.nexusmods.com |
-| Sim-Racing, Retro | Sim-Racing, Retro-Fassungen, GameTDB | api.steampowered.com, raw.githubusercontent.com, gametdb.com |
-| DekuDeals, Wikidata | DekuDeals, Wikidata, eShopKompass | dekudeals.com, wikidata.org, de.wikipedia.org |
+| IGDB | IGDB | api.igdb.com |
+| PCGamingWiki | PCGamingWiki | pcgamingwiki.com |
+| Nexus Mods | Nexus Mods | api.nexusmods.com |
+| Sim-Racing, Retro | Sim-Racing, Retro-Fassungen, GameTDB | api.steampowered.com, Listen der Rennsimulationen, raw.githubusercontent.com, gametdb.com |
+| DekuDeals | DekuDeals | dekudeals.com |
+| Wikidata | Wikidata, eShopKompass | wikidata.org, de.wikipedia.org, eigenes Netz |
 
 Die Preise werden wie bisher erst nach allen Strängen eingetragen. Was am längsten dauert, ist der Steam-Store: Rezensionen,
 Details, Wertungen und die Spielinfos der Wunschlisten gehen alle an store.steampowered.com und teilen sich dessen Pause.
