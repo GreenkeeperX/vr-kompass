@@ -548,9 +548,13 @@ def todo(data):
                 why = "Bundle: " + why + ". Trag die enthaltenen Spiele einzeln ein oder die Meta-ID des Bundles"
             out.append({"key": k, "name": t["name"], "kind": "meta", "why": why,
                         "owned_meta": bool((t.get("owned") or {}).get("meta"))})
-        if t.get("wish") and not t.get("contains") and (not t.get("opinion") or opinion_old(t["opinion"])):
+        # 0.10.25: auch deine VR-Sammlung, solange du nur eine Fassung hast (lohnt die andere zusätzlich?)
+        own = t.get("owned") or {}
+        lib = not t.get("wish") and bool(own.get("meta")) != bool(own.get("pc"))
+        if (t.get("wish") or lib) and not t.get("contains") and (not t.get("opinion") or opinion_old(t["opinion"])):
             out.append({"key": k, "name": t["name"], "kind": "opinion", "meta_id": t.get("meta_id") or "",
                         "steam_appid": t.get("steam_appid") or "", "old": bool(t.get("opinion")),
+                        "owned": "" if not lib else "Meta" if own.get("meta") else own["pc"].get("label") or "PC",
                         "why": f"Mehrspieler zuletzt recherchiert am {(t['opinion'].get('at') or '')[:10]}" if t.get("opinion") else "noch keine Meinung recherchiert"})
     return sorted(out, key=lambda x: (x["kind"] != "steam", norm(x["name"])))
 

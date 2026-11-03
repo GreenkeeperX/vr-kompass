@@ -650,7 +650,9 @@ OPINION_MARK = "vr-navigator-meinungen"
 OPINION_TEXT = {"fazit": 600, "fassung_grund": 400, "mehrspieler_stand": 300, "pflege": 400,
                 "komfort": 300, "warnungen": 400, "crossbuy_grund": 300, "crossplay_grund": 300,
                 # 0.10.17: Technik je Fassung, welche aktueller ist, Deutsch, Umfang
-                "technik_quest": 300, "technik_pc": 300, "aktueller_grund": 300, "deutsch_grund": 200, "umfang": 300}
+                "technik_quest": 300, "technik_pc": 300, "aktueller_grund": 300, "deutsch_grund": 200, "umfang": 300,
+                # 0.10.25: bei gekauften Titeln, ob sich die Fassung im anderen Laden zusätzlich lohnt
+                "zweitkauf_grund": 300}
 _MP_ENUM = ("lebendig", "ruhig", "tot", "keiner", "")
 OPINION_ENUM = {"fassung": ("quest", "pc", "gleich", ""), "mehrspieler": _MP_ENUM,
                 "aktueller": ("quest", "pc", "gleich", ""), "mehrspieler_quest": _MP_ENUM, "mehrspieler_pc": _MP_ENUM}
@@ -688,6 +690,8 @@ def parse_opinions(obj):
         o["crossplay"] = cp if cp in (True, False) else None
         de = e.get("deutsch")
         o["deutsch"] = de if de in (True, False) else None
+        zk = e.get("zweitkauf")
+        o["zweitkauf"] = zk if zk in (True, False) else None
         # 0.10.1: Höchstzahl der Spieler je Art, wo IGDB und PCGamingWiki für VR-Titel nichts nennen
         for f in OPINION_PLAYERS:
             v = e.get(f)
@@ -743,15 +747,19 @@ def opinion_task(data, today=None, limit=OPINION_BATCH):
     muss, als Text zum Einfügen in eine Claude-Routine oder einen Chat. Höchstens limit Titel, die zuletzt
     gewünschten zuerst; leer, wenn nichts fehlt."""
     todo = [x for x in titles.todo(data) if x["kind"] == "opinion"]
-    # erst die ohne Meinung, die zuletzt gewünschten zuerst; danach die aufzufrischenden (0.10.17), die ältesten zuerst
-    new = sorted((x for x in todo if not x.get("old")), key=lambda x: data["titles"][x["key"]].get("added") or "", reverse=True)
-    old = sorted((x for x in todo if x.get("old")), key=lambda x: data["titles"][x["key"]]["opinion"].get("at") or "")
-    todo = new + old
+    # erst die ohne Meinung, die zuletzt gewünschten zuerst; danach die aufzufrischenden (0.10.17), die ältesten zuerst.
+    # Ab 0.10.25 erst alle Wünsche, dann deine VR-Sammlung in derselben Reihenfolge
+    def order(xs):
+        new = sorted((x for x in xs if not x.get("old")), key=lambda x: data["titles"][x["key"]].get("added") or "", reverse=True)
+        old = sorted((x for x in xs if x.get("old")), key=lambda x: data["titles"][x["key"]]["opinion"].get("at") or "")
+        return new + old
+    todo = order([x for x in todo if not x.get("owned")]) + order([x for x in todo if x.get("owned")])
     todo = todo[:limit]
     if not todo:
         return ""
     today = today or titles.now_iso()[:10]
-    rows = [{k: v for k, v in (("name", x["name"]), ("meta_id", x["meta_id"]), ("steam_appid", x["steam_appid"])) if v}
+    rows = [{k: v for k, v in (("name", x["name"]), ("meta_id", x["meta_id"]), ("steam_appid", x["steam_appid"]),
+                               ("gekauft", x.get("owned"))) if v}
             for x in todo]
     fields = "\n".join(f"- {f}" for f in OPINION_FIELDS)
     return f"""{OPINION_INTRO}
@@ -793,6 +801,7 @@ OPINION_FIELDS = (
     "deutsch: true oder false, ob es deutsche Texte oder Sprache gibt (Quest-Fassung zuerst); deutsch_grund: Beleg",
     "umfang: Spielzeit und Inhalt (Kampagne, Level, Modi), damit sich der Preis einordnen lässt",
     "warnungen: Bugs, Abbruch der Entwicklung, Bezahlinhalte (sonst leer)",
+    "zweitkauf: nur bei Titeln mit „gekauft“: true oder false, ob sich die Fassung im anderen Laden zusätzlich lohnt (Meta gekauft: Steam; Steam oder PC gekauft: Meta), etwa wegen besserer Technik, mehr Inhalt, lebendigerer Lobbys oder Mods; zweitkauf_grund: warum (sonst beide leer)",
     "quellen: Liste von {\"url\", \"titel\", \"datum\"}, nur https-Links, die du gelesen hast",
 )
 
