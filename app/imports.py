@@ -709,7 +709,8 @@ def import_opinions(data, text, dry=True):
         if k is None:
             unknown.append(o["name"])
             continue
-        entries.append({"name": data["titles"][k]["name"], "known": True})
+        # 0.10.20: ob die Meinung eine frühere ersetzt (für die Vorschau)
+        entries.append({"name": data["titles"][k]["name"], "known": True, "had": bool(data["titles"][k].get("opinion"))})
         if dry:
             continue
         t = data["titles"][k]
@@ -722,6 +723,7 @@ def import_opinions(data, text, dry=True):
     res["what"] = "Meinungen"
     res["attach"] = True  # hängt an bekannte Titel, legt keine an
     res["unknown"] = len(unknown)
+    res["had"] = sum(1 for e in entries if e["had"])
     notes = []
     dropped = [o["name"] for o in items if o.get("crossbuy_dropped")]
     if dropped:

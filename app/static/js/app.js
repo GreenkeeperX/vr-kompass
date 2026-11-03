@@ -2408,7 +2408,9 @@ function previewHtml(p){
     : ` Die Sammlung bleibt, wie sie ist${pc.kept ? ` (${num(pc.kept)} Spiele)` : ""}.`) +
     (pc?.ps ? ` ${num(pc.ps)} PlayStation-Spiele bleiben draußen (sie kommen später aus dem ROM-Ordner).` : "");
   // Playnite: die erste Zahl zählt nur VR-Titel für Sammlung (VR) und Wunschliste
-  const found = pc ? (p.n ? ` VR-Titel: ${p.n}, davon ${p.new} neu.` : " VR-Titel: keine darin.") : `${p.n} erkannt, davon ${p.new} neu.`;
+  const found = pc ? (p.n ? ` VR-Titel: ${p.n}, davon ${p.new} neu.` : " VR-Titel: keine darin.")
+    : p.attach ? `${num(p.n)} ${p.n === 1 ? "Spiel" : "Spiele"} im Tool gefunden, ${p.n === 1 ? "es bekommt" : "sie bekommen"} beim Übernehmen diese Meinung${p.had ? ` (bei ${num(p.had)} ersetzt sie die bisherige)` : ""}.${p.unknown ? ` ${num(p.unknown)} nicht zugeordnet (kein passender Titel im Tool).` : ""}`
+    : `${p.n} erkannt, davon ${p.new} neu.`;
   // gg.deals (0.8.7): erst die ganze PC-Wunschliste, dann wie viele davon VR-Titel im Tool sind
   const gg = p.pc_n != null ? ` ${num(p.pc_n)} Einträge für die PC-Wunschliste (${[`${num(p.pc_n - (p.pc_kinds?.pack || 0) - (p.pc_kinds?.dlc || 0))} Spiele`, p.pc_kinds?.pack && `${num(p.pc_kinds.pack)} Pakete`, p.pc_kinds?.dlc && `${num(p.pc_kinds.dlc)} DLC`].filter(Boolean).join(", ")}), davon ${num(p.n - (p.unknown?.length || 0))} VR-Titel im Tool.` : "";
   // gg.deals-Sammlung (0.9.9): wie viele Spiele, wie viele davon neu für die Sammlung PC, je Launcher
@@ -2425,7 +2427,7 @@ function previewHtml(p){
   if(p.done) return `<p class="ok">${p.what ? esc(p.what) + " übernommen" : "Übernommen"}${pc || gg ? "." : ":"}${pc ? `${col}${found}` : gg || done}</p>` + wishMoves(p) + (p.entries?.length ? `<details class="prev"><summary class="hint">Was übernommen wurde</summary><ul>${p.entries.slice(0, 600).map(e =>
     `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.price != null ? ` ${eur(e.price)}` : ""}${mark(e)}</li>`).join("")}</ul></details>` : "");
   return `<div class="prev">${p.what ? `<b>${esc(p.what)}</b>${p.kind ? ` <span class="hint">(${p.guess ? "geraten, unter „Art“ änderbar" : "erkannt"})</span>` : ""}${pc ? "." : ":"} ` : ""}${pc ? `${col}${found}`.trim() : found} Noch nichts gespeichert.${p.note ? ` <span class="hint">${esc(p.note)}</span>` : ""}<ul>${p.entries.slice(0, 300).map(e =>
-    `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.meta_id ? ` <span class="b">Meta-ID</span>` : ""}${e.steam_appid ? ` <span class="b${e.steam_sure === false ? " warn" : ""}">Steam ${esc(e.steam_appid)}${e.steam_sure === false ? " ungeprüft" : ""}</span>` : ""}${e.price != null ? ` ${eur(e.price)}` : ""}${e.known ? " · schon vorhanden" : ""}</li>`).join("")}</ul></div>`;
+    `<li><span class="${e.known ? "" : "new"}">${esc(e.name)}</span>${e.meta_id ? ` <span class="b">Meta-ID</span>` : ""}${e.steam_appid ? ` <span class="b${e.steam_sure === false ? " warn" : ""}">Steam ${esc(e.steam_appid)}${e.steam_sure === false ? " ungeprüft" : ""}</span>` : ""}${e.price != null ? ` ${eur(e.price)}` : ""}${p.attach ? (e.had ? " · ersetzt die bisherige Meinung" : " · bekommt eine Meinung") : e.known ? " · schon vorhanden" : ""}</li>`).join("")}</ul></div>`;
 }
 /* ---------------------------------------------------------------- Bearbeiten */
 /* Herkunft eines Titels, etwa „Vergleichstabelle, Zeile 128 (21.10.2026)“; vermutet heißt: aus
