@@ -833,7 +833,7 @@ function allPcRow(r){
    ersten Öffnen geladen). Filter, Sortierung und Zufall laufen im Browser; der Zustand steht in der
    Adresse (#sammlung?…), so lässt sich eine Mischung als Lesezeichen merken. */
 let C = null, cLoading = false;
-const D0 = {sys: "PC", sw: "", how: [], hr: 0, usk: "", mp: [], min: 0, g: [], gop: "", st: "", sc: 0, old: 0, lang: "", me: "", pl: "", cb: 0, vm: 0, wh: 0, vr: 0, xp: 0, q: "", sort: "score", seed: 0, mix: "", n: 100};
+const D0 = {sys: "PC", sw: "", how: [], hr: 0, usk: "", mp: [], min: 0, g: [], gnot: [], gop: "", y0: 0, y1: 0, st: "", sc: 0, old: 0, lang: "", me: "", pl: "", cb: 0, vm: 0, wh: 0, vr: 0, xp: 0, q: "", sort: "score", seed: 0, mix: "", n: 100};
 V.d = Object.assign({}, D0);
 if(LIB_IN) V.d.sys = "VR";
 V.gOpen = null;
@@ -974,13 +974,20 @@ const FAMS = [["@ps", "PlayStation", n => /^PS/.test(n)], ["@nin", "Nintendo", n
 const famOf = n => (FAMS.find(f => f[2](n)) || [""])[0];
 const famName = k => (FAMS.find(f => f[0] === k) || [k, k])[1];
 const inSys = (g, sys) => sys ? (sys[0] === "@" ? famOf(g.system) === sys : g.system === sys) : g.system !== "VR";
+// Erscheinungsjahr als Zahl (0: unbekannt). „ab“ schließt das Jahr ein, „vor“ nicht; ohne Jahr fällt ein Spiel
+// heraus, sobald einer der beiden Filter gesetzt ist (0.10.27)
+const yearOf = g => Number(g.year) || 0;
+const yearOk = (g, d) => { const y = yearOf(g); return y > 0 && y >= d.y0 && (!d.y1 || y < d.y1); };
+const yLabel = d => [d.y0 && `ab ${d.y0}`, d.y1 && `vor ${d.y1}`].filter(Boolean).join(", ");
 function dFilter(d){
   const q = d.q.trim().toLowerCase(), cut = new Date(Date.now() - 730 * 864e5).toISOString().slice(0, 10);
   return allGames().filter(g => inSys(g, d.sys) && (!d.sw || (d.sw === "s1") === !!g.sw1) && kFilter(g, d) && d.mp.every(m => g.mp.includes(m))
     // Spielerzahl unbekannt: ein Mehrspieler-Spiel zählt als zwei
     && (!d.min || (g.players ? g.players >= d.min : d.min <= 2 && g.mp.includes("multi")))
     // mehrere Genres: eines davon genügt, mit gop „and“ alle
-    && (!d.g.length || (d.gop === "and" ? d.g.every(x => g.genres.includes(x)) : d.g.some(x => g.genres.includes(x)))) && (!d.st || g.store === d.st) && (!d.sc || (g.score ?? -1) >= d.sc)
+    && (!d.g.length || (d.gop === "and" ? d.g.every(x => g.genres.includes(x)) : d.g.some(x => g.genres.includes(x))))
+    // ausgeschlossene Genres (0.10.27): eines davon genügt, und das Spiel fällt heraus
+    && !d.gnot.some(x => g.genres.includes(x)) && (!(d.y0 || d.y1) || yearOk(g, d)) && (!d.st || g.store === d.st) && (!d.sc || (g.score ?? -1) >= d.sc)
     && (!d.old || (g.added && g.added < cut)) && (!d.lang || langOk(g, d.lang)) && (!d.me || meOk(mine(g), d.me)) && (!d.mix || d.me === "ign" || !mine(g).ign) && (!d.pl || plOk(g, d.pl)) && (!d.cb || g.lib?.crossbuy === true) && (!d.vm || vrMod(g)) && (!d.wh || !!g.wheel) && (!d.xp || !!g.xp?.on) && (!d.vr || (g.vr && !g.vr_guess))
     && (!q || g.name.toLowerCase().includes(q) || g.dev.toLowerCase().includes(q) || (g.pub || "").toLowerCase().includes(q) || g.genres.some(x => x.toLowerCase().includes(q))
       || !!g.lib?.note?.toLowerCase().includes(q) || (g.own && [g.own.series, g.own.coll, g.own.genre, g.own.sub, g.fname].some(x => (x || "").toLowerCase().includes(q)))));
@@ -1044,7 +1051,7 @@ function setMix(k){
   delete V.sorts.find;
 }
 const dLabel = d => [d.how.map(h => (K_HOW.find(x => x[0] === h) || [h, h])[1]).join(" + "), d.mp.map(m => C.mp_label[m] || m).join(" + "),
-  d.hr && (d.hr > 0 ? `bis ${d.hr} h` : `ab ${-d.hr} h`), d.usk && `USK bis ${d.usk}`, d.min && `ab ${d.min} Spieler`, d.g.join(d.gop === "and" ? " und " : " oder "), d.st,
+  d.hr && (d.hr > 0 ? `bis ${d.hr} h` : `ab ${-d.hr} h`), d.usk && `USK bis ${d.usk}`, d.min && `ab ${d.min} Spieler`, d.g.join(d.gop === "and" ? " und " : " oder "), d.gnot.map(x => `ohne ${x}`).join(", "), yLabel(d) && `erschienen ${yLabel(d)}`, d.st,
   d.sc && `Wertung ab ${d.sc}`, d.old && "über zwei Jahre in der Sammlung", d.me && (G_STF.find(x => x[0] === d.me) || ["", ""])[1], d.pl && (G_PL.find(x => x[0] === d.pl) || ["", ""])[1],
   d.cb && "Crossbuy", d.vm && "VR per Mod", d.vr && "VR", d.wh && "SimRacing", d.xp && "Crossplay", d.lang && (LANG_FILTER.find(x => x[0] === d.lang) || ["", ""])[1], d.q && `„${d.q}“`].filter(Boolean).join(", ");
 
@@ -1785,14 +1792,28 @@ function findView(){
   const mixes = `<div class="chips mix">${MIXES.filter(mixOk).map(([k, l, tip]) => `<button data-act="${d.mix === k ? "dmixoff" : "dmix"}" data-v="${k}" title="${esc(d.mix === k ? "Zurücknehmen" : tip)}" class="${d.mix === k ? "on" : ""}">${esc(l)}</button>`).join("")}</div>`;
   // Filter als Menüs mit Häkchen. Die Zahl hinter einem Genre: Spiele mit diesem Genre unter den übrigen
   // Filtern; bei „alle“ zusätzlich mit allen schon gewählten Genres
-  const base = dFilter(Object.assign({}, d, {g: d.gop === "and" ? d.g : []})), gn = {};
+  const gBase = {g: d.gop === "and" ? d.g : []}, base = dFilter(Object.assign({}, d, gBase)), gn = {};
   for(const g of base) for(const x of g.genres) gn[x] = (gn[x] || 0) + 1;
+  // hinter einem ausgeschlossenen Genre: so viele Spiele blendet „ohne“ gerade aus
+  for(const x of d.gnot) gn[x] = dFilter(Object.assign({}, d, gBase, {gnot: d.gnot.filter(y => y !== x)})).filter(g => g.genres.includes(x)).length;
   const gq = (V.gq || "").trim().toLowerCase();
-  const genres = genresIn.length ? `<details class="menu" ${menuAttr("g")}><summary>Genre${d.g.length ? ` <span class="cnt">${d.g.length}</span>` : ""}</summary><div class="pop wide">
+  const gOpt = g => { const ex = d.gnot.includes(g); return `<div class="gopt${ex ? " ex" : ""}"><label><input type="checkbox" data-dg="${esc(g)}"${d.g.includes(g) ? " checked" : ""}> ${gTag(g)} <span class="n"${ex ? ` title="So viele Spiele blendet „ohne“ hier aus"` : ""}>${ex ? "−" : ""}${gn[g] || 0}</span></label><button class="gnot${ex ? " on" : ""}" data-act="dgnot" data-v="${esc(g)}" aria-pressed="${ex}" title="${ex ? "Wieder zeigen" : "Spiele mit diesem Genre ausblenden"}">ohne</button></div>`; };
+  const genres = genresIn.length ? `<details class="menu" ${menuAttr("g")}><summary>Genre${d.g.length ? ` <span class="cnt">${d.g.length}</span>` : ""}${d.gnot.length ? ` <span class="cnt no" title="Ausgeschlossene Genres">−${d.gnot.length}</span>` : ""}</summary><div class="pop wide">
     <div class="seg" role="group" aria-label="Mehrere Genres verknüpfen"><button data-act="dgop" data-v="" class="${d.gop !== "and" ? "on" : ""}" title="Spiele mit mindestens einem der Genres">eines davon</button><button data-act="dgop" data-v="and" class="${d.gop === "and" ? "on" : ""}" title="Nur Spiele mit allen gewählten Genres">alle</button></div>
     <input type="search" data-in="gq" placeholder="Genre suchen" aria-label="Genre suchen" value="${esc(V.gq || "")}">
-    <div class="opts">${genresIn.filter(g => !gq || g.toLowerCase().includes(gq) || d.g.includes(g)).map(g => `<label><input type="checkbox" data-dg="${esc(g)}"${d.g.includes(g) ? " checked" : ""}> ${gTag(g)} <span class="n">${gn[g] || 0}</span></label>`).join("")}</div>
-    ${d.g.length ? `<button class="link" data-act="dgclear">keins</button>` : ""}</div></details>` : "";
+    <p class="hint">Häkchen: nur diese Genres. „ohne“: Spiele mit diesem Genre ausblenden.</p>
+    <div class="opts">${genresIn.filter(g => !gq || g.toLowerCase().includes(gq) || d.g.includes(g) || d.gnot.includes(g)).map(gOpt).join("")}</div>
+    ${d.g.length || d.gnot.length ? `<button class="link" data-act="dgclear">Auswahl leeren</button>` : ""}</div></details>` : "";
+  // Erschienen (0.10.27): „ab“ und „vor“ als Jahr, zur Wahl stehen die Jahre des Reiters
+  const yrs = [...new Set(inTab.map(yearOf).filter(Boolean))].sort((a, b) => b - a), noYear = inTab.filter(g => !yearOf(g)).length;
+  const yOpt = cur => opt([[0, "egal"]].concat([...new Set(yrs.concat(cur || []))].sort((a, b) => b - a).map(y => [y, String(y)])), cur);
+  const yl = yLabel(d);
+  const years = yrs.length ? `<details class="menu" ${menuAttr("yr")}><summary>Erschienen${yl ? ` <span class="cnt">${yl}</span>` : ""}</summary><div class="pop wide">
+    <label>ab <select data-dset="y0" aria-label="Erschienen ab Jahr">${yOpt(d.y0)}</select></label>
+    <label>vor <select data-dset="y1" aria-label="Erschienen vor Jahr">${yOpt(d.y1)}</select></label>
+    <p class="hint">„ab 2020“ zeigt 2020 und neuer, „vor 2015“ alles bis 2014.${noYear ? ` ${noYear === 1 ? "1 Spiel hier hat" : `${num(noYear)} Spiele hier haben`} kein Jahr und ${noYear === 1 ? "fällt" : "fallen"} dann heraus.` : ""}</p>
+    ${d.y0 && d.y1 && d.y0 >= d.y1 ? `<p class="hint err">So passt kein Jahr: „ab“ muss vor „vor“ liegen.</p>` : ""}
+    ${yl ? `<button class="link" data-act="dyclear">egal</button>` : ""}</div></details>` : "";
   const mn = {};
   for(const k of mpIn) mn[k] = dFilter(Object.assign({}, d, {mp: d.mp.includes(k) ? d.mp : d.mp.concat(k)})).length;
   const kinds = mpIn.length ? `<details class="menu" ${menuAttr("mp")}><summary>Mehrspieler${d.mp.length ? ` <span class="cnt">${d.mp.length}</span>` : ""}</summary><div class="pop">
@@ -1812,7 +1833,7 @@ function findView(){
   const SW = [["", "alle"], ["s2", "Switch 2"], ["s1", "nur Switch"]];
   const swMenu = sw ? `<details class="menu" ${menuAttr("sw")}><summary>${d.sw ? esc(SW.find(x => x[0] === d.sw)[1]) : "System"}</summary><div class="pop">
     ${SW.map(([k, l]) => `<label><input type="radio" name="dsw" data-dset="sw" value="${k}"${(d.sw || "") === k ? " checked" : ""}> ${l}</label>`).join("")}</div></details>` : "";
-  const filters = `<div class="dfilter">${genres}${kv ? how : kinds}
+  const filters = `<div class="dfilter">${genres}${kv ? how : kinds}${years}
       ${inTab.some(g => g.players) ? `<label title="Höchste Spielerzahl">max. Spieler <select data-dset="min">${opt([[0, "egal"], [2, "ab 2"], [3, "ab 3"], [4, "ab 4"], [8, "ab 8"]], d.min)}</select></label>` : ""}
       ${stores.length > 1 ? `<label>${vr ? "Besitz" : "Launcher"} <select data-dset="st">${opt([["", "alle"]].concat(stores.map(x => [x, x])), d.st)}</select></label>` : ""}
       ${inTab.some(g => g.score != null) ? `<label>Wertung <select data-dset="sc">${opt(kv ? [[0, "egal"], [70, "ab 70"], [80, "ab 80"], [90, "ab 90"]] : [[0, "egal"], [60, "ab 60 %"], [70, "ab 70 %"], [80, "ab 80 %"], [90, "ab 90 %"]], d.sc)}</select></label>` : ""}
@@ -1827,7 +1848,7 @@ function findView(){
       ${inTab.some(g => g.xp?.on) ? `<label title="Gemeinsame Partien über Plattformen hinweg laut PCGamingWiki oder Steam (violett: nur eine Quelle)"><input type="checkbox" data-dset="xp"${d.xp ? " checked" : ""}> Crossplay</label>` : ""}
       ${inTab.some(vrMod) ? `<label title="VR per Mod laut PCGamingWiki oder Mods mit VR im Namen bei Nexus Mods (gestrichelt, nur ein Hinweis)"><input type="checkbox" data-dset="vm"${d.vm ? " checked" : ""}> VR per Mod</label>` : ""}
       ${inTab.some(g => g.added) && !vr ? `<label><input type="checkbox" data-dset="old"${d.old ? " checked" : ""}> über zwei Jahre in der Sammlung</label>` : ""}${swMenu}</div>
-    ${label ? `<div class="chips act">${d.how.map(h => `<button data-act="dhowoff" data-v="${esc(h)}" title="Filter entfernen">${esc((K_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.mp.map(m => `<button data-act="dmpoff" data-v="${esc(m)}" title="Filter entfernen">${esc(C.mp_label[m] || m)} ×</button>`).join("")}${d.g.map(g => `<button data-act="dgoff" data-v="${esc(g)}" title="Filter entfernen">${esc(g)} ×</button>`).join("")}<button class="link" data-act="dreset">alle Filter zurücksetzen</button></div>` : ""}`;
+    ${label ? `<div class="chips act">${d.how.map(h => `<button data-act="dhowoff" data-v="${esc(h)}" title="Filter entfernen">${esc((K_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.mp.map(m => `<button data-act="dmpoff" data-v="${esc(m)}" title="Filter entfernen">${esc(C.mp_label[m] || m)} ×</button>`).join("")}${d.g.map(g => `<button data-act="dgoff" data-v="${esc(g)}" title="Filter entfernen">${esc(g)} ×</button>`).join("")}${d.gnot.map(g => `<button class="no" data-act="dgnotoff" data-v="${esc(g)}" title="Genre wieder zeigen">ohne ${esc(g)} ×</button>`).join("")}${["y0", "y1"].filter(k => d[k]).map(k => `<button data-act="dyoff" data-v="${k}" title="Filter entfernen">${k === "y0" ? "ab" : "vor"} ${d[k]} ×</button>`).join("")}<button class="link" data-act="dreset">alle Filter zurücksetzen</button></div>` : ""}`;
   const colSort = !!V.sorts.find;
   const canAll = rows.length <= G_ALL;
   if(V.gAll && !canAll){ V.gAll = false; V.gShut.clear(); }
@@ -2704,7 +2725,11 @@ document.addEventListener("click", async ev => {
   }
   else if(a === "dgoff" || a === "dmpoff" || a === "dhowoff"){ const f = a === "dgoff" ? "g" : a === "dhowoff" ? "how" : "mp"; V.d[f] = V.d[f].filter(x => x !== v); V.d.mix = ""; V.d.n = D0.n; render(); }
   else if(a === "dgop"){ V.d.gop = v; V.d.mix = ""; V.d.n = D0.n; V.menu = "g"; render(); }
-  else if(a === "dgclear"){ V.d.g = []; V.d.mix = ""; V.d.n = D0.n; V.menu = "g"; render(); }
+  else if(a === "dgclear"){ V.d.g = []; V.d.gnot = []; V.d.mix = ""; V.d.n = D0.n; V.menu = "g"; render(); }
+  // Genre ausschließen (0.10.27): „ohne“ schaltet um und nimmt ein gesetztes Häkchen weg
+  else if(a === "dgnot"){ const on = V.d.gnot.includes(v); V.d.gnot = on ? V.d.gnot.filter(x => x !== v) : V.d.gnot.concat(v); if(!on) V.d.g = V.d.g.filter(x => x !== v); V.d.mix = ""; V.d.n = D0.n; V.menu = "g"; render(); }
+  else if(a === "dgnotoff"){ V.d.gnot = V.d.gnot.filter(x => x !== v); V.d.mix = ""; V.d.n = D0.n; render(); }
+  else if(a === "dyoff" || a === "dyclear"){ if(a === "dyclear"){ V.d.y0 = V.d.y1 = 0; V.menu = "yr"; } else if(v === "y0" || v === "y1") V.d[v] = 0; V.d.mix = ""; V.d.n = D0.n; render(); }
   else if(a === "dreset"){ V.d = Object.assign({}, D0, {sort: V.d.sort, sys: V.d.sys}); delete V.sorts.find; render(); }
   // Suche gilt nur im Reiter, in dem sie steht (0.8.7)
   else if(a === "wsub"){ V.wsub = v === "pc" ? "pc" : "vr"; V.q = ""; V.pcN = 0; render(); }
@@ -2865,6 +2890,7 @@ document.addEventListener("change", async ev => {
   if(dt.dg || dt.dmp || dt.dhow){
     const f = dt.dg ? "g" : dt.dhow ? "how" : "mp", x = dt.dg || dt.dmp || dt.dhow;
     V.d[f] = t.checked ? V.d[f].concat(x) : V.d[f].filter(y => y !== x);
+    if(f === "g" && t.checked) V.d.gnot = V.d.gnot.filter(y => y !== x);      // gewählt und ausgeschlossen zugleich geht nicht
     V.d.mix = ""; V.d.n = D0.n; V.menu = f; render(); return;
   }
   if(dt.sched){

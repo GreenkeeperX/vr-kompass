@@ -7,7 +7,7 @@ Vorbild und Unterbau ist der [eShopKompass](https://github.com/GreenkeeperX/esho
 Python ohne Zusatzpakete, Daten als JSON-Dateien, Oberfläche in reinem JavaScript, gehärteter
 Docker-Container.
 
-**Stand 0.10.26:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
+**Stand 0.10.27:** Wunschliste (VR mit Abgleich gegen die Wunschlisten der Läden, PC als Spiegel der gg.deals-Wunschliste mit Preisen und Spielinfos), Jetzt für VR- und PC-Wünsche, Sammlung (alle Spiele je System als Liste mit Spalten wie im eShopKompass, dazu der Reiter VR mit deinen VR-Titeln, Mein Stand, Filter und Vorschläge, Retro-Liste aus dem ROM-Ordner mit Spielinfos aus der libretro-database und deinen Ordner-Listen), Konten (Steam, gg.deals, Sharenite), Zuordnung aller Titel, Tief über beide Läden, Meinungen aus der Recherche, Meta-Lesezeichen, Importe und Live-Preise von QuestStoreDB (Meta), Steam
 und gg.deals, dazu Gemessenes: Steam-Spieler und -Updates, Crossbuy, Version und Meta-Wertung von
 VRDB, daraus das Urteil „wo kaufen“ je Wunschtitel.
 Neu in 0.9.7: Spiele aus dem Steam-Konto ohne Playnite-Eintrag stehen in der Sammlung (Herkunft „Steam-Konto“),
@@ -67,6 +67,12 @@ je Spiel die Suche und die Spielseite, höchstens 30 Spiele je Lauf, bekannte zu
 zählt nur mit gleichem Namen und der richtigen Plattform (am PC „Steam“). Daraus kommen die Spielzeit laut
 HowLongToBeat (vor IGDB, IGDB bleibt im Tooltip), OpenCritic, Metacritic wo Steam keine nennt, USK oder PEGI, Deutsch
 wo Steam nichts sagt; Spieler, Genre und Jahr werden bestätigt oder ergänzt, ein anderes Jahr steht violett.
+Neu in 0.10.27: Zwei Filter mehr in der Sammlung. Das Menü „Erschienen“ grenzt nach dem Erscheinungsjahr ein: „ab 2020“
+zeigt 2020 und neuer, „vor 2015“ alles bis 2014, beides zusammen einen Zeitraum; Spiele ohne Jahr fallen dann heraus,
+das Menü nennt ihre Zahl. Im Menü „Genre“ hat jede Zeile den Schalter „ohne“: Spiele mit diesem Genre verschwinden aus
+der Liste, auch zusammen mit gewählten Genres. Ausgeschlossene Genres stehen rot und durchgestrichen im Menü, die Zahl
+dahinter nennt, wie viele Spiele gerade ausgeblendet sind; unter den Filtern stehen sie als rote Marken „ohne … ×“.
+Beide Filter gelten in jedem Reiter der Sammlung, auch unter VR, und stehen im Link der Ansicht.
 Neu in 0.10.26: Sagt die Recherche bei einem gekauften VR-Titel „zweitkauf“ (die Fassung im anderen Laden lohnt
 zusätzlich), holt der Abgleich auch dessen Preise, und „Jetzt“ zeigt die andere Fassung mit der violetten Marke
 „Zweitkauf Steam“ oder „Zweitkauf Meta“, sobald sie im Angebot nah am Tief ist. Unter „Zu erledigen“ zwei Recherchen
