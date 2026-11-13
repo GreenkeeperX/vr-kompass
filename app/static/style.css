@@ -279,6 +279,14 @@ details.menu .pop label{display:flex;gap:6px;align-items:center;font-size:14px;w
 details.menu .pop .n{color:var(--muted);font-size:12px;margin-left:auto;padding-left:8px}
 details.menu .opts{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:3px}
 details.menu input[type=search]{width:100%}
+/* Genre ausschließen (0.10.27): „ohne“ hinter jeder Zeile, ausgeschlossene Genres rot und durchgestrichen */
+.gopt{display:flex;gap:8px;align-items:center}
+.gopt label{flex:1;min-width:0}
+.gopt.ex .chip{text-decoration:line-through;opacity:.6}
+.gopt.ex .n{color:var(--stop)}
+.gnot{font-size:12px;padding:1px 8px;border-radius:999px;color:var(--muted);flex:none}
+.gnot.on,.chips.act button.no{background:var(--stop-bg);color:var(--stop);border-color:var(--stop)}
+details.menu .cnt.no{background:var(--stop);margin-left:3px}
 .seg{display:flex}
 .seg button{flex:1;border-radius:0;padding:3px 8px;font-size:13px}
 .seg button:first-child{border-radius:6px 0 0 6px}

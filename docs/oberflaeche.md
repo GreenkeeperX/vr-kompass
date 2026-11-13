@@ -213,6 +213,13 @@ Launcher: am PC der Launcher, bei Konsolen unter „Alle“ das System.
 - VR per Mod (0.8.1): Marke „VR per Mod“ (`.b`) nach PCGamingWiki „hackable“; nur Nexus-Mods mit VR im Namen
   oder vorpX: „VR-Mod“ (`.b.vrq`, türkis gestrichelt in der Farbe der VR-Marke, ab 0.8.20 ohne „?“), ein Hinweis. Filter „VR per Mod“ (`d.vm`) erscheint, wenn ein
   Spiel im Reiter eins von beiden hat. Einzelheiten: Zeilen „VR per Mod“ und „Nexus Mods“ mit Links.
+- Filter „Erschienen“ (ab 0.10.27, Menü `yr`, `d.y0` und `d.y1`): „ab“ schließt das Jahr ein, „vor“ nicht; zur Wahl
+  stehen die Jahre des Reiters. Spiele ohne Jahr fallen heraus, sobald einer der beiden gesetzt ist; das Menü nennt
+  ihre Zahl. Im Kopf des Menüs steht die Wahl („ab 2020, vor 2023“), darunter je eine Marke mit ×.
+- Genres ausschließen (ab 0.10.27, `d.gnot`): im Menü „Genre“ hinter jeder Zeile der Schalter „ohne“ (`.gnot`). Ein
+  Genre ist entweder gewählt oder ausgeschlossen. Ausgeschlossen: rot (`--stop`), Name durchgestrichen, die Zahl mit
+  Minus nennt die gerade ausgeblendeten Spiele; im Kopf des Menüs ein rotes „−n“, unter den Filtern rote Marken
+  „ohne … ×“. „Auswahl leeren“ nimmt Häkchen und Ausschlüsse zurück.
 - Filter „Crossplay“ (ab 0.10.6, `d.xp`): Spiele mit Crossplay laut PCGamingWiki oder Steam; erscheint, wenn ein Spiel
   im Reiter es hat.
 - SimRacing (ab 0.8.12, vorher „Lenkrad“): Marke orange gefüllt (`.b.simb`, Token `--sim`), wie VR türkis (`.b.vrb`);

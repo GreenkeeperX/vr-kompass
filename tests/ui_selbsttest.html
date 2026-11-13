@@ -31,6 +31,8 @@ f.addEventListener("load", () => {
                  ["settings:retro", "V.tab = 'settings'; V.folds['imp-retro'] = false; V.txt = {retro: 'ROMs/GB/Moon Rover (Europe).gb'}; V.prev.retro = {kind: 'retro', n: 2, new: 1, files: 3, systems: {GB: 1, SNES: 1}, skipped: {archive: 4, save: 1, extra: 0}, unknown_n: 1, unknown: ['Comet Chase mit einem sehr langen Dateinamen ohne Ende.iso'], gone: ['Star Hop'], gone_n: 1, entries: [{name: 'Moon Rover', system: 'GB', known: false, langs: ['De', 'En'], lang_guess: false, files: 2}, {name: 'Star Hop', system: 'SNES', known: true, langs: ['Ja'], lang_guess: true, files: 1}]}"],
                  ["wish:menu", "V.tab = 'wish'; V.lf.good = false; V.menu = 'lf'; V.legend = true; V.add = true"],
                  ["find:genre", "V.tab = 'find'; V.legend = false; V.menu = 'g'; V.d = Object.assign({}, D0, {g: ['Puzzle'], gop: 'and', mp: ['coop']})"],
+                 ["find:ohne", "V.menu = 'g'; V.d = Object.assign({}, D0, {gnot: ['Puzzle'], y0: 2019, y1: 2022})", "document.querySelector('.gopt [data-act=dgnot]').click()"],
+                 ["find:jahr", "V.menu = 'yr'; V.d = Object.assign({}, D0, {y0: 2019, y1: 2021})"],
                  ["wish:pc", "V.menu = ''; V.tab = 'wish'; V.wsub = 'pc'", "V.pwOpen = 'harbor-heist'; render()"],
                  ["now:pc", "V.tab = 'now'; V.nowKind = 'pc'"],
                  ["thema", "V.nowKind = ''", "V.menu = ''; themeMenu(true)"]]);
@@ -57,6 +59,11 @@ f.addEventListener("load", () => {
                            nav: d.getElementById("nav").classList.contains("more")};
         if(name === "probe") probe.remove();
       }
+      // 0.10.27: Genres ausschließen und Erscheinungsjahr „ab“ (einschließlich) und „vor“ (ausschließlich)
+      res.filter = w.eval(`(() => { const all = dFilter(Object.assign({}, D0)), no = dFilter(Object.assign({}, D0, {gnot: ["Puzzle"]})),
+        yr = dFilter(Object.assign({}, D0, {y0: 2019, y1: 2021}));
+        return {all: all.length, puzzle: all.filter(g => g.genres.includes("Puzzle")).length, left: no.length, bad: no.filter(g => g.genres.includes("Puzzle")).length,
+                noYear: all.filter(g => !g.year).length, years: yr.map(g => g.year).sort(), label: dLabel(Object.assign({}, D0, {gnot: ["Puzzle"], y0: 2019, y1: 2021}))}; })()`);
     }catch(e){ res.errors.push(String(e)); }
     done();
   };

@@ -4238,6 +4238,26 @@ class TestUi(unittest.TestCase):
         self.assertNotIn("xp", pcwish.info({"name": "x", "steam": {"ok": True, "xp": False}}))
         self.assertIn("xp", pcwish.info({"name": "x", "steam": dict(det, ok=True)}))
 
+    def test_ui_1027(self):
+        """0.10.27: Sammlung nach Erscheinungsjahr filtern („ab“, „vor“) und Genres ausschließen („ohne“)."""
+        js, css = self.read("js/app.js"), self.read("style.css")
+        self.assertRegex(js, r"const D0 = \{[^}]*gnot: \[\][^}]*y0: 0, y1: 0")
+        for name in ("const yearOk = (g, d) =>", "!d.gnot.some(x => g.genres.includes(x))", "(!(d.y0 || d.y1) || yearOk(g, d))",
+                     'data-act="dgnot"', 'data-act="dgnotoff"', 'data-act="dyoff"', 'data-act="dyclear"', 'menuAttr("yr")',
+                     'data-dset="y0"', 'data-dset="y1"', 'a === "dgnot"', "kein Jahr und"):
+            self.assertIn(name, js)
+        # gewählt und ausgeschlossen zugleich geht nicht, und „Auswahl leeren“ nimmt beides zurück
+        self.assertIn('if(f === "g" && t.checked) V.d.gnot = V.d.gnot.filter(y => y !== x);', js)
+        self.assertIn('if(!on) V.d.g = V.d.g.filter(x => x !== v);', js)
+        self.assertIn('a === "dgclear"){ V.d.g = []; V.d.gnot = [];', js)
+        # die Zeile im Genre-Menü heißt nicht wie die Zeile der Spieleliste (gRow)
+        self.assertEqual(js.count("function gRow("), 1)
+        self.assertNotIn("const gRow", js)
+        for name in (".gopt{", ".gnot{", ".gnot.on,.chips.act button.no{"):
+            self.assertIn(name, css)
+        # „ohne Deutsch“ (.gno) bleibt eine eigene Klasse
+        self.assertEqual(css.count(".gno{"), 1)
+
     def test_ui_100(self):
         """0.10.0: Marke „üblich −x %“, Kasten „Was dein Preisverlauf zeigt“, Rhythmus im Preisverlauf, Crossplay."""
         js, css = self.read("js/app.js"), self.read("style.css")
@@ -4399,6 +4419,13 @@ class TestUi(unittest.TestCase):
         self.assertEqual(views["wish:zu"]["open"], [False, False])
         self.assertTrue(views["settings"]["open"] and not any(views["settings:zu"]["open"]))
         self.assertTrue(views["now"]["nav"], "Reiterleiste am Handy ohne weichen Rand")
+        # 0.10.27: „ohne Puzzle“ nimmt genau die Puzzle-Spiele heraus; „ab 2019, vor 2021“ lässt 2019 und 2020, ohne Jahr nichts
+        f = res["filter"]
+        self.assertGreater(f["puzzle"], 0)
+        self.assertEqual((f["left"], f["bad"]), (f["all"] - f["puzzle"], 0))
+        self.assertGreater(f["noYear"], 0)
+        self.assertEqual(sorted(set(f["years"])), ["2019", "2020"])
+        self.assertEqual(f["label"], "ohne Puzzle, erschienen ab 2019, vor 2021")
 
 
 if __name__ == "__main__":
